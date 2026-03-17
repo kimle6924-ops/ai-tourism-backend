@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ai_tourism
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./BE_AI_Tourism
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    depends_on:
+      - db
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DATABASE_URL=Host=db;Port=5432;Database=ai_tourism;Username=postgres;Password=${DB_PASSWORD}
+      - JWT__SECRET=${JWT_SECRET}
+      - JWT__ISSUER=AITourism
+      - JWT__AUDIENCE=AITourism
+      - JWT__EXPIRATIONINMINUTES=60
+      - CLOUDINARY__CLOUDNAME=${CLOUDINARY_CLOUDNAME}
+      - CLOUDINARY__APIKEY=${CLOUDINARY_APIKEY}
+      - CLOUDINARY__APISECRET=${CLOUDINARY_APISECRET}
+      - CLOUDINARY__FOLDER=ai-tourism
+      - GEMINI__APIKEY=${GEMINI_APIKEY}
+      - GEMINI__MODEL=gemini-3-flash-preview
+      - SECURITY__ALLOWPLAINTEXTPASSWORD=true
+      - SECURITY__ENVIRONMENTMODE=Development
+      - CORS__ALLOWEDORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+
+volumes:
+  pgdata:

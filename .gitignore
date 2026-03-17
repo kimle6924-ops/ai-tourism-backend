@@ -1,0 +1,43 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## NuGet
+*.nupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+## User secrets
+secrets.json
+
+## ASP.NET Core
+appsettings.*.local.json
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+## Claude Code
+.claude/
+
+## OS
+Thumbs.db
+desktop.ini
+.DS_Store
+
+## Logs
+*.log
+logs/
+
+## Environment
+.env
+.env.*
+!.env.example

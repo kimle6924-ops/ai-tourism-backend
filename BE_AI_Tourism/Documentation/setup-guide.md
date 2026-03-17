@@ -6,11 +6,12 @@ Hướng dẫn dành cho developer (frontend/backend) muốn chạy backend trê
 
 ## Yêu cầu
 
-| Phần mềm | Phiên bản | Link tải |
-|-----------|-----------|----------|
-| .NET SDK | 8.0+ | https://dotnet.microsoft.com/download/dotnet/8.0 |
-| PostgreSQL | 15+ | https://www.postgresql.org/download/ |
-| Git | bất kỳ | https://git-scm.com/ |
+| Phần mềm | Link tải |
+|-----------|----------|
+| Docker Desktop | https://www.docker.com/products/docker-desktop/ |
+| Git | https://git-scm.com/ |
+
+> Không cần cài .NET SDK hay PostgreSQL — Docker lo hết.
 
 ---
 
@@ -23,75 +24,40 @@ cd ai-tourism-backend
 
 ---
 
-## Bước 2: Cài đặt PostgreSQL
+## Bước 2: Cấu hình .env
 
-### Windows
-1. Tải PostgreSQL installer từ https://www.postgresql.org/download/windows/
-2. Chạy installer, nhớ **ghi lại password** cho user `postgres`
-3. Port mặc định: `5432`
-4. Sau khi cài xong, mở **pgAdmin** (cài kèm PostgreSQL) hoặc dùng terminal
+Hỏi BE để lấy file .env
 
-### Tạo database
-Mở pgAdmin hoặc terminal PostgreSQL, chạy:
-```sql
-CREATE DATABASE ai_tourism;
-```
+## Bước 3: Chạy project
 
-Hoặc dùng command line:
-```bash
-psql -U postgres -c "CREATE DATABASE ai_tourism;"
-```
-
----
-
-## Bước 3: Cấu hình .env
-
-Mở file `BE_AI_Tourism/.env` và điền thông tin:
-
-```env
-# PostgreSQL - điền password PostgreSQL của bạn
-DATABASE_URL=Host=localhost;Port=5432;Database=ai_tourism;Username=postgres;Password=mat_khau_cua_ban
-
-# JWT - giữ nguyên hoặc đổi tùy ý
-JWT__SECRET=b8f4c9d8a61e3f5b4c2d9e7f81a6b3c9d0e2f4a6b8c1d3e5f7a9b0c2d4e6f8a2
-JWT__ISSUER=AITourism
-JWT__AUDIENCE=AITourism
-JWT__EXPIRATIONINMINUTES=60
-
-# Security - dev mode cho phép password plain text
-SECURITY__ALLOWPLAINTEXTPASSWORD=true
-SECURITY__ENVIRONMENTMODE=Development
-
-# CORS - URL frontend
-CORS__ALLOWEDORIGINS=http://localhost:3000
-```
-
-> **Lưu ý:** File `.env` chứa secrets, KHÔNG commit lên git. File `.env.example` là template mẫu.
-
----
-
-## Bước 4: Chạy project
+khởi động docker desktop sau đó chạy lệnh dưới trong dự án
 
 ```bash
-cd BE_AI_Tourism
-dotnet run
+docker compose up
 ```
 
-Mặc định chạy tại: `https://localhost:5001` hoặc `http://localhost:5000`
+Docker sẽ tự động:
+1. Tải và khởi động PostgreSQL
+2. Tạo database `ai_tourism`
+3. Build và chạy backend
+
+Lần đầu sẽ mất vài phút để tải image + build. Các lần sau chạy nhanh hơn.
+
+Khi thấy dòng này là thành công:
+```
+api-1  | Now listening on: http://[::]:8080
+```
+
+Backend chạy tại: **http://localhost:5000**
 
 ---
 
-## Bước 5: Tạo tables trong database
+## Bước 4: Tạo tables trong database
 
-Sau khi project đã chạy, gọi API này để tạo toàn bộ tables:
+Sau khi project đã chạy, mở Swagger UI tại `http://localhost:5000/swagger`:
 
-```
-POST http://localhost:5000/api/dbtest/create-tables
-```
-
-Hoặc mở Swagger UI tại `http://localhost:5000/swagger`, tìm **DbTest** → **POST /api/dbtest/create-tables** → Execute.
-
-Kết quả thành công:
+1. Tìm **DbTest** → **POST /api/dbtest/create-tables** → Execute
+2. Kết quả thành công:
 ```json
 {
   "success": true,
@@ -102,28 +68,16 @@ Kết quả thành công:
 }
 ```
 
+> Chỉ cần làm 1 lần. Data được lưu trong Docker volume, không mất khi restart.
+
 ---
 
-## Bước 6: Kiểm tra kết nối
+## Bước 5: Test nhanh
 
+### Kiểm tra kết nối database
 ```
 GET http://localhost:5000/api/dbtest
 ```
-
-Kết quả:
-```json
-{
-  "success": true,
-  "data": {
-    "status": "Connected",
-    "database": "ai_tourism"
-  }
-}
-```
-
----
-
-## Bước 7: Test nhanh Auth
 
 ### Đăng ký
 ```
@@ -149,7 +103,7 @@ Content-Type: application/json
 }
 ```
 
-Response sẽ trả về `accessToken` — dùng token này cho các API cần auth.
+Response trả về `accessToken` — dùng token này cho các API cần auth.
 
 ---
 
@@ -165,13 +119,26 @@ Truy cập `http://localhost:5000/swagger` để xem và test tất cả API.
 
 ---
 
+## Các lệnh Docker thường dùng
+
+| Lệnh | Mô tả |
+|-------|-------|
+| `docker compose up` | Chạy backend + database |
+| `docker compose up -d` | Chạy ngầm (không chiếm terminal) |
+| `docker compose up --build` | Build lại khi có thay đổi code |
+| `docker compose down` | Dừng và xóa containers |
+| `docker compose down -v` | Dừng + xóa cả database (reset toàn bộ) |
+| `docker compose logs api` | Xem log backend |
+
+---
+
 ## Cấu trúc API hiện tại
 
 | Method | Endpoint | Mô tả | Auth |
 |--------|----------|-------|------|
 | GET | `/api/dbtest` | Test kết nối database | No |
 | POST | `/api/dbtest/create-tables` | Tạo tables | No |
-| POST | `/api/geminitest` | Test Gemini AI | No |
+| POST | `/api/geminitest` | Test Gemini AI (body: `{"prompt": "..."}`) | No |
 | POST | `/api/auth/register` | Đăng ký | No |
 | POST | `/api/auth/login` | Đăng nhập | No |
 | POST | `/api/auth/refresh` | Refresh token | No |
@@ -189,7 +156,9 @@ Truy cập `http://localhost:5000/swagger` để xem và test tất cả API.
 
 | Lỗi | Nguyên nhân | Cách sửa |
 |-----|------------|----------|
-| Cannot connect to database | Sai connection string hoặc PostgreSQL chưa chạy | Kiểm tra `.env`, kiểm tra PostgreSQL service đang chạy |
-| Database "ai_tourism" does not exist | Chưa tạo database | Chạy `CREATE DATABASE ai_tourism;` trong pgAdmin |
+| `docker_engine: The system cannot find the file` | Docker Desktop chưa chạy | Mở Docker Desktop, đợi "Running" |
+| `POSTGRES_PASSWORD is not specified` | Volume cũ conflict | `docker compose down -v` rồi `docker compose up` |
+| Swagger trả 404 | Backend chưa ở mode Development | Kiểm tra `ASPNETCORE_ENVIRONMENT=Development` trong docker-compose.yml |
+| Cannot connect to database | Database chưa sẵn sàng | Đợi vài giây, thử lại |
 | 401 Unauthorized | Thiếu hoặc sai token | Đăng nhập lại lấy token mới |
-| 403 Forbidden | Không đủ quyền (vd: User gọi API Admin) | Dùng account có role phù hợp |
+| 403 Forbidden | Không đủ quyền | Dùng account có role phù hợp |

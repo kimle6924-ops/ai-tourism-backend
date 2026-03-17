@@ -48,7 +48,7 @@
 |---|---|
 | Hằng số cố định | `Shared/Constants/AppConstants.cs` |
 | Config theo môi trường | `appsettings.json` + Options class |
-| Secrets / keys | User Secrets (dev) / Env vars (prod) |
+| Secrets / keys | `.env` (dev) / Env vars (prod) |
 | Validation rules | FluentValidation validators |
 | Error messages dùng chung | Constants class |
 

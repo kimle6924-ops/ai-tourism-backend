@@ -1,18 +1,18 @@
-# Kế Hoạch Full Backend A-Z (ASP.NET Core 8 + MongoDB + Cloudinary + Gemini)
+# Kế Hoạch Full Backend A-Z (ASP.NET Core 8 + PostgreSQL + EF Core + Cloudinary + Gemini)
 
 ## 1. Mục tiêu sản phẩm
 - Xây backend cho hệ thống du lịch địa phương với 3 nhóm người dùng: `Admin`, `Contributor`, `User`.
 - Contributor quản lý dữ liệu theo phân cấp hành chính: `Central`, `Province`, `Ward`, `Neighborhood`.
 - Frontend xử lý GPS, backend chỉ cung cấp dữ liệu để frontend lọc/đề xuất theo vị trí.
-- AI Chatbot dùng Gemini, có truy xuất dữ liệu thực trong MongoDB và lưu context theo từng người dùng.
-- Ảnh upload qua Cloudinary, MongoDB chỉ lưu link và metadata.
+- AI Chatbot dùng Gemini, có truy xuất dữ liệu thực trong PostgreSQL và lưu context theo từng người dùng.
+- Ảnh upload qua Cloudinary, PostgreSQL chỉ lưu link và metadata.
 - Giai đoạn test/dev cho phép mật khẩu plain text có kiểm soát; production bắt buộc hash.
 
 ## 2. Kiến trúc tổng thể
-- Kiến trúc giữ theo template hiện tại: `Controllers -> Application Services -> Repositories -> MongoDB`.
+- Kiến trúc giữ theo template hiện tại: `Controllers -> Application Services -> Repositories -> PostgreSQL`.
 - Layer `Domain` chứa Entity, Enum, business rule model.
 - Layer `Application` chứa DTO, Service interface/implementation, Validator, Mapper.
-- Layer `Infrastructure` chứa Mongo context/repositories, Cloudinary provider, Gemini provider.
+- Layer `Infrastructure` chứa PostgreSQL context/repositories, Cloudinary provider, Gemini provider.
 - Response chuẩn hóa với `Result<T>`.
 - Xử lý lỗi tập trung qua `ExceptionMiddleware`.
 - Logging request/response qua `RequestLoggingMiddleware`.
@@ -30,19 +30,19 @@
 - Module `AI Chat + Context Memory`.
 - Module `Admin Statistics`.
 
-## 4. Thiết kế CSDL MongoDB
-- Collection `users`.
-- Collection `administrative_units`.
-- Collection `categories`.
-- Collection `user_preferences`.
-- Collection `places`.
-- Collection `events`.
-- Collection `media_assets`.
-- Collection `reviews`.
-- Collection `moderation_logs`.
-- Collection `ai_conversations`.
-- Collection `ai_messages`.
-- Collection `ai_context_memory`.
+## 4. Thiết kế CSDL PostgreSQL
+- Table `users`.
+- Table `administrative_units`.
+- Table `categories`.
+- Table `user_preferences`.
+- Table `places`.
+- Table `events`.
+- Table `media_assets`.
+- Table `reviews`.
+- Table `moderation_logs`.
+- Table `ai_conversations`.
+- Table `ai_messages`.
+- Table `ai_context_memory`.
 
 ### 4.1 `users`
 - Trường: `_id`, `email`, `password`, `fullName`, `phone`, `avatarUrl`, `role`, `administrativeUnitId`, `status`, `createdAt`, `updatedAt`.
@@ -147,7 +147,7 @@
 - Frontend gọi `finalize` gửi `publicId`, `secureUrl`, metadata file.
 - Backend kiểm tra quyền trên `resourceId` rồi lưu `media_assets`.
 - Backend đảm bảo 1 resource chỉ có 1 ảnh `isPrimary = true`.
-- Xóa ảnh sẽ xóa metadata Mongo và gọi Cloudinary destroy theo `publicId`.
+- Xóa ảnh sẽ xóa metadata PostgreSQL và gọi Cloudinary destroy theo `publicId`.
 
 ## 8. Luồng AI Chat + Context
 - User gửi message vào conversation.
@@ -160,8 +160,7 @@
 - Context tách biệt tuyệt đối theo `userId`.
 
 ## 9. Cấu hình môi trường
-- `Database:Provider=MongoDB`
-- `Database:ConnectionString`
+- `DATABASE_URL` (PostgreSQL connection string)
 - `Jwt:Secret`
 - `Jwt:Issuer`
 - `Jwt:Audience`
@@ -177,8 +176,8 @@
 
 ## 10. Kế hoạch triển khai theo giai đoạn
 - Giai đoạn 1: Foundation
-- Hoàn thiện Mongo context, base repository, index bootstrap.
-- Hoàn thiện DI cho Mongo, JWT, Cloudinary, Gemini.
+- Hoàn thiện EF Core DbContext, base repository, index config.
+- Hoàn thiện DI cho PostgreSQL, JWT, Cloudinary, Gemini.
 - Giai đoạn 2: Auth + User + RBAC
 - Register/login/refresh.
 - Role policy + scope policy.
@@ -196,7 +195,7 @@
 - API list/filter/search cho places/events.
 - Giai đoạn 7: AI Chat
 - Conversation/messages/context memory.
-- Tích hợp Gemini + grounding dữ liệu Mongo.
+- Tích hợp Gemini + grounding dữ liệu PostgreSQL.
 - Giai đoạn 8: Admin Stats + Hardening
 - Dashboard stats API.
 - Rate limit, logging nâng cao, chuẩn hóa lỗi.
@@ -216,7 +215,7 @@
 - Contributor chỉ thao tác dữ liệu trong đúng phạm vi hành chính.
 - Admin duyệt/từ chối được place/event và có log hành động.
 - User chỉ thấy dữ liệu `Approved`.
-- Ảnh upload Cloudinary thành công, Mongo lưu link/metadata đúng.
+- Ảnh upload Cloudinary thành công, PostgreSQL lưu link/metadata đúng.
 - AI chat nhớ ngữ cảnh theo từng user/conversation qua nhiều lượt.
 - Không có rò rỉ context giữa các user.
 
@@ -225,11 +224,11 @@
 - Chạy migration script chuyển password cũ sang hash.
 - Bật HTTPS bắt buộc và rotate toàn bộ secrets.
 - Bật logging/audit mức production.
-- Bật backup Mongo định kỳ và alert lỗi API/AI.
+- Bật backup PostgreSQL định kỳ (pg_dump) và alert lỗi API/AI.
 
 ## 14. Giả định mặc định đã chốt
-- Dùng MongoDB cho toàn bộ hệ thống.
+- Dùng PostgreSQL (EF Core + Npgsql) cho toàn bộ hệ thống.
 - GPS không xử lý ở backend.
-- Ảnh lưu Cloudinary, Mongo chỉ lưu link/metadata.
+- Ảnh lưu Cloudinary, PostgreSQL chỉ lưu link/metadata.
 - Gemini là LLM chính cho chatbot.
 - Plain password chỉ tồn tại trong dev/test, không cho production.

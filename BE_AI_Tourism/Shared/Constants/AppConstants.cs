@@ -27,4 +27,18 @@ public static class AppConstants
     {
         public const string Healthy = "Healthy";
     }
+
+    public static class Auth
+    {
+        public const string EmailAlreadyExists = "Email already exists";
+        public const string InvalidCredentials = "Invalid email or password";
+        public const string InvalidRefreshToken = "Invalid or expired refresh token";
+        public const string AccountLocked = "Account is locked";
+    }
+
+    public static class JwtClaimTypes
+    {
+        public const string UserId = "userId";
+        public const string AdministrativeUnitId = "administrativeUnitId";
+    }
 }

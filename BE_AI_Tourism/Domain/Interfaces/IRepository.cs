@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using BE_AI_Tourism.Shared.Core;
 using BE_AI_Tourism.Shared.Pagination;
 
@@ -7,6 +8,8 @@ namespace BE_AI_Tourism.Domain.Interfaces;
 public interface IRepository<T> where T : BaseEntity
 {
     Task<T?> GetByIdAsync(Guid id);
+    Task<T?> FindOneAsync(Expression<Func<T, bool>> filter);
+    Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> filter);
     Task<IEnumerable<T>> GetAllAsync();
     Task<PaginationResponse<T>> GetPagedAsync(PaginationRequest request);
     Task AddAsync(T entity);

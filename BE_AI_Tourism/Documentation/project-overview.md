@@ -13,15 +13,14 @@ ASP.NET Core 8.0 backend template. MVC + Layered Architecture, single project, t
 | `Filters/` | ASP.NET Core action filters |
 | `Configuration/` | Options classes bind từ appsettings.json |
 | `Application/DTOs/` | Request/Response models (tách riêng Request DTO và Response DTO) |
-| `Application/Interfaces/` | Service contracts |
-| `Application/Services/` | Business logic |
-| `Application/Validators/` | FluentValidation validators + ValidatorFilter |
+| `Application/Services/` | Business logic (interface + implementation cùng folder) |
+| `Application/Validators/` | FluentValidation validators |
 | `Application/Mapping/` | Mapster config (Entity ↔ DTO) |
 | `Domain/Entities/` | Database models, kế thừa BaseEntity (Id, CreatedAt, UpdatedAt) |
 | `Domain/Enums/` | Enums |
 | `Domain/Interfaces/` | IRepository\<T\> |
-| `Infrastructure/Database/` | IDatabaseContext |
-| `Infrastructure/Repositories/` | Repository implementations |
+| `Infrastructure/Database/` | AppDbContext (EF Core), EfRepository\<T\> |
+| `Infrastructure/Authorization/` | Custom authorization handlers |
 | `Infrastructure/Providers/` | External service implementations |
 | `Infrastructure/DependencyInjection.cs` | DI registration: AddInfrastructure(), AddApplicationServices() |
 | `Shared/Core/` | Result\<T\> pattern, BaseEntity |
@@ -59,9 +58,9 @@ KHÔNG dùng Entity trực tiếp cho API response. KHÔNG trả sensitive data 
 - `KeyNotFoundException` → 404, `UnauthorizedAccessException` → 401, `ArgumentException` → 400, còn lại → 500
 
 **IRepository\<T\>** — Generic repository (where T : BaseEntity):
-GetByIdAsync, GetAllAsync, GetPagedAsync, AddAsync, UpdateAsync, DeleteAsync, ExistsAsync
+GetByIdAsync, FindOneAsync, FindAsync, GetAllAsync, GetPagedAsync, AddAsync, UpdateAsync, DeleteAsync, ExistsAsync
 
-**Database** — MongoDB. Chỉ có interface (IDatabaseContext, IRepository\<T\>), chưa implement.
+**Database** — PostgreSQL via EF Core + Npgsql. AppDbContext quản lý DbSets, indexes, enum conversions.
 
 **Pagination** — PaginationRequest (PageNumber, PageSize) + PaginationResponse\<T\> (Items, TotalCount, TotalPages, HasPreviousPage, HasNextPage)
 
@@ -70,6 +69,8 @@ GetByIdAsync, GetAllAsync, GetPagedAsync, AddAsync, UpdateAsync, DeleteAsync, Ex
 **Mapster** — Mapping Entity ↔ DTO. Config tập trung tại `Application/Mapping/MappingConfig.cs`.
 
 **CORS** — Cấu hình qua appsettings.json section `Cors`. Thêm origin mới chỉ sửa config.
+
+**JWT Authentication** — Bearer token, cấu hình qua `Jwt` section. Swagger UI hỗ trợ Authorization header.
 
 ---
 
@@ -84,25 +85,27 @@ Options pattern (`IOptions<T>`) — các class trong `Configuration/` bind từ 
 | Loại | Nơi lưu | Ví dụ |
 |------|---------|-------|
 | Config không nhạy cảm | `appsettings.json` | CORS origins, JWT Issuer/Audience, ExpirationInMinutes, base URLs |
-| Secrets | User Secrets (dev) / Env vars (prod) | JWT Secret, ConnectionString, API keys |
+| Secrets | `.env` / User Secrets (dev) / Env vars (prod) | JWT Secret, ConnectionString, API keys |
 
 ### Options classes
 
 | Class | Section trong appsettings | Fields |
 |-------|--------------------------|--------|
-| `DatabaseOptions` | `Database` | Provider (MongoDB), ConnectionString |
+| `DatabaseOptions` | `Database` | ConnectionString |
 | `JwtOptions` | `Jwt` | Secret, Issuer, Audience, ExpirationInMinutes |
-| `ExternalServiceOptions` | `ExternalServices` | PaymentApiKey, AiServiceKey, PaymentBaseUrl, AiServiceBaseUrl |
+| `CloudinaryOptions` | `Cloudinary` | CloudName, ApiKey, ApiSecret, Folder |
+| `GeminiOptions` | `Gemini` | ApiKey, Model |
+| `SecurityOptions` | `Security` | AllowPlaintextPassword, EnvironmentMode |
 | `CorsOptions` | `Cors` | AllowedOrigins, AllowedMethods, AllowedHeaders, AllowCredentials |
 
-### Setup User Secrets (development)
+### Setup .env (development)
 
-```bash
-dotnet user-secrets init
-dotnet user-secrets set "Jwt:Secret" "your-secret-key"
-dotnet user-secrets set "Database:ConnectionString" "mongodb://username:password@localhost:27017/BackendBase"
-dotnet user-secrets set "ExternalServices:PaymentApiKey" "your-key"
-dotnet user-secrets set "ExternalServices:AiServiceKey" "your-key"
+```env
+Database__ConnectionString=Host=localhost;Port=5432;Database=ai_tourism;Username=postgres;Password=your_password
+Jwt__Secret=your-secret-key-at-least-32-characters-long
+Cloudinary__ApiKey=your-key
+Cloudinary__ApiSecret=your-secret
+Gemini__ApiKey=your-key
 ```
 
 ---
@@ -114,7 +117,9 @@ dotnet user-secrets set "ExternalServices:AiServiceKey" "your-key"
 3. Swagger (Development only)
 4. HTTPS Redirection
 5. CORS
-6. MapControllers
+6. Authentication
+7. Authorization
+8. MapControllers
 
 ---
 
@@ -123,6 +128,19 @@ dotnet user-secrets set "ExternalServices:AiServiceKey" "your-key"
 - `FluentValidation` + `FluentValidation.DependencyInjectionExtensions`
 - `Mapster` + `Mapster.DependencyInjection`
 - `Swashbuckle.AspNetCore`
+- `Npgsql.EntityFrameworkCore.PostgreSQL` + `Microsoft.EntityFrameworkCore.Tools`
+- `BCrypt.Net-Next`
+- `Microsoft.AspNetCore.Authentication.JwtBearer` + `System.IdentityModel.Tokens.Jwt`
+- `DotNetEnv`
+
+---
+
+## EF Core Migrations
+
+```bash
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+```
 
 ---
 
@@ -130,11 +148,9 @@ dotnet user-secrets set "ExternalServices:AiServiceKey" "your-key"
 
 ```
 Application/DTOs/            → CreateFeatureRequest.cs, FeatureResponse.cs
-Application/Interfaces/      → IFeatureService.cs
-Application/Services/        → FeatureService.cs
+Application/Services/        → IFeatureService.cs + FeatureService.cs
 Application/Validators/      → CreateFeatureRequestValidator.cs
-Domain/Entities/             → Feature.cs
-Infrastructure/Repositories/ → FeatureRepository.cs
+Domain/Entities/             → Feature.cs (thêm DbSet vào AppDbContext)
 Controllers/                 → FeatureController.cs
 ```
 

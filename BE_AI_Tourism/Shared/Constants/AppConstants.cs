@@ -19,6 +19,7 @@ public static class AppConstants
     {
         public const string NotFound = "Resource not found";
         public const string Unauthorized = "Unauthorized";
+        public const string Forbidden = "You do not have permission to perform this action";
         public const string BadRequest = "Bad request";
         public const string InternalError = "An unexpected error occurred";
     }

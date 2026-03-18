@@ -3,6 +3,10 @@ using BE_AI_Tourism.Application.Services.Admin;
 using BE_AI_Tourism.Application.Services.Administrative;
 using BE_AI_Tourism.Application.Services.Auth;
 using BE_AI_Tourism.Application.Services.Category;
+using BE_AI_Tourism.Application.Services.Event;
+using BE_AI_Tourism.Application.Services.Moderation;
+using BE_AI_Tourism.Application.Services.Place;
+using BE_AI_Tourism.Application.Services.Scope;
 using BE_AI_Tourism.Application.Services.User;
 using BE_AI_Tourism.Configuration;
 using BE_AI_Tourism.Domain.Interfaces;
@@ -71,6 +75,18 @@ public static class DependencyInjection
 
         // Category services
         services.AddScoped<ICategoryService, CategoryService>();
+
+        // Scope service
+        services.AddScoped<IScopeService, ScopeService>();
+
+        // Place services
+        services.AddScoped<IPlaceService, PlaceService>();
+
+        // Event services
+        services.AddScoped<IEventService, EventService>();
+
+        // Moderation services
+        services.AddScoped<IModerationService, ModerationService>();
 
         return services;
     }

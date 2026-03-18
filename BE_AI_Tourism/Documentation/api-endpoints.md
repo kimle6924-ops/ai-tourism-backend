@@ -63,6 +63,44 @@ Danh sách các API endpoints trong hệ thống.
 
 ---
 
+## Places
+
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| GET | `/api/places` | Danh sách địa điểm đã duyệt (phân trang) | No |
+| GET | `/api/places/all` | Tất cả địa điểm (phân trang) | Admin, Contributor |
+| GET | `/api/places/{id}` | Chi tiết địa điểm | No |
+| POST | `/api/places` | Tạo địa điểm | Admin, Contributor |
+| PUT | `/api/places/{id}` | Cập nhật địa điểm | Admin, Contributor (scope) |
+| DELETE | `/api/places/{id}` | Xóa địa điểm | Admin, Contributor (scope) |
+
+---
+
+## Events
+
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| GET | `/api/events` | Danh sách sự kiện đã duyệt (phân trang) | No |
+| GET | `/api/events/all` | Tất cả sự kiện (phân trang) | Admin, Contributor |
+| GET | `/api/events/{id}` | Chi tiết sự kiện | No |
+| POST | `/api/events` | Tạo sự kiện | Admin, Contributor |
+| PUT | `/api/events/{id}` | Cập nhật sự kiện | Admin, Contributor (scope) |
+| DELETE | `/api/events/{id}` | Xóa sự kiện | Admin, Contributor (scope) |
+
+---
+
+## Moderation
+
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| PATCH | `/api/moderation/{resourceType}/{id}/approve` | Duyệt Place/Event | Admin, Contributor (scope cấp trên) |
+| PATCH | `/api/moderation/{resourceType}/{id}/reject` | Từ chối Place/Event | Admin, Contributor (scope cấp trên) |
+| GET | `/api/moderation/{resourceType}/{id}/logs` | Lịch sử duyệt | Admin, Contributor |
+
+> `resourceType`: `Place` hoặc `Event`
+
+---
+
 ## Test / Dev
 
 | Method | Endpoint | Mô tả | Auth |

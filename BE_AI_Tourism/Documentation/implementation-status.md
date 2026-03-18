@@ -66,7 +66,7 @@ Trạng thái các tính năng trong hệ thống.
 |--------|-----------|---------|
 | Auth & User (Phase 2) | Done | Register/Login/Refresh, RBAC |
 | Administrative + Category (Phase 3) | Done | CRUD + Seed data (63 tỉnh/thành, categories) |
-| Place/Event + Moderation (Phase 4) | Not Started | CRUD + workflow duyệt |
+| Place/Event + Moderation (Phase 4) | Done | CRUD + workflow duyệt + scope check |
 | Media Cloudinary (Phase 5) | Not Started | Upload/finalize/manage |
 | Review + Discovery (Phase 6) | Not Started | CRUD review, list/filter/search |
 | AI Chat (Phase 7) | Not Started | Gemini + context memory |
@@ -90,6 +90,25 @@ Trạng thái các tính năng trong hệ thống.
 | Seed Data | Done | 63 tỉnh/thành, quận/huyện Đà Nẵng, phường Hải Châu, 28 categories (6 types) |
 | AppConstants Phase 3 | Done | Administrative + Category error messages |
 
+## Phase 4: Place/Event + Moderation
+
+| Tính năng | Trạng thái | Ghi chú |
+|-----------|-----------|---------|
+| Place DTOs | Done | CreatePlaceRequest, UpdatePlaceRequest, PlaceResponse |
+| Place Validators | Done | CreatePlaceRequestValidator, UpdatePlaceRequestValidator |
+| PlaceService | Done | CRUD, scope check, approved/all listing |
+| PlaceController | Done | GET public (approved), POST/PUT/DELETE (Admin/Contributor with scope) |
+| Event DTOs | Done | CreateEventRequest, UpdateEventRequest, EventResponse |
+| Event Validators | Done | CreateEventRequestValidator, UpdateEventRequestValidator |
+| EventService | Done | CRUD, scope check, approved/all listing, EventStatus management |
+| EventController | Done | GET public (approved), POST/PUT/DELETE (Admin/Contributor with scope) |
+| Moderation DTOs | Done | ModerationActionRequest, ModerationLogResponse |
+| Moderation Validator | Done | ModerationActionRequestValidator |
+| ModerationService | Done | Approve/Reject Place/Event, log actions, scope-based permission |
+| ModerationController | Done | PATCH approve/reject, GET logs (Admin/Contributor) |
+| ScopeService | Done | Reusable scope checking (IsInScopeAsync) |
+| AppConstants Phase 4 | Done | Forbidden error message |
+
 ---
 
 ## Ghi chú
@@ -97,4 +116,5 @@ Trạng thái các tính năng trong hệ thống.
 - Phase 1 Foundation: đã chuyển từ MongoDB sang PostgreSQL (EF Core + Npgsql).
 - Phase 2 Auth & User + RBAC: hoàn thành.
 - Phase 3 Administrative + Category: hoàn thành.
-- Tiếp theo: Phase 4 — Place/Event + Moderation.
+- Phase 4 Place/Event + Moderation: hoàn thành.
+- Tiếp theo: Phase 5 — Media Cloudinary.

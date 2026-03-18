@@ -137,6 +137,18 @@ Danh sách các API endpoints trong hệ thống.
 
 ---
 
+## Chat AI
+
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| POST | `/api/chat/conversations` | Tạo cuộc trò chuyện mới | Yes |
+| GET | `/api/chat/conversations` | Danh sách cuộc trò chuyện (phân trang) | Yes |
+| GET | `/api/chat/conversations/{id}/messages` | Lịch sử tin nhắn (phân trang) | Yes |
+| POST | `/api/chat/conversations/{id}/messages` | Gửi tin nhắn (non-streaming) | Yes |
+| POST | `/api/chat/conversations/{id}/messages/stream` | Gửi tin nhắn (SSE streaming) | Yes |
+
+---
+
 ## Test / Dev
 
 | Method | Endpoint | Mô tả | Auth |

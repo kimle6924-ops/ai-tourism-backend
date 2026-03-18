@@ -69,7 +69,7 @@ Trạng thái các tính năng trong hệ thống.
 | Place/Event + Moderation (Phase 4) | Done | CRUD + workflow duyệt + scope check |
 | Media Cloudinary (Phase 5) | Done | Upload signature/finalize, set-primary, reorder, delete |
 | Review + Discovery (Phase 6) | Done | CRUD review (upsert), search/filter places+events |
-| AI Chat (Phase 7) | Not Started | Gemini + context memory |
+| AI Chat (Phase 7) | Done | Gemini streaming SSE + context memory (summary + key facts) |
 | Admin Stats (Phase 8) | Not Started | Dashboard API |
 | Docs + Hardening (Phase 9) | Not Started | Swagger, rate limit, logging |
 
@@ -119,7 +119,22 @@ Trạng thái các tính năng trong hệ thống.
 - Phase 4 Place/Event + Moderation: hoàn thành.
 - Phase 5 Media Cloudinary: hoàn thành.
 - Phase 6 Review + Discovery: hoàn thành.
-- Tiếp theo: Phase 7 — AI Chat.
+- Phase 7 AI Chat: hoàn thành.
+- Tiếp theo: Phase 8 — Admin Stats.
+
+## Phase 7: AI Chat
+
+| Tính năng | Trạng thái | Ghi chú |
+|-----------|-----------|---------|
+| Chat DTOs | Done | CreateConversationRequest, ConversationResponse, SendMessageRequest, MessageResponse |
+| Chat Validators | Done | CreateConversationRequestValidator, SendMessageRequestValidator |
+| GeminiProvider | Done | GenerateContentAsync (non-stream), StreamContentAsync (SSE stream) |
+| ChatService | Done | CRUD conversations, send message, stream message, context memory |
+| ChatController | Done | 5 endpoints, SSE streaming endpoint |
+| System Prompt | Done | Tiếng Việt, grounding data (places/events), user preferences |
+| Context Memory | Done | Summary + Key Facts, auto-trigger mỗi 10 messages |
+| Grounding | Done | Load approved places/events vào system prompt |
+| SSE Streaming | Done | `text/event-stream`, real-time chunks |
 
 ## Phase 6: Review + Discovery
 

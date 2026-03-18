@@ -155,4 +155,5 @@ Danh sách các API endpoints trong hệ thống.
 |--------|----------|-------|------|
 | GET | `/api/dbtest` | Test kết nối database | No |
 | POST | `/api/dbtest/create-tables` | Tạo toàn bộ tables | No |
+| POST | `/api/dbtest/seed-admin` | Tạo tài khoản Admin mặc định (`admin@aitourism.vn` / `admin123`) | No |
 | POST | `/api/geminitest` | Test Gemini AI (body: `{"prompt": "..."}`) | No |

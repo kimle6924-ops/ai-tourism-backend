@@ -3,6 +3,7 @@ using BE_AI_Tourism.Configuration;
 using BE_AI_Tourism.Infrastructure;
 using BE_AI_Tourism.Middlewares;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -92,6 +93,7 @@ if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<BE_AI_Tourism.Infrastructure.Database.AppDbContext>();
+    await dbContext.Database.EnsureCreatedAsync();
     await BE_AI_Tourism.Infrastructure.Database.SeedData.SeedAsync(dbContext);
 }
 

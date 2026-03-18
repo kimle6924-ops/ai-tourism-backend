@@ -41,4 +41,17 @@ public static class AppConstants
         public const string UserId = "userId";
         public const string AdministrativeUnitId = "administrativeUnitId";
     }
+
+    public static class Administrative
+    {
+        public const string CodeAlreadyExists = "Administrative unit code already exists";
+        public const string ParentNotFound = "Parent administrative unit not found";
+        public const string InvalidLevelHierarchy = "Invalid level hierarchy. Central→Province→Ward→Neighborhood";
+        public const string HasChildren = "Cannot delete administrative unit that has children";
+    }
+
+    public static class Category
+    {
+        public const string SlugAlreadyExists = "Category slug already exists";
+    }
 }

@@ -87,6 +87,14 @@ builder.Services.AddApplicationServices();
 
 var app = builder.Build();
 
+// Seed data in development
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<BE_AI_Tourism.Infrastructure.Database.AppDbContext>();
+    await BE_AI_Tourism.Infrastructure.Database.SeedData.SeedAsync(dbContext);
+}
+
 // Middleware pipeline
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();

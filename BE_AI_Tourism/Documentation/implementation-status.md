@@ -65,7 +65,7 @@ Trạng thái các tính năng trong hệ thống.
 | Module | Trạng thái | Ghi chú |
 |--------|-----------|---------|
 | Auth & User (Phase 2) | Done | Register/Login/Refresh, RBAC |
-| Administrative + Category (Phase 3) | Not Started | CRUD + Seed |
+| Administrative + Category (Phase 3) | Done | CRUD + Seed data (63 tỉnh/thành, categories) |
 | Place/Event + Moderation (Phase 4) | Not Started | CRUD + workflow duyệt |
 | Media Cloudinary (Phase 5) | Not Started | Upload/finalize/manage |
 | Review + Discovery (Phase 6) | Not Started | CRUD review, list/filter/search |
@@ -75,8 +75,26 @@ Trạng thái các tính năng trong hệ thống.
 
 ---
 
+## Phase 3: Administrative + Category
+
+| Tính năng | Trạng thái | Ghi chú |
+|-----------|-----------|---------|
+| Administrative DTOs | Done | CreateAdministrativeUnitRequest, UpdateAdministrativeUnitRequest, AdministrativeUnitResponse |
+| Administrative Validators | Done | CreateAdministrativeUnitRequestValidator, UpdateAdministrativeUnitRequestValidator |
+| AdministrativeUnitService | Done | CRUD, GetByLevel, GetChildren, hierarchy validation |
+| AdministrativeUnitController | Done | GET (public), POST/PUT/DELETE (Admin only) |
+| Category DTOs | Done | CreateCategoryRequest, UpdateCategoryRequest, CategoryResponse |
+| Category Validators | Done | CreateCategoryRequestValidator, UpdateCategoryRequestValidator |
+| CategoryService | Done | CRUD, GetActive, GetByType, slug uniqueness |
+| CategoryController | Done | GET (public), POST/PUT/DELETE (Admin only) |
+| Seed Data | Done | 63 tỉnh/thành, quận/huyện Đà Nẵng, phường Hải Châu, 28 categories (6 types) |
+| AppConstants Phase 3 | Done | Administrative + Category error messages |
+
+---
+
 ## Ghi chú
 
 - Phase 1 Foundation: đã chuyển từ MongoDB sang PostgreSQL (EF Core + Npgsql).
 - Phase 2 Auth & User + RBAC: hoàn thành.
-- Tiếp theo: Phase 3 — Administrative + Category CRUD.
+- Phase 3 Administrative + Category: hoàn thành.
+- Tiếp theo: Phase 4 — Place/Event + Moderation.

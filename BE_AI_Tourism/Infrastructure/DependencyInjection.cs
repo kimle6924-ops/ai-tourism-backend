@@ -1,6 +1,8 @@
 using BE_AI_Tourism.Application.Mapping;
 using BE_AI_Tourism.Application.Services.Admin;
+using BE_AI_Tourism.Application.Services.Administrative;
 using BE_AI_Tourism.Application.Services.Auth;
+using BE_AI_Tourism.Application.Services.Category;
 using BE_AI_Tourism.Application.Services.User;
 using BE_AI_Tourism.Configuration;
 using BE_AI_Tourism.Domain.Interfaces;
@@ -63,6 +65,12 @@ public static class DependencyInjection
 
         // Admin services
         services.AddScoped<IAdminUserService, AdminUserService>();
+
+        // Administrative unit services
+        services.AddScoped<IAdministrativeUnitService, AdministrativeUnitService>();
+
+        // Category services
+        services.AddScoped<ICategoryService, CategoryService>();
 
         return services;
     }

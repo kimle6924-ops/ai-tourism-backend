@@ -35,6 +35,34 @@ Danh sách các API endpoints trong hệ thống.
 
 ---
 
+## Administrative Units
+
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| GET | `/api/administrative-units` | Danh sách đơn vị hành chính (phân trang) | No |
+| GET | `/api/administrative-units/{id}` | Chi tiết đơn vị hành chính | No |
+| GET | `/api/administrative-units/by-level/{level}` | Lấy theo cấp (Central/Province/Ward/Neighborhood) | No |
+| GET | `/api/administrative-units/{id}/children` | Lấy đơn vị con | No |
+| POST | `/api/administrative-units` | Tạo đơn vị hành chính | Admin |
+| PUT | `/api/administrative-units/{id}` | Cập nhật đơn vị hành chính | Admin |
+| DELETE | `/api/administrative-units/{id}` | Xóa đơn vị hành chính | Admin |
+
+---
+
+## Categories
+
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| GET | `/api/categories` | Danh sách danh mục (phân trang) | No |
+| GET | `/api/categories/active` | Danh sách danh mục đang hoạt động | No |
+| GET | `/api/categories/by-type/{type}` | Lấy theo loại (tourism/food/entertainment/event/accommodation/shopping) | No |
+| GET | `/api/categories/{id}` | Chi tiết danh mục | No |
+| POST | `/api/categories` | Tạo danh mục | Admin |
+| PUT | `/api/categories/{id}` | Cập nhật danh mục | Admin |
+| DELETE | `/api/categories/{id}` | Xóa danh mục | Admin |
+
+---
+
 ## Test / Dev
 
 | Method | Endpoint | Mô tả | Auth |

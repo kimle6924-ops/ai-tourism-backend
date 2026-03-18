@@ -81,6 +81,7 @@ public static class DependencyInjection
 
         // Admin services
         services.AddScoped<IAdminUserService, AdminUserService>();
+        services.AddScoped<IAdminStatsService, AdminStatsService>();
 
         // Administrative unit services
         services.AddScoped<IAdministrativeUnitService, AdministrativeUnitService>();

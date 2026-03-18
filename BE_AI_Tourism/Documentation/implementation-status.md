@@ -70,7 +70,7 @@ Trạng thái các tính năng trong hệ thống.
 | Media Cloudinary (Phase 5) | Done | Upload signature/finalize, set-primary, reorder, delete |
 | Review + Discovery (Phase 6) | Done | CRUD review (upsert), search/filter places+events |
 | AI Chat (Phase 7) | Done | Gemini streaming SSE + context memory (summary + key facts) |
-| Admin Stats (Phase 8) | Not Started | Dashboard API |
+| Admin Stats (Phase 8) | In Progress | Overview API đã có endpoint/service, còn tối ưu hiệu năng + mở rộng chỉ số |
 | Docs + Hardening (Phase 9) | Not Started | Swagger, rate limit, logging |
 
 ---
@@ -120,7 +120,18 @@ Trạng thái các tính năng trong hệ thống.
 - Phase 5 Media Cloudinary: hoàn thành.
 - Phase 6 Review + Discovery: hoàn thành.
 - Phase 7 AI Chat: hoàn thành.
-- Tiếp theo: Phase 8 — Admin Stats.
+- Phase 8 Admin Stats: đang triển khai endpoint tổng quan.
+
+## Phase 8: Admin Stats
+
+| Tính năng | Trạng thái | Ghi chú |
+|-----------|-----------|---------|
+| Stats DTOs | Done | `StatsOverviewResponse`, `UserStats`, `PlaceStats`, `EventStats`, `ReviewStats`, `ChatStats`, `ContentStats` |
+| AdminStatsService | Done | Tổng hợp số liệu users/places/events/reviews/chat/content |
+| IAdminStatsService | Done | Contract cho stats service |
+| AdminController endpoint | Done | `GET /api/admin/stats/overview` (Admin only) |
+| DI registration | Done | `IAdminStatsService -> AdminStatsService` |
+| Query optimization | Planned | Hiện tại dùng `GetAllAsync()` cho từng bảng, cần tối ưu bằng aggregate query |
 
 ## Phase 7: AI Chat
 

@@ -11,10 +11,12 @@ namespace BE_AI_Tourism.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IAdminUserService _adminUserService;
+    private readonly IAdminStatsService _adminStatsService;
 
-    public AdminController(IAdminUserService adminUserService)
+    public AdminController(IAdminUserService adminUserService, IAdminStatsService adminStatsService)
     {
         _adminUserService = adminUserService;
+        _adminStatsService = adminStatsService;
     }
 
     [HttpGet("users")]
@@ -35,6 +37,13 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> UnlockUser(Guid id)
     {
         var result = await _adminUserService.UnlockUserAsync(id);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpGet("stats/overview")]
+    public async Task<IActionResult> GetStatsOverview()
+    {
+        var result = await _adminStatsService.GetOverviewAsync();
         return StatusCode(result.StatusCode, result);
     }
 }

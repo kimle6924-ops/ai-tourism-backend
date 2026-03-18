@@ -32,6 +32,7 @@ Danh sách các API endpoints trong hệ thống.
 | GET | `/api/admin/users` | Danh sách users (phân trang) | Admin |
 | PATCH | `/api/admin/users/{id}/lock` | Khóa tài khoản user | Admin |
 | PATCH | `/api/admin/users/{id}/unlock` | Mở khóa tài khoản user | Admin |
+| GET | `/api/admin/stats/overview` | Thống kê tổng quan hệ thống | Admin |
 
 ---
 

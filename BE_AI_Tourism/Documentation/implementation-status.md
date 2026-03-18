@@ -67,7 +67,7 @@ Trạng thái các tính năng trong hệ thống.
 | Auth & User (Phase 2) | Done | Register/Login/Refresh, RBAC |
 | Administrative + Category (Phase 3) | Done | CRUD + Seed data (63 tỉnh/thành, categories) |
 | Place/Event + Moderation (Phase 4) | Done | CRUD + workflow duyệt + scope check |
-| Media Cloudinary (Phase 5) | Not Started | Upload/finalize/manage |
+| Media Cloudinary (Phase 5) | Done | Upload signature/finalize, set-primary, reorder, delete |
 | Review + Discovery (Phase 6) | Not Started | CRUD review, list/filter/search |
 | AI Chat (Phase 7) | Not Started | Gemini + context memory |
 | Admin Stats (Phase 8) | Not Started | Dashboard API |
@@ -117,4 +117,17 @@ Trạng thái các tính năng trong hệ thống.
 - Phase 2 Auth & User + RBAC: hoàn thành.
 - Phase 3 Administrative + Category: hoàn thành.
 - Phase 4 Place/Event + Moderation: hoàn thành.
-- Tiếp theo: Phase 5 — Media Cloudinary.
+- Phase 5 Media Cloudinary: hoàn thành.
+- Tiếp theo: Phase 6 — Review + Discovery.
+
+## Phase 5: Media Cloudinary
+
+| Tính năng | Trạng thái | Ghi chú |
+|-----------|-----------|---------|
+| Media DTOs | Done | UploadSignatureRequest/Response, FinalizeUploadRequest, MediaAssetResponse, ReorderMediaRequest |
+| Media Validators | Done | UploadSignatureRequestValidator, FinalizeUploadRequestValidator, ReorderMediaRequestValidator |
+| CloudinaryProvider | Done | GenerateSignature (HMAC-SHA1), DestroyAsync |
+| MediaService | Done | Signature, finalize, get by resource, set-primary, reorder, delete (DB + Cloudinary) |
+| MediaController | Done | 6 endpoints, scope-based permission |
+| Auto isPrimary | Done | Ảnh đầu tiên tự động là primary, xóa primary thì promote ảnh tiếp theo |
+| NuGet package | Done | CloudinaryDotNet 1.28.0 |

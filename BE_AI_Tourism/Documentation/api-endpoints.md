@@ -101,6 +101,19 @@ Danh sách các API endpoints trong hệ thống.
 
 ---
 
+## Media
+
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| POST | `/api/media/upload-signature` | Cấp signature cho frontend upload Cloudinary | Admin, Contributor (scope) |
+| POST | `/api/media/finalize` | Lưu metadata sau khi upload thành công | Admin, Contributor (scope) |
+| GET | `/api/media/by-resource?resourceType=Place&resourceId=xxx` | Lấy ảnh theo resource | No |
+| PATCH | `/api/media/{id}/set-primary` | Đặt ảnh chính | Admin, Contributor (scope) |
+| PATCH | `/api/media/reorder` | Sắp xếp thứ tự ảnh | Admin, Contributor (scope) |
+| DELETE | `/api/media/{id}` | Xóa ảnh (DB + Cloudinary) | Admin, Contributor (scope) |
+
+---
+
 ## Test / Dev
 
 | Method | Endpoint | Mô tả | Auth |

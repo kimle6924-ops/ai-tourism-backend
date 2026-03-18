@@ -3,6 +3,7 @@ using BE_AI_Tourism.Application.Services.Admin;
 using BE_AI_Tourism.Application.Services.Administrative;
 using BE_AI_Tourism.Application.Services.Auth;
 using BE_AI_Tourism.Application.Services.Category;
+using BE_AI_Tourism.Application.Services.Media;
 using BE_AI_Tourism.Application.Services.Event;
 using BE_AI_Tourism.Application.Services.Moderation;
 using BE_AI_Tourism.Application.Services.Place;
@@ -11,6 +12,7 @@ using BE_AI_Tourism.Application.Services.User;
 using BE_AI_Tourism.Configuration;
 using BE_AI_Tourism.Domain.Interfaces;
 using BE_AI_Tourism.Infrastructure.Authorization;
+using BE_AI_Tourism.Infrastructure.Cloudinary;
 using BE_AI_Tourism.Infrastructure.Database;
 using BE_AI_Tourism.Infrastructure.Database.Interfaces;
 using FluentValidation;
@@ -45,6 +47,9 @@ public static class DependencyInjection
 
         // Authorization handlers
         services.AddScoped<IAuthorizationHandler, ScopeAuthorizationHandler>();
+
+        // Cloudinary provider
+        services.AddScoped<ICloudinaryProvider, CloudinaryProvider>();
 
         return services;
     }
@@ -87,6 +92,9 @@ public static class DependencyInjection
 
         // Moderation services
         services.AddScoped<IModerationService, ModerationService>();
+
+        // Media services
+        services.AddScoped<IMediaService, MediaService>();
 
         return services;
     }

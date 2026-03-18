@@ -114,6 +114,29 @@ Danh sách các API endpoints trong hệ thống.
 
 ---
 
+## Reviews
+
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| POST | `/api/reviews` | Tạo/cập nhật review (upsert — 1 user 1 review/resource) | Yes |
+| PATCH | `/api/reviews/{id}` | Sửa review (chỉ chủ review) | Yes |
+| DELETE | `/api/reviews/{id}` | Xóa review (chủ review hoặc Admin) | Yes |
+| GET | `/api/reviews?resourceType=Place&resourceId=xxx` | Danh sách review theo resource (phân trang) | No |
+| GET | `/api/reviews/mine?resourceType=Place&resourceId=xxx` | Review của user hiện tại cho resource | Yes |
+
+---
+
+## Discovery
+
+| Method | Endpoint | Mô tả | Auth |
+|--------|----------|-------|------|
+| GET | `/api/discovery/places` | Tìm kiếm/lọc địa điểm | No |
+| GET | `/api/discovery/events` | Tìm kiếm/lọc sự kiện | No |
+
+**Query params:** `search`, `categoryId`, `administrativeUnitId`, `tag`, `sortBy` (newest/oldest/rating/name/startdate), `pageNumber`, `pageSize`
+
+---
+
 ## Test / Dev
 
 | Method | Endpoint | Mô tả | Auth |

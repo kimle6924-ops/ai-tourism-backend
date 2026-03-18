@@ -3,10 +3,12 @@ using BE_AI_Tourism.Application.Services.Admin;
 using BE_AI_Tourism.Application.Services.Administrative;
 using BE_AI_Tourism.Application.Services.Auth;
 using BE_AI_Tourism.Application.Services.Category;
-using BE_AI_Tourism.Application.Services.Media;
+using BE_AI_Tourism.Application.Services.Discovery;
 using BE_AI_Tourism.Application.Services.Event;
+using BE_AI_Tourism.Application.Services.Media;
 using BE_AI_Tourism.Application.Services.Moderation;
 using BE_AI_Tourism.Application.Services.Place;
+using BE_AI_Tourism.Application.Services.Review;
 using BE_AI_Tourism.Application.Services.Scope;
 using BE_AI_Tourism.Application.Services.User;
 using BE_AI_Tourism.Configuration;
@@ -95,6 +97,12 @@ public static class DependencyInjection
 
         // Media services
         services.AddScoped<IMediaService, MediaService>();
+
+        // Review services
+        services.AddScoped<IReviewService, ReviewService>();
+
+        // Discovery services
+        services.AddScoped<IDiscoveryService, DiscoveryService>();
 
         return services;
     }

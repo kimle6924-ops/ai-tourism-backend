@@ -68,7 +68,7 @@ Trạng thái các tính năng trong hệ thống.
 | Administrative + Category (Phase 3) | Done | CRUD + Seed data (63 tỉnh/thành, categories) |
 | Place/Event + Moderation (Phase 4) | Done | CRUD + workflow duyệt + scope check |
 | Media Cloudinary (Phase 5) | Done | Upload signature/finalize, set-primary, reorder, delete |
-| Review + Discovery (Phase 6) | Not Started | CRUD review, list/filter/search |
+| Review + Discovery (Phase 6) | Done | CRUD review (upsert), search/filter places+events |
 | AI Chat (Phase 7) | Not Started | Gemini + context memory |
 | Admin Stats (Phase 8) | Not Started | Dashboard API |
 | Docs + Hardening (Phase 9) | Not Started | Swagger, rate limit, logging |
@@ -118,7 +118,20 @@ Trạng thái các tính năng trong hệ thống.
 - Phase 3 Administrative + Category: hoàn thành.
 - Phase 4 Place/Event + Moderation: hoàn thành.
 - Phase 5 Media Cloudinary: hoàn thành.
-- Tiếp theo: Phase 6 — Review + Discovery.
+- Phase 6 Review + Discovery: hoàn thành.
+- Tiếp theo: Phase 7 — AI Chat.
+
+## Phase 6: Review + Discovery
+
+| Tính năng | Trạng thái | Ghi chú |
+|-----------|-----------|---------|
+| Review DTOs | Done | CreateReviewRequest, UpdateReviewRequest, ReviewResponse |
+| Review Validators | Done | CreateReviewRequestValidator, UpdateReviewRequestValidator |
+| ReviewService | Done | Upsert (1 user/1 resource), update, delete (owner+Admin), get by resource, get mine |
+| ReviewController | Done | POST upsert, PATCH, DELETE, GET by resource, GET mine |
+| Discovery DTO | Done | DiscoveryRequest extends PaginationRequest |
+| DiscoveryService | Done | Search places/events with filters + sort (newest/rating/name/startdate) |
+| DiscoveryController | Done | GET places, GET events (AllowAnonymous) |
 
 ## Phase 5: Media Cloudinary
 

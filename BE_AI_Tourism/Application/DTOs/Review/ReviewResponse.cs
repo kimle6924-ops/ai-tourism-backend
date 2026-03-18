@@ -1,0 +1,16 @@
+using BE_AI_Tourism.Domain.Enums;
+
+namespace BE_AI_Tourism.Application.DTOs.Review;
+
+public class ReviewResponse
+{
+    public Guid Id { get; set; }
+    public ResourceType ResourceType { get; set; }
+    public Guid ResourceId { get; set; }
+    public Guid UserId { get; set; }
+    public int Rating { get; set; }
+    public string Comment { get; set; } = string.Empty;
+    public ReviewStatus Status { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}

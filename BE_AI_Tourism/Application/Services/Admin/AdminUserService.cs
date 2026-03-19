@@ -59,7 +59,7 @@ public class AdminUserService : IAdminUserService
             return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         if (user.Status != UserStatus.PendingApproval)
-            return Result.Fail("User is not pending approval");
+            return Result.Fail(AppConstants.AdminUser.UserNotPendingApproval, StatusCodes.Status400BadRequest, AppConstants.ErrorCodes.UserNotPendingApproval);
 
         user.Status = UserStatus.Active;
         await _userRepository.UpdateAsync(user);

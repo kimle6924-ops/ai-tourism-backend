@@ -56,6 +56,7 @@ public static class AppConstants
 
         // General
         public const string NotFound = "NOT_FOUND";
+        public const string BadRequest = "BAD_REQUEST";
         public const string Unauthorized = "UNAUTHORIZED";
         public const string Forbidden = "FORBIDDEN";
         public const string ValidationFailed = "VALIDATION_FAILED";
@@ -69,6 +70,9 @@ public static class AppConstants
 
         // Category
         public const string SlugAlreadyExists = "SLUG_ALREADY_EXISTS";
+
+        // Admin User
+        public const string UserNotPendingApproval = "USER_NOT_PENDING_APPROVAL";
     }
 
     public static class JwtClaimTypes
@@ -88,5 +92,10 @@ public static class AppConstants
     public static class Category
     {
         public const string SlugAlreadyExists = "Category slug already exists";
+    }
+
+    public static class AdminUser
+    {
+        public const string UserNotPendingApproval = "User is not pending approval";
     }
 }

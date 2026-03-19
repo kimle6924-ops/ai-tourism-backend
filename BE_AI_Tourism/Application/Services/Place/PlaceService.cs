@@ -33,7 +33,7 @@ public class PlaceService : IPlaceService
     {
         var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId);
         if (adminUnit == null)
-            return Result.Fail<PlaceResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<PlaceResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         // Contributor chỉ được tạo Place trong scope của mình
         if (role == UserRole.Contributor.ToString())
@@ -64,7 +64,7 @@ public class PlaceService : IPlaceService
     {
         var entity = await _placeRepository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         return Result.Ok(_mapper.Map<PlaceResponse>(entity));
     }
@@ -117,14 +117,14 @@ public class PlaceService : IPlaceService
     {
         var entity = await _placeRepository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         if (!await HasPermission(entity, userId, role, userAdminUnitId))
-            return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId);
         if (adminUnit == null)
-            return Result.Fail<PlaceResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<PlaceResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         entity.Name = request.Name;
         entity.Description = request.Description;

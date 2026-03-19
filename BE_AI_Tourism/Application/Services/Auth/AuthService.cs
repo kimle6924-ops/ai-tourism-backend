@@ -44,24 +44,24 @@ public class AuthService : IAuthService
         // Chặn client tự tạo Admin (defense in depth — validator cũng chặn)
         var role = request.Role ?? UserRole.User;
         if (role == UserRole.Admin)
-            return Result.Fail<AuthResponse>(AppConstants.Auth.CannotRegisterAdmin, errorCode: AppConstants.ErrorCodes.CannotRegisterAdmin);
+            return Result.Fail<AuthResponse>(AppConstants.Auth.CannotRegisterAdmin, StatusCodes.Status400BadRequest, AppConstants.ErrorCodes.CannotRegisterAdmin);
 
         // Chuẩn hóa email trước khi check trùng
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
 
         var existingUser = await _userRepository.FindOneAsync(u => u.Email == normalizedEmail);
         if (existingUser != null)
-            return Result.Fail<AuthResponse>(AppConstants.Auth.EmailAlreadyExists, errorCode: AppConstants.ErrorCodes.EmailAlreadyExists);
+            return Result.Fail<AuthResponse>(AppConstants.Auth.EmailAlreadyExists, StatusCodes.Status409Conflict, AppConstants.ErrorCodes.EmailAlreadyExists);
 
         // Kiểm tra AdministrativeUnitId tồn tại nếu là Contributor
         if (role == UserRole.Contributor)
         {
             if (!request.AdministrativeUnitId.HasValue)
-                return Result.Fail<AuthResponse>(AppConstants.Auth.ContributorRequiresAdminUnit, errorCode: AppConstants.ErrorCodes.ContributorRequiresAdminUnit);
+                return Result.Fail<AuthResponse>(AppConstants.Auth.ContributorRequiresAdminUnit, StatusCodes.Status400BadRequest, AppConstants.ErrorCodes.ContributorRequiresAdminUnit);
 
             var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId.Value);
             if (adminUnit == null)
-                return Result.Fail<AuthResponse>(AppConstants.Auth.AdminUnitNotFound, errorCode: AppConstants.ErrorCodes.AdminUnitNotFound);
+                return Result.Fail<AuthResponse>(AppConstants.Auth.AdminUnitNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.AdminUnitNotFound);
         }
 
         var user = new Domain.Entities.User

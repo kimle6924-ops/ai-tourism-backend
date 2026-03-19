@@ -42,7 +42,7 @@ public class MediaService : IMediaService
     public async Task<Result<UploadSignatureResponse>> GenerateSignatureAsync(UploadSignatureRequest request, Guid userId, string role, Guid? userAdminUnitId)
     {
         if (!await HasResourcePermission(request.ResourceType, request.ResourceId, userId, role, userAdminUnitId))
-            return Result.Fail<UploadSignatureResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail<UploadSignatureResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         var folder = $"{_cloudinaryOptions.Folder}/{request.ResourceType}/{request.ResourceId}";
         var (signature, timestamp) = _cloudinaryProvider.GenerateSignature(folder);
@@ -62,7 +62,7 @@ public class MediaService : IMediaService
     public async Task<Result<MediaAssetResponse>> FinalizeUploadAsync(FinalizeUploadRequest request, Guid userId, string role, Guid? userAdminUnitId)
     {
         if (!await HasResourcePermission(request.ResourceType, request.ResourceId, userId, role, userAdminUnitId))
-            return Result.Fail<MediaAssetResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail<MediaAssetResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         var existingMedia = await _mediaRepository.FindAsync(
             m => m.ResourceType == request.ResourceType && m.ResourceId == request.ResourceId);
@@ -102,10 +102,10 @@ public class MediaService : IMediaService
     {
         var media = await _mediaRepository.GetByIdAsync(mediaId);
         if (media == null)
-            return Result.Fail<MediaAssetResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<MediaAssetResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         if (!await HasResourcePermission(media.ResourceType, media.ResourceId, userId, role, userAdminUnitId))
-            return Result.Fail<MediaAssetResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail<MediaAssetResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         // Unset current primary
         var allMedia = await _mediaRepository.FindAsync(
@@ -125,7 +125,7 @@ public class MediaService : IMediaService
     public async Task<Result> ReorderAsync(ReorderMediaRequest request, Guid userId, string role, Guid? userAdminUnitId)
     {
         if (!request.OrderedIds.Any())
-            return Result.Fail(AppConstants.ErrorMessages.BadRequest, errorCode: AppConstants.ErrorCodes.InternalError);
+            return Result.Fail(AppConstants.ErrorMessages.BadRequest, StatusCodes.Status400BadRequest, AppConstants.ErrorCodes.BadRequest);
 
         var firstMedia = await _mediaRepository.GetByIdAsync(request.OrderedIds.First());
         if (firstMedia == null)

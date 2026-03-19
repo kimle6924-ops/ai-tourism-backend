@@ -24,16 +24,16 @@ public class AdministrativeUnitService : IAdministrativeUnitService
     {
         var existingCode = await _repository.FindOneAsync(u => u.Code == request.Code);
         if (existingCode != null)
-            return Result.Fail<AdministrativeUnitResponse>(AppConstants.Administrative.CodeAlreadyExists);
+            return Result.Fail<AdministrativeUnitResponse>(AppConstants.Administrative.CodeAlreadyExists, StatusCodes.Status409Conflict, AppConstants.ErrorCodes.AdminCodeAlreadyExists);
 
         if (request.ParentId.HasValue)
         {
             var parent = await _repository.GetByIdAsync(request.ParentId.Value);
             if (parent == null)
-                return Result.Fail<AdministrativeUnitResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound);
+                return Result.Fail<AdministrativeUnitResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.ParentNotFound);
 
             if (!IsValidChildLevel(parent.Level, request.Level))
-                return Result.Fail<AdministrativeUnitResponse>(AppConstants.Administrative.InvalidLevelHierarchy);
+                return Result.Fail<AdministrativeUnitResponse>(AppConstants.Administrative.InvalidLevelHierarchy, StatusCodes.Status400BadRequest, AppConstants.ErrorCodes.InvalidLevelHierarchy);
         }
 
         var entity = new AdministrativeUnit
@@ -52,7 +52,7 @@ public class AdministrativeUnitService : IAdministrativeUnitService
     {
         var entity = await _repository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail<AdministrativeUnitResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<AdministrativeUnitResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         return Result.Ok(_mapper.Map<AdministrativeUnitResponse>(entity));
     }
@@ -77,7 +77,7 @@ public class AdministrativeUnitService : IAdministrativeUnitService
     {
         var parent = await _repository.GetByIdAsync(parentId);
         if (parent == null)
-            return Result.Fail<IEnumerable<AdministrativeUnitResponse>>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<IEnumerable<AdministrativeUnitResponse>>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         var children = await _repository.FindAsync(u => u.ParentId == parentId);
         var responses = children.Select(e => _mapper.Map<AdministrativeUnitResponse>(e));
@@ -88,11 +88,11 @@ public class AdministrativeUnitService : IAdministrativeUnitService
     {
         var entity = await _repository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail<AdministrativeUnitResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<AdministrativeUnitResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         var existingCode = await _repository.FindOneAsync(u => u.Code == request.Code && u.Id != id);
         if (existingCode != null)
-            return Result.Fail<AdministrativeUnitResponse>(AppConstants.Administrative.CodeAlreadyExists);
+            return Result.Fail<AdministrativeUnitResponse>(AppConstants.Administrative.CodeAlreadyExists, StatusCodes.Status409Conflict, AppConstants.ErrorCodes.AdminCodeAlreadyExists);
 
         entity.Name = request.Name;
         entity.Code = request.Code;
@@ -109,7 +109,7 @@ public class AdministrativeUnitService : IAdministrativeUnitService
 
         var children = await _repository.FindAsync(u => u.ParentId == id);
         if (children.Any())
-            return Result.Fail(AppConstants.Administrative.HasChildren, errorCode: AppConstants.ErrorCodes.HasChildren);
+            return Result.Fail(AppConstants.Administrative.HasChildren, StatusCodes.Status409Conflict, AppConstants.ErrorCodes.HasChildren);
 
         await _repository.DeleteAsync(id);
         return Result.Ok("Administrative unit deleted successfully");

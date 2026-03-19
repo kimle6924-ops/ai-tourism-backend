@@ -83,7 +83,7 @@ public class ChatService : IChatService
     {
         var conversation = await _conversationRepository.GetByIdAsync(conversationId);
         if (conversation == null || conversation.UserId != userId)
-            return Result.Fail<PaginationResponse<MessageResponse>>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<PaginationResponse<MessageResponse>>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         var all = await _messageRepository.FindAsync(m => m.ConversationId == conversationId);
         var ordered = all.OrderByDescending(m => m.CreatedAt).ToList();
@@ -99,7 +99,7 @@ public class ChatService : IChatService
     {
         var conversation = await _conversationRepository.GetByIdAsync(conversationId);
         if (conversation == null || conversation.UserId != userId)
-            return Result.Fail<MessageResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<MessageResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         // Save user message
         var userMessage = await SaveMessageAsync(conversationId, userId, MessageRole.User, request.Content);

@@ -22,7 +22,7 @@ public class CategoryService : ICategoryService
     {
         var existingSlug = await _repository.FindOneAsync(c => c.Slug == request.Slug);
         if (existingSlug != null)
-            return Result.Fail<CategoryResponse>(AppConstants.Category.SlugAlreadyExists);
+            return Result.Fail<CategoryResponse>(AppConstants.Category.SlugAlreadyExists, StatusCodes.Status409Conflict, AppConstants.ErrorCodes.SlugAlreadyExists);
 
         var entity = new Domain.Entities.Category
         {
@@ -40,7 +40,7 @@ public class CategoryService : ICategoryService
     {
         var entity = await _repository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail<CategoryResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<CategoryResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         return Result.Ok(_mapper.Map<CategoryResponse>(entity));
     }
@@ -72,11 +72,11 @@ public class CategoryService : ICategoryService
     {
         var entity = await _repository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail<CategoryResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<CategoryResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         var existingSlug = await _repository.FindOneAsync(c => c.Slug == request.Slug && c.Id != id);
         if (existingSlug != null)
-            return Result.Fail<CategoryResponse>(AppConstants.Category.SlugAlreadyExists);
+            return Result.Fail<CategoryResponse>(AppConstants.Category.SlugAlreadyExists, StatusCodes.Status409Conflict, AppConstants.ErrorCodes.SlugAlreadyExists);
 
         entity.Name = request.Name;
         entity.Slug = request.Slug;

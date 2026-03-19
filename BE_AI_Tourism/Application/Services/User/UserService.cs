@@ -27,7 +27,7 @@ public class UserService : IUserService
     {
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null)
-            return Result.Fail<UserResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<UserResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         return Result.Ok(_mapper.Map<UserResponse>(user));
     }
@@ -36,7 +36,7 @@ public class UserService : IUserService
     {
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null)
-            return Result.Fail<UserResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<UserResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         if (request.FullName != null) user.FullName = request.FullName;
         if (request.Phone != null) user.Phone = request.Phone;

@@ -33,7 +33,7 @@ public class EventService : IEventService
     {
         var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId);
         if (adminUnit == null)
-            return Result.Fail<EventResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<EventResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         // Contributor chỉ được tạo Event trong scope của mình
         if (role == UserRole.Contributor.ToString())
@@ -67,7 +67,7 @@ public class EventService : IEventService
     {
         var entity = await _eventRepository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail<EventResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<EventResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         return Result.Ok(_mapper.Map<EventResponse>(entity));
     }
@@ -118,14 +118,14 @@ public class EventService : IEventService
     {
         var entity = await _eventRepository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail<EventResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<EventResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         if (!await HasPermission(entity, userId, role, userAdminUnitId))
-            return Result.Fail<EventResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail<EventResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId);
         if (adminUnit == null)
-            return Result.Fail<EventResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<EventResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         entity.Title = request.Title;
         entity.Description = request.Description;

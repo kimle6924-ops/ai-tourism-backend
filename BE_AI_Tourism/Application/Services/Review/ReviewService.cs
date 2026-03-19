@@ -31,7 +31,7 @@ public class ReviewService : IReviewService
     {
         // Verify resource exists and is approved
         if (!await IsResourceApproved(request.ResourceType, request.ResourceId))
-            return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         // Check if user already reviewed this resource — upsert
         var existing = await _reviewRepository.FindOneAsync(
@@ -66,10 +66,10 @@ public class ReviewService : IReviewService
     {
         var review = await _reviewRepository.GetByIdAsync(id);
         if (review == null)
-            return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         if (review.UserId != userId)
-            return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         review.Rating = request.Rating;
         review.Comment = request.Comment;
@@ -108,7 +108,7 @@ public class ReviewService : IReviewService
         var review = await _reviewRepository.FindOneAsync(
             r => r.ResourceType == resourceType && r.ResourceId == resourceId && r.UserId == userId);
         if (review == null)
-            return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         return Result.Ok(_mapper.Map<ReviewResponse>(review));
     }

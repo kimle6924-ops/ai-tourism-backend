@@ -138,62 +138,62 @@ Danh sach checklist cac phan can ra soat va hoan thien trong he thong.
 ### Error Response — Bo sung errorCode + statusCode
 
 #### PlaceService (4 cho thieu errorCode)
-- [ ] `CreateAsync` — Result.Fail ParentNotFound: them errorCode `NOT_FOUND`
-- [ ] `GetByIdAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `UpdateAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `UpdateAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
-- [ ] `UpdateAsync` — Result.Fail ParentNotFound: them errorCode `NOT_FOUND`
+- [x] `CreateAsync` — Result.Fail ParentNotFound: them errorCode `NOT_FOUND`
+- [x] `GetByIdAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `UpdateAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `UpdateAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
+- [x] `UpdateAsync` — Result.Fail ParentNotFound: them errorCode `NOT_FOUND`
 
 #### EventService (4 cho thieu errorCode)
-- [ ] `CreateAsync` — Result.Fail ParentNotFound: them errorCode `NOT_FOUND`
-- [ ] `GetByIdAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `UpdateAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `UpdateAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
-- [ ] `UpdateAsync` — Result.Fail ParentNotFound: them errorCode `NOT_FOUND`
+- [x] `CreateAsync` — Result.Fail ParentNotFound: them errorCode `NOT_FOUND`
+- [x] `GetByIdAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `UpdateAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `UpdateAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
+- [x] `UpdateAsync` — Result.Fail ParentNotFound: them errorCode `NOT_FOUND`
 
 #### MediaService (4 thieu errorCode, 1 thieu statusCode)
-- [ ] `GetUploadSignatureAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
-- [ ] `FinalizeUploadAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
-- [ ] `SetPrimaryAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `SetPrimaryAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
-- [ ] `ReorderAsync` — Result.Fail BadRequest: them statusCode 400
+- [x] `GetUploadSignatureAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
+- [x] `FinalizeUploadAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
+- [x] `SetPrimaryAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `SetPrimaryAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
+- [x] `ReorderAsync` — Result.Fail BadRequest: them statusCode 400
 
 #### ReviewService (4 cho thieu errorCode)
-- [ ] `UpsertAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `UpdateAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `UpdateAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
-- [ ] `GetMyReviewAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `UpsertAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `UpdateAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `UpdateAsync` — Result.Fail Forbidden: them errorCode `FORBIDDEN`
+- [x] `GetMyReviewAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
 
 #### CategoryService (3 cho thieu errorCode, 2 thieu statusCode)
-- [ ] `CreateAsync` — Result.Fail SlugAlreadyExists: them statusCode 409 + errorCode `SLUG_ALREADY_EXISTS`
-- [ ] `GetByIdAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `UpdateAsync` — Result.Fail SlugAlreadyExists: them statusCode 409 + errorCode `SLUG_ALREADY_EXISTS`
+- [x] `CreateAsync` — Result.Fail SlugAlreadyExists: them statusCode 409 + errorCode `SLUG_ALREADY_EXISTS`
+- [x] `GetByIdAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `UpdateAsync` — Result.Fail SlugAlreadyExists: them statusCode 409 + errorCode `SLUG_ALREADY_EXISTS`
 
 #### AdministrativeUnitService (6 thieu errorCode, 3 thieu statusCode)
-- [ ] `CreateAsync` — Result.Fail CodeAlreadyExists: them statusCode 409 + errorCode `ADMIN_CODE_ALREADY_EXISTS`
-- [ ] `CreateAsync` — Result.Fail ParentNotFound: them errorCode `PARENT_NOT_FOUND`
-- [ ] `CreateAsync` — Result.Fail InvalidLevelHierarchy: them statusCode 400 + errorCode `INVALID_LEVEL_HIERARCHY`
-- [ ] `GetByIdAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `GetChildrenAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `UpdateAsync` — Result.Fail CodeAlreadyExists: them statusCode 409 + errorCode `ADMIN_CODE_ALREADY_EXISTS`
-- [ ] `DeleteAsync` — Result.Fail HasChildren: them statusCode 409
+- [x] `CreateAsync` — Result.Fail CodeAlreadyExists: them statusCode 409 + errorCode `ADMIN_CODE_ALREADY_EXISTS`
+- [x] `CreateAsync` — Result.Fail ParentNotFound: them errorCode `PARENT_NOT_FOUND`
+- [x] `CreateAsync` — Result.Fail InvalidLevelHierarchy: them statusCode 400 + errorCode `INVALID_LEVEL_HIERARCHY`
+- [x] `GetByIdAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `GetChildrenAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `UpdateAsync` — Result.Fail CodeAlreadyExists: them statusCode 409 + errorCode `ADMIN_CODE_ALREADY_EXISTS`
+- [x] `DeleteAsync` — Result.Fail HasChildren: them statusCode 409
 
 #### AuthService (4 cho thieu statusCode)
-- [ ] `RegisterAsync` — CannotRegisterAdmin: them statusCode 400
-- [ ] `RegisterAsync` — EmailAlreadyExists: them statusCode 409
-- [ ] `RegisterAsync` — ContributorRequiresAdminUnit: them statusCode 400
-- [ ] `RegisterAsync` — AdminUnitNotFound: them statusCode 404
+- [x] `RegisterAsync` — CannotRegisterAdmin: them statusCode 400
+- [x] `RegisterAsync` — EmailAlreadyExists: them statusCode 409
+- [x] `RegisterAsync` — ContributorRequiresAdminUnit: them statusCode 400
+- [x] `RegisterAsync` — AdminUnitNotFound: them statusCode 404
 
 #### UserService (2 cho thieu errorCode)
-- [ ] `GetCurrentUserAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `UpdateProfileAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `GetCurrentUserAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `UpdateProfileAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
 
 #### ChatService (2 cho thieu errorCode)
-- [ ] `GetMessagesAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
-- [ ] `SendMessageAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `GetMessagesAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
+- [x] `SendMessageAsync` — Result.Fail NotFound: them errorCode `NOT_FOUND`
 
 #### AdminUserService (1 cho thieu ca statusCode + errorCode + constants)
-- [ ] `ApproveUserAsync` — dang dung plain string "User is not pending approval": chuyen sang AppConstants + them statusCode 400 + errorCode
+- [x] `ApproveUserAsync` — dang dung plain string "User is not pending approval": chuyen sang AppConstants + them statusCode 400 + errorCode
 
 ---
 

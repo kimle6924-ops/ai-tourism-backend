@@ -105,11 +105,11 @@ public class AdministrativeUnitService : IAdministrativeUnitService
     {
         var entity = await _repository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         var children = await _repository.FindAsync(u => u.ParentId == id);
         if (children.Any())
-            return Result.Fail(AppConstants.Administrative.HasChildren);
+            return Result.Fail(AppConstants.Administrative.HasChildren, errorCode: AppConstants.ErrorCodes.HasChildren);
 
         await _repository.DeleteAsync(id);
         return Result.Ok("Administrative unit deleted successfully");

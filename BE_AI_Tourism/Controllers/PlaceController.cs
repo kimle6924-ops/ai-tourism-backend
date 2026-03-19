@@ -31,7 +31,7 @@ public class PlaceController : ControllerBase
     [Authorize(Roles = "Admin,Contributor")]
     public async Task<IActionResult> GetAll([FromQuery] PaginationRequest request)
     {
-        var result = await _placeService.GetAllPagedAsync(request);
+        var result = await _placeService.GetAllPagedAsync(request, GetRole(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);
     }
 
@@ -47,7 +47,7 @@ public class PlaceController : ControllerBase
     [Authorize(Roles = "Admin,Contributor")]
     public async Task<IActionResult> Create([FromBody] CreatePlaceRequest request)
     {
-        var result = await _placeService.CreateAsync(request, GetUserId());
+        var result = await _placeService.CreateAsync(request, GetUserId(), GetRole(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);
     }
 

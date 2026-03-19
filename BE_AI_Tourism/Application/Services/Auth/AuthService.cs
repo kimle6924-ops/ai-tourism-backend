@@ -14,6 +14,8 @@ namespace BE_AI_Tourism.Application.Services.Auth;
 public class AuthService : IAuthService
 {
     private readonly IRepository<Domain.Entities.User> _userRepository;
+    private readonly IRepository<AdministrativeUnit> _adminUnitRepository;
+    private readonly IRepository<UserPreference> _preferenceRepository;
     private readonly IJwtService _jwtService;
     private readonly IPasswordService _passwordService;
     private readonly IMapper _mapper;
@@ -21,12 +23,16 @@ public class AuthService : IAuthService
 
     public AuthService(
         IRepository<Domain.Entities.User> userRepository,
+        IRepository<AdministrativeUnit> adminUnitRepository,
+        IRepository<UserPreference> preferenceRepository,
         IJwtService jwtService,
         IPasswordService passwordService,
         IMapper mapper,
         IOptions<JwtOptions> jwtOptions)
     {
         _userRepository = userRepository;
+        _adminUnitRepository = adminUnitRepository;
+        _preferenceRepository = preferenceRepository;
         _jwtService = jwtService;
         _passwordService = passwordService;
         _mapper = mapper;
@@ -35,19 +41,38 @@ public class AuthService : IAuthService
 
     public async Task<Result<AuthResponse>> RegisterAsync(RegisterRequest request)
     {
-        var existingUser = await _userRepository.FindOneAsync(u => u.Email == request.Email);
+        // Chặn client tự tạo Admin (defense in depth — validator cũng chặn)
+        var role = request.Role ?? UserRole.User;
+        if (role == UserRole.Admin)
+            return Result.Fail<AuthResponse>(AppConstants.Auth.CannotRegisterAdmin, errorCode: AppConstants.ErrorCodes.CannotRegisterAdmin);
+
+        // Chuẩn hóa email trước khi check trùng
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        var existingUser = await _userRepository.FindOneAsync(u => u.Email == normalizedEmail);
         if (existingUser != null)
-            return Result.Fail<AuthResponse>(AppConstants.Auth.EmailAlreadyExists);
+            return Result.Fail<AuthResponse>(AppConstants.Auth.EmailAlreadyExists, errorCode: AppConstants.ErrorCodes.EmailAlreadyExists);
+
+        // Kiểm tra AdministrativeUnitId tồn tại nếu là Contributor
+        if (role == UserRole.Contributor)
+        {
+            if (!request.AdministrativeUnitId.HasValue)
+                return Result.Fail<AuthResponse>(AppConstants.Auth.ContributorRequiresAdminUnit, errorCode: AppConstants.ErrorCodes.ContributorRequiresAdminUnit);
+
+            var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId.Value);
+            if (adminUnit == null)
+                return Result.Fail<AuthResponse>(AppConstants.Auth.AdminUnitNotFound, errorCode: AppConstants.ErrorCodes.AdminUnitNotFound);
+        }
 
         var user = new Domain.Entities.User
         {
-            Email = request.Email,
+            Email = normalizedEmail,
             Password = _passwordService.Hash(request.Password),
-            FullName = request.FullName,
-            Phone = request.Phone,
-            Role = request.Role ?? UserRole.User,
+            FullName = request.FullName.Trim(),
+            Phone = request.Phone?.Trim() ?? string.Empty,
+            Role = role,
             AdministrativeUnitId = request.AdministrativeUnitId,
-            Status = UserStatus.Active
+            Status = role == UserRole.Contributor ? UserStatus.PendingApproval : UserStatus.Active
         };
 
         var refreshToken = _jwtService.GenerateRefreshToken();
@@ -55,6 +80,17 @@ public class AuthService : IAuthService
         user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7);
 
         await _userRepository.AddAsync(user);
+
+        // Tạo UserPreference cùng lúc khi đăng ký
+        if (request.CategoryIds.Any())
+        {
+            var preference = new UserPreference
+            {
+                UserId = user.Id,
+                CategoryIds = request.CategoryIds
+            };
+            await _preferenceRepository.AddAsync(preference);
+        }
 
         var accessToken = _jwtService.GenerateAccessToken(user);
         var response = new AuthResponse
@@ -70,15 +106,20 @@ public class AuthService : IAuthService
 
     public async Task<Result<AuthResponse>> LoginAsync(LoginRequest request)
     {
-        var user = await _userRepository.FindOneAsync(u => u.Email == request.Email);
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        var user = await _userRepository.FindOneAsync(u => u.Email == normalizedEmail);
         if (user == null)
-            return Result.Fail<AuthResponse>(AppConstants.Auth.InvalidCredentials, StatusCodes.Status401Unauthorized);
+            return Result.Fail<AuthResponse>(AppConstants.Auth.InvalidCredentials, StatusCodes.Status401Unauthorized, AppConstants.ErrorCodes.InvalidCredentials);
 
         if (!_passwordService.Verify(request.Password, user.Password))
-            return Result.Fail<AuthResponse>(AppConstants.Auth.InvalidCredentials, StatusCodes.Status401Unauthorized);
+            return Result.Fail<AuthResponse>(AppConstants.Auth.InvalidCredentials, StatusCodes.Status401Unauthorized, AppConstants.ErrorCodes.InvalidCredentials);
 
         if (user.Status == UserStatus.Locked)
-            return Result.Fail<AuthResponse>(AppConstants.Auth.AccountLocked, StatusCodes.Status403Forbidden);
+            return Result.Fail<AuthResponse>(AppConstants.Auth.AccountLocked, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.AccountLocked);
+
+        if (user.Status == UserStatus.PendingApproval)
+            return Result.Fail<AuthResponse>(AppConstants.Auth.AccountPendingApproval, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.AccountPendingApproval);
 
         var accessToken = _jwtService.GenerateAccessToken(user);
         var refreshToken = _jwtService.GenerateRefreshToken();
@@ -102,7 +143,7 @@ public class AuthService : IAuthService
     {
         var user = await _userRepository.FindOneAsync(u => u.RefreshToken == request.RefreshToken);
         if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
-            return Result.Fail<AuthResponse>(AppConstants.Auth.InvalidRefreshToken, StatusCodes.Status401Unauthorized);
+            return Result.Fail<AuthResponse>(AppConstants.Auth.InvalidRefreshToken, StatusCodes.Status401Unauthorized, AppConstants.ErrorCodes.InvalidRefreshToken);
 
         var accessToken = _jwtService.GenerateAccessToken(user);
         var newRefreshToken = _jwtService.GenerateRefreshToken();

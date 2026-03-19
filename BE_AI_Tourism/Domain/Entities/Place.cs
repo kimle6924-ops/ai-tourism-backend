@@ -11,6 +11,8 @@ public class Place : BaseEntity
     public Guid AdministrativeUnitId { get; set; }
     public List<Guid> CategoryIds { get; set; } = [];
     public List<string> Tags { get; set; } = [];
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Pending;
     public Guid CreatedBy { get; set; }
     public Guid? ApprovedBy { get; set; }

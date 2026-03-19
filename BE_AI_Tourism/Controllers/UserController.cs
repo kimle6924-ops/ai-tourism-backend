@@ -45,7 +45,7 @@ public class UserController : ControllerBase
     {
         var validation = await _updateUserValidator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(Shared.Core.Result.Fail(string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
+            return BadRequest(Shared.Core.Result.ValidationFail(validation.Errors));
 
         var result = await _userService.UpdateProfileAsync(GetCurrentUserId(), request);
         return StatusCode(result.StatusCode, result);
@@ -63,7 +63,7 @@ public class UserController : ControllerBase
     {
         var validation = await _updatePreferencesValidator.ValidateAsync(request);
         if (!validation.IsValid)
-            return BadRequest(Shared.Core.Result.Fail(string.Join("; ", validation.Errors.Select(e => e.ErrorMessage))));
+            return BadRequest(Shared.Core.Result.ValidationFail(validation.Errors));
 
         var result = await _userService.UpdatePreferencesAsync(GetCurrentUserId(), request);
         return StatusCode(result.StatusCode, result);

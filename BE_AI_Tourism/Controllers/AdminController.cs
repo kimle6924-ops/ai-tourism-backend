@@ -40,6 +40,13 @@ public class AdminController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpPatch("users/{id}/approve")]
+    public async Task<IActionResult> ApproveUser(Guid id)
+    {
+        var result = await _adminUserService.ApproveUserAsync(id);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpGet("stats/overview")]
     public async Task<IActionResult> GetStatsOverview()
     {

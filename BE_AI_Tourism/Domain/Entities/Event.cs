@@ -11,6 +11,8 @@ public class Event : BaseEntity
     public Guid AdministrativeUnitId { get; set; }
     public List<Guid> CategoryIds { get; set; } = [];
     public List<string> Tags { get; set; } = [];
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public DateTime StartAt { get; set; }
     public DateTime EndAt { get; set; }
     public EventStatus EventStatus { get; set; } = EventStatus.Upcoming;

@@ -30,7 +30,7 @@ Trạng thái các tính năng trong hệ thống.
 
 | Tính năng | Trạng thái | Ghi chú |
 |-----------|-----------|---------|
-| Domain Enums | Done | 9 enums: UserRole, AdministrativeLevel, ModerationStatus, EventStatus, ReviewStatus, ResourceType, ConversationStatus, MessageRole, UserStatus |
+| Domain Enums | Done | 9 enums: UserRole, AdministrativeLevel, ModerationStatus, EventStatus, ReviewStatus, ResourceType, ConversationStatus, MessageRole, UserStatus (Active/Locked/PendingApproval) |
 | Domain Entities | Done | 12 entities, User có RefreshToken/RefreshTokenExpiryTime |
 | PostgreSQL + EF Core | Done | AppDbContext với Npgsql, snake_case tables, enum→string, array/jsonb support |
 | EfRepository\<T\> | Done | Infrastructure/Database/EfRepository.cs (FindOneAsync, FindAsync) |
@@ -43,7 +43,7 @@ Trạng thái các tính năng trong hệ thống.
 |-----------|-----------|---------|
 | Auth DTOs | Done | RegisterRequest, LoginRequest, RefreshTokenRequest, AuthResponse |
 | User DTOs | Done | UserResponse, UpdateUserRequest, UpdatePreferencesRequest, PreferencesResponse |
-| Auth Validators | Done | RegisterRequestValidator, LoginRequestValidator |
+| Auth Validators | Done | RegisterRequestValidator, LoginRequestValidator, RefreshTokenRequestValidator |
 | User Validators | Done | UpdateUserRequestValidator, UpdatePreferencesRequestValidator |
 | PasswordService | Done | BCrypt hash/verify, AllowPlaintextPassword support |
 | JwtService | Done | GenerateAccessToken, GenerateRefreshToken, GetPrincipalFromExpiredToken |

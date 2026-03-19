@@ -91,7 +91,7 @@ public class CategoryService : ICategoryService
     {
         var entity = await _repository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         await _repository.DeleteAsync(id);
         return Result.Ok("Category deleted successfully");

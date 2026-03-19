@@ -31,10 +31,44 @@ public static class AppConstants
 
     public static class Auth
     {
+        // Messages
         public const string EmailAlreadyExists = "Email already exists";
         public const string InvalidCredentials = "Invalid email or password";
         public const string InvalidRefreshToken = "Invalid or expired refresh token";
         public const string AccountLocked = "Account is locked";
+        public const string CannotRegisterAdmin = "Cannot register as Admin";
+        public const string ContributorRequiresAdminUnit = "AdministrativeUnitId is required for Contributor";
+        public const string AdminUnitNotFound = "AdministrativeUnit not found";
+        public const string AccountPendingApproval = "Account is pending approval";
+    }
+
+    public static class ErrorCodes
+    {
+        // Auth
+        public const string EmailAlreadyExists = "EMAIL_ALREADY_EXISTS";
+        public const string InvalidCredentials = "INVALID_CREDENTIALS";
+        public const string InvalidRefreshToken = "INVALID_REFRESH_TOKEN";
+        public const string AccountLocked = "ACCOUNT_LOCKED";
+        public const string AccountPendingApproval = "ACCOUNT_PENDING_APPROVAL";
+        public const string CannotRegisterAdmin = "CANNOT_REGISTER_ADMIN";
+        public const string ContributorRequiresAdminUnit = "CONTRIBUTOR_REQUIRES_ADMIN_UNIT";
+        public const string AdminUnitNotFound = "ADMIN_UNIT_NOT_FOUND";
+
+        // General
+        public const string NotFound = "NOT_FOUND";
+        public const string Unauthorized = "UNAUTHORIZED";
+        public const string Forbidden = "FORBIDDEN";
+        public const string ValidationFailed = "VALIDATION_FAILED";
+        public const string InternalError = "INTERNAL_ERROR";
+
+        // Administrative
+        public const string AdminCodeAlreadyExists = "ADMIN_CODE_ALREADY_EXISTS";
+        public const string ParentNotFound = "PARENT_NOT_FOUND";
+        public const string InvalidLevelHierarchy = "INVALID_LEVEL_HIERARCHY";
+        public const string HasChildren = "HAS_CHILDREN";
+
+        // Category
+        public const string SlugAlreadyExists = "SLUG_ALREADY_EXISTS";
     }
 
     public static class JwtClaimTypes

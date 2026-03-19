@@ -57,10 +57,10 @@ public class ModerationService : IModerationService
         {
             var place = await _placeRepository.GetByIdAsync(resourceId);
             if (place == null)
-                return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+                return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
             if (!await HasModerationPermission(role, actorAdminUnitId, place.AdministrativeUnitId))
-                return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+                return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
             place.ModerationStatus = newStatus;
             place.ApprovedBy = newStatus == ModerationStatus.Approved ? actorId : null;
@@ -72,10 +72,10 @@ public class ModerationService : IModerationService
         {
             var evt = await _eventRepository.GetByIdAsync(resourceId);
             if (evt == null)
-                return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+                return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
             if (!await HasModerationPermission(role, actorAdminUnitId, evt.AdministrativeUnitId))
-                return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+                return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
             evt.ModerationStatus = newStatus;
             evt.ApprovedBy = newStatus == ModerationStatus.Approved ? actorId : null;

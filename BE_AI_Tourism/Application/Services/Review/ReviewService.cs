@@ -81,11 +81,11 @@ public class ReviewService : IReviewService
     {
         var review = await _reviewRepository.GetByIdAsync(id);
         if (review == null)
-            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         // Owner or Admin can delete
         if (review.UserId != userId && role != UserRole.Admin.ToString())
-            return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         await _reviewRepository.DeleteAsync(id);
         return Result.Ok("Review deleted successfully");

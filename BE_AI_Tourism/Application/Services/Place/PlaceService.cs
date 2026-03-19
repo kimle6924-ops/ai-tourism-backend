@@ -29,11 +29,18 @@ public class PlaceService : IPlaceService
         _mapper = mapper;
     }
 
-    public async Task<Result<PlaceResponse>> CreateAsync(CreatePlaceRequest request, Guid userId)
+    public async Task<Result<PlaceResponse>> CreateAsync(CreatePlaceRequest request, Guid userId, string role, Guid? userAdminUnitId)
     {
         var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId);
         if (adminUnit == null)
             return Result.Fail<PlaceResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound);
+
+        // Contributor chỉ được tạo Place trong scope của mình
+        if (role == UserRole.Contributor.ToString())
+        {
+            if (!userAdminUnitId.HasValue || !await _scopeService.IsInScopeAsync(userAdminUnitId.Value, request.AdministrativeUnitId))
+                return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+        }
 
         var entity = new Domain.Entities.Place
         {
@@ -41,6 +48,8 @@ public class PlaceService : IPlaceService
             Description = request.Description,
             Address = request.Address,
             AdministrativeUnitId = request.AdministrativeUnitId,
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
             CategoryIds = request.CategoryIds,
             Tags = request.Tags,
             ModerationStatus = ModerationStatus.Pending,
@@ -70,13 +79,38 @@ public class PlaceService : IPlaceService
             responses, all.Count(), request.PageNumber, request.PageSize));
     }
 
-    public async Task<Result<PaginationResponse<PlaceResponse>>> GetAllPagedAsync(PaginationRequest request)
+    public async Task<Result<PaginationResponse<PlaceResponse>>> GetAllPagedAsync(PaginationRequest request, string role, Guid? userAdminUnitId)
     {
-        var paged = await _placeRepository.GetPagedAsync(request);
-        var responses = paged.Items.Select(p => _mapper.Map<PlaceResponse>(p)).ToList();
+        IEnumerable<Domain.Entities.Place> all;
+
+        if (role == UserRole.Admin.ToString())
+        {
+            // Admin thấy tất cả
+            all = await _placeRepository.GetAllAsync();
+        }
+        else if (role == UserRole.Contributor.ToString() && userAdminUnitId.HasValue)
+        {
+            // Contributor chỉ thấy Places trong scope
+            var allPlaces = await _placeRepository.GetAllAsync();
+            var filtered = new List<Domain.Entities.Place>();
+            foreach (var p in allPlaces)
+            {
+                if (await _scopeService.IsInScopeAsync(userAdminUnitId.Value, p.AdministrativeUnitId))
+                    filtered.Add(p);
+            }
+            all = filtered;
+        }
+        else
+        {
+            all = [];
+        }
+
+        var totalCount = all.Count();
+        var items = all.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
+        var responses = items.Select(p => _mapper.Map<PlaceResponse>(p)).ToList();
 
         return Result.Ok(PaginationResponse<PlaceResponse>.Create(
-            responses, paged.TotalCount, paged.PageNumber, paged.PageSize));
+            responses, totalCount, request.PageNumber, request.PageSize));
     }
 
     public async Task<Result<PlaceResponse>> UpdateAsync(Guid id, UpdatePlaceRequest request, Guid userId, string role, Guid? userAdminUnitId)
@@ -96,6 +130,8 @@ public class PlaceService : IPlaceService
         entity.Description = request.Description;
         entity.Address = request.Address;
         entity.AdministrativeUnitId = request.AdministrativeUnitId;
+        entity.Latitude = request.Latitude;
+        entity.Longitude = request.Longitude;
         entity.CategoryIds = request.CategoryIds;
         entity.Tags = request.Tags;
 
@@ -107,10 +143,10 @@ public class PlaceService : IPlaceService
     {
         var entity = await _placeRepository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         if (!await HasPermission(entity, userId, role, userAdminUnitId))
-            return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         await _placeRepository.DeleteAsync(id);
         return Result.Ok("Place deleted successfully");

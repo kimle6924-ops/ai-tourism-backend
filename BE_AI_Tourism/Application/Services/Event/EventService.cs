@@ -29,11 +29,18 @@ public class EventService : IEventService
         _mapper = mapper;
     }
 
-    public async Task<Result<EventResponse>> CreateAsync(CreateEventRequest request, Guid userId)
+    public async Task<Result<EventResponse>> CreateAsync(CreateEventRequest request, Guid userId, string role, Guid? userAdminUnitId)
     {
         var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId);
         if (adminUnit == null)
             return Result.Fail<EventResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound);
+
+        // Contributor chỉ được tạo Event trong scope của mình
+        if (role == UserRole.Contributor.ToString())
+        {
+            if (!userAdminUnitId.HasValue || !await _scopeService.IsInScopeAsync(userAdminUnitId.Value, request.AdministrativeUnitId))
+                return Result.Fail<EventResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+        }
 
         var entity = new Domain.Entities.Event
         {
@@ -41,6 +48,8 @@ public class EventService : IEventService
             Description = request.Description,
             Address = request.Address,
             AdministrativeUnitId = request.AdministrativeUnitId,
+            Latitude = request.Latitude,
+            Longitude = request.Longitude,
             CategoryIds = request.CategoryIds,
             Tags = request.Tags,
             StartAt = request.StartAt,
@@ -73,13 +82,36 @@ public class EventService : IEventService
             responses, all.Count(), request.PageNumber, request.PageSize));
     }
 
-    public async Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(PaginationRequest request)
+    public async Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(PaginationRequest request, string role, Guid? userAdminUnitId)
     {
-        var paged = await _eventRepository.GetPagedAsync(request);
-        var responses = paged.Items.Select(e => _mapper.Map<EventResponse>(e)).ToList();
+        IEnumerable<Domain.Entities.Event> all;
+
+        if (role == UserRole.Admin.ToString())
+        {
+            all = await _eventRepository.GetAllAsync();
+        }
+        else if (role == UserRole.Contributor.ToString() && userAdminUnitId.HasValue)
+        {
+            var allEvents = await _eventRepository.GetAllAsync();
+            var filtered = new List<Domain.Entities.Event>();
+            foreach (var e in allEvents)
+            {
+                if (await _scopeService.IsInScopeAsync(userAdminUnitId.Value, e.AdministrativeUnitId))
+                    filtered.Add(e);
+            }
+            all = filtered;
+        }
+        else
+        {
+            all = [];
+        }
+
+        var totalCount = all.Count();
+        var items = all.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
+        var responses = items.Select(e => _mapper.Map<EventResponse>(e)).ToList();
 
         return Result.Ok(PaginationResponse<EventResponse>.Create(
-            responses, paged.TotalCount, paged.PageNumber, paged.PageSize));
+            responses, totalCount, request.PageNumber, request.PageSize));
     }
 
     public async Task<Result<EventResponse>> UpdateAsync(Guid id, UpdateEventRequest request, Guid userId, string role, Guid? userAdminUnitId)
@@ -99,6 +131,8 @@ public class EventService : IEventService
         entity.Description = request.Description;
         entity.Address = request.Address;
         entity.AdministrativeUnitId = request.AdministrativeUnitId;
+        entity.Latitude = request.Latitude;
+        entity.Longitude = request.Longitude;
         entity.CategoryIds = request.CategoryIds;
         entity.Tags = request.Tags;
         entity.StartAt = request.StartAt;
@@ -113,10 +147,10 @@ public class EventService : IEventService
     {
         var entity = await _eventRepository.GetByIdAsync(id);
         if (entity == null)
-            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         if (!await HasPermission(entity, userId, role, userAdminUnitId))
-            return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         await _eventRepository.DeleteAsync(id);
         return Result.Ok("Event deleted successfully");

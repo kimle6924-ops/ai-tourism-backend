@@ -10,4 +10,5 @@ public class RegisterRequest
     public string Phone { get; set; } = string.Empty;
     public UserRole? Role { get; set; }
     public Guid? AdministrativeUnitId { get; set; }
+    public List<Guid> CategoryIds { get; set; } = [];
 }

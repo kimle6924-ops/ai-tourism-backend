@@ -9,4 +9,5 @@ public interface IAdminUserService
     Task<Result<PaginationResponse<UserResponse>>> GetUsersAsync(PaginationRequest request);
     Task<Result> LockUserAsync(Guid userId);
     Task<Result> UnlockUserAsync(Guid userId);
+    Task<Result> ApproveUserAsync(Guid userId);
 }

@@ -32,6 +32,7 @@ Danh sách các API endpoints trong hệ thống.
 | GET | `/api/admin/users` | Danh sách users (phân trang) | Admin |
 | PATCH | `/api/admin/users/{id}/lock` | Khóa tài khoản user | Admin |
 | PATCH | `/api/admin/users/{id}/unlock` | Mở khóa tài khoản user | Admin |
+| PATCH | `/api/admin/users/{id}/approve` | Duyệt tài khoản Contributor (PendingApproval → Active) | Admin |
 | GET | `/api/admin/stats/overview` | Thống kê tổng quan hệ thống | Admin |
 
 ---
@@ -71,7 +72,7 @@ Danh sách các API endpoints trong hệ thống.
 | GET | `/api/places` | Danh sách địa điểm đã duyệt (phân trang) | No |
 | GET | `/api/places/all` | Tất cả địa điểm (phân trang) | Admin, Contributor |
 | GET | `/api/places/{id}` | Chi tiết địa điểm | No |
-| POST | `/api/places` | Tạo địa điểm | Admin, Contributor |
+| POST | `/api/places` | Tạo địa điểm | Admin, Contributor (scope) |
 | PUT | `/api/places/{id}` | Cập nhật địa điểm | Admin, Contributor (scope) |
 | DELETE | `/api/places/{id}` | Xóa địa điểm | Admin, Contributor (scope) |
 
@@ -84,7 +85,7 @@ Danh sách các API endpoints trong hệ thống.
 | GET | `/api/events` | Danh sách sự kiện đã duyệt (phân trang) | No |
 | GET | `/api/events/all` | Tất cả sự kiện (phân trang) | Admin, Contributor |
 | GET | `/api/events/{id}` | Chi tiết sự kiện | No |
-| POST | `/api/events` | Tạo sự kiện | Admin, Contributor |
+| POST | `/api/events` | Tạo sự kiện | Admin, Contributor (scope) |
 | PUT | `/api/events/{id}` | Cập nhật sự kiện | Admin, Contributor (scope) |
 | DELETE | `/api/events/{id}` | Xóa sự kiện | Admin, Contributor (scope) |
 
@@ -158,3 +159,4 @@ Danh sách các API endpoints trong hệ thống.
 | POST | `/api/dbtest/create-tables` | Tạo toàn bộ tables | No |
 | POST | `/api/dbtest/seed-admin` | Tạo tài khoản Admin mặc định (`admin@aitourism.vn` / `admin123`) | No |
 | POST | `/api/geminitest` | Test Gemini AI (body: `{"prompt": "..."}`) | No |
+| POST | `/api/geminitest/test-prompt` | Test base prompt AI với fake data | No |

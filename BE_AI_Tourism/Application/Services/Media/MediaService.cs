@@ -125,14 +125,14 @@ public class MediaService : IMediaService
     public async Task<Result> ReorderAsync(ReorderMediaRequest request, Guid userId, string role, Guid? userAdminUnitId)
     {
         if (!request.OrderedIds.Any())
-            return Result.Fail(AppConstants.ErrorMessages.BadRequest);
+            return Result.Fail(AppConstants.ErrorMessages.BadRequest, errorCode: AppConstants.ErrorCodes.InternalError);
 
         var firstMedia = await _mediaRepository.GetByIdAsync(request.OrderedIds.First());
         if (firstMedia == null)
-            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         if (!await HasResourcePermission(firstMedia.ResourceType, firstMedia.ResourceId, userId, role, userAdminUnitId))
-            return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         for (var i = 0; i < request.OrderedIds.Count; i++)
         {
@@ -149,10 +149,10 @@ public class MediaService : IMediaService
     {
         var media = await _mediaRepository.GetByIdAsync(mediaId);
         if (media == null)
-            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         if (!await HasResourcePermission(media.ResourceType, media.ResourceId, userId, role, userAdminUnitId))
-            return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden);
+            return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         // Delete from Cloudinary
         await _cloudinaryProvider.DestroyAsync(media.PublicId);

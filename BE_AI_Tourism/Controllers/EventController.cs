@@ -31,7 +31,7 @@ public class EventController : ControllerBase
     [Authorize(Roles = "Admin,Contributor")]
     public async Task<IActionResult> GetAll([FromQuery] PaginationRequest request)
     {
-        var result = await _eventService.GetAllPagedAsync(request);
+        var result = await _eventService.GetAllPagedAsync(request, GetRole(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);
     }
 
@@ -47,7 +47,7 @@ public class EventController : ControllerBase
     [Authorize(Roles = "Admin,Contributor")]
     public async Task<IActionResult> Create([FromBody] CreateEventRequest request)
     {
-        var result = await _eventService.CreateAsync(request, GetUserId());
+        var result = await _eventService.CreateAsync(request, GetUserId(), GetRole(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);
     }
 

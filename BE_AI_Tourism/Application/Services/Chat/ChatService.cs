@@ -19,6 +19,7 @@ public class ChatService : IChatService
     private readonly IRepository<AiMessage> _messageRepository;
     private readonly IRepository<AiContextMemory> _contextMemoryRepository;
     private readonly IRepository<UserPreference> _preferenceRepository;
+    private readonly IRepository<Domain.Entities.Category> _categoryRepository;
     private readonly IRepository<Domain.Entities.Place> _placeRepository;
     private readonly IRepository<Domain.Entities.Event> _eventRepository;
     private readonly IGeminiProvider _geminiProvider;
@@ -33,6 +34,7 @@ public class ChatService : IChatService
         IRepository<AiMessage> messageRepository,
         IRepository<AiContextMemory> contextMemoryRepository,
         IRepository<UserPreference> preferenceRepository,
+        IRepository<Domain.Entities.Category> categoryRepository,
         IRepository<Domain.Entities.Place> placeRepository,
         IRepository<Domain.Entities.Event> eventRepository,
         IGeminiProvider geminiProvider,
@@ -43,6 +45,7 @@ public class ChatService : IChatService
         _messageRepository = messageRepository;
         _contextMemoryRepository = contextMemoryRepository;
         _preferenceRepository = preferenceRepository;
+        _categoryRepository = categoryRepository;
         _placeRepository = placeRepository;
         _eventRepository = eventRepository;
         _geminiProvider = geminiProvider;
@@ -173,19 +176,60 @@ public class ChatService : IChatService
     private async Task<string> BuildSystemPromptAsync(Guid userId)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("Bạn là trợ lý du lịch AI thông minh cho hệ thống Du Lịch Địa Phương Việt Nam.");
-        sb.AppendLine("Nhiệm vụ: đề xuất địa điểm, sự kiện, hoạt động phù hợp với người dùng.");
-        sb.AppendLine("Quy tắc:");
-        sb.AppendLine("- Trả lời bằng tiếng Việt, thân thiện, ngắn gọn.");
-        sb.AppendLine("- Đề xuất dựa trên sở thích người dùng và dữ liệu thực có trong hệ thống.");
-        sb.AppendLine("- Khi đề xuất nhóm: phân tích từng sở thích và tìm hoạt động phù hợp cho tất cả.");
-        sb.AppendLine("- Nếu không có dữ liệu phù hợp, nói rõ và đề xuất thay thế.");
 
-        // Load user preferences
+        // === ROLE & IDENTITY ===
+        sb.AppendLine("=== VAI TRÒ ===");
+        sb.AppendLine("Bạn là trợ lý du lịch AI thông minh cho hệ thống Du Lịch Địa Phương Việt Nam.");
+        sb.AppendLine("Nhiệm vụ chính: đề xuất địa điểm, sự kiện, hoạt động du lịch phù hợp với người dùng dựa trên dữ liệu thực có trong hệ thống.");
+
+        // === RULES ===
+        sb.AppendLine();
+        sb.AppendLine("=== QUY TẮC ===");
+        sb.AppendLine("- Trả lời bằng tiếng Việt, thân thiện, ngắn gọn.");
+        sb.AppendLine("- CHỈ đề xuất địa điểm và sự kiện có trong phần [DỮ LIỆU HỆ THỐNG] bên dưới. KHÔNG bịa thông tin.");
+        sb.AppendLine("- Khi đề xuất, luôn kèm tên địa điểm, địa chỉ, và lý do phù hợp.");
+        sb.AppendLine("- Nếu không có dữ liệu phù hợp trong hệ thống, nói rõ và gợi ý người dùng thử tìm kiếm khác.");
+        sb.AppendLine("- Ưu tiên đề xuất địa điểm phù hợp sở thích người dùng.");
+
+        // === SCENARIOS ===
+        sb.AppendLine();
+        sb.AppendLine("=== KỊCH BẢN ===");
+        sb.AppendLine("1. ĐỀ XUẤT CÁ NHÂN: Khi người dùng hỏi gợi ý cho bản thân (VD: \"chiều nay tôi rảnh\", \"tôi muốn đi đâu đó\"):");
+        sb.AppendLine("   - Phân tích sở thích của người dùng (phần [SỞ THÍCH]).");
+        sb.AppendLine("   - Kết hợp thời gian hiện tại để đề xuất phù hợp (VD: buổi tối → quán cà phê, cuối tuần → du lịch biển).");
+        sb.AppendLine("   - Đề xuất 2-3 lựa chọn kèm lý do.");
+        sb.AppendLine();
+        sb.AppendLine("2. ĐỀ XUẤT NHÓM: Khi người dùng hỏi gợi ý cho nhiều người có sở thích khác nhau:");
+        sb.AppendLine("   - Phân tích sở thích từng thành viên trong nhóm.");
+        sb.AppendLine("   - Tìm điểm chung hoặc địa điểm có nhiều hoạt động đáp ứng nhiều sở thích.");
+        sb.AppendLine("   - VD: Người A thích biển, Người B thích leo núi → đề xuất khu sinh thái có cả biển và hoạt động ngoài trời.");
+        sb.AppendLine("   - Giải thích lý do lựa chọn phù hợp cho cả nhóm.");
+
+        // === USER CONTEXT ===
+        sb.AppendLine();
+        sb.AppendLine("=== NGỮ CẢNH NGƯỜI DÙNG ===");
+        sb.AppendLine($"Thời gian hiện tại: {DateTime.Now:dddd, dd/MM/yyyy HH:mm}");
+
+        // Load categories for name lookup
+        var allCategories = await _categoryRepository.FindAsync(c => c.IsActive);
+        var categoryLookup = allCategories.ToDictionary(c => c.Id, c => c.Name);
+
+        // Load user preferences — enrich to category names
         var preference = await _preferenceRepository.FindOneAsync(p => p.UserId == userId);
         if (preference != null && preference.CategoryIds.Any())
         {
-            sb.AppendLine($"\nSở thích người dùng (category IDs): {string.Join(", ", preference.CategoryIds)}");
+            var categoryNames = preference.CategoryIds
+                .Where(id => categoryLookup.ContainsKey(id))
+                .Select(id => categoryLookup[id])
+                .ToList();
+
+            sb.AppendLine(categoryNames.Any()
+                ? $"Sở thích người dùng: {string.Join(", ", categoryNames)}"
+                : "Sở thích người dùng: chưa có thông tin.");
+        }
+        else
+        {
+            sb.AppendLine("Sở thích người dùng: chưa có thông tin.");
         }
 
         // Load context memory (latest summary)
@@ -193,35 +237,71 @@ public class ChatService : IChatService
         var latestMemory = contextMemories.OrderByDescending(m => m.UpdatedAt).FirstOrDefault();
         if (latestMemory != null)
         {
-            sb.AppendLine($"\nTóm tắt ngữ cảnh trước đó: {latestMemory.Summary}");
+            sb.AppendLine($"Tóm tắt ngữ cảnh trước đó: {latestMemory.Summary}");
             if (latestMemory.KeyFacts.Any())
-                sb.AppendLine($"Các sự kiện quan trọng: {string.Join("; ", latestMemory.KeyFacts)}");
+                sb.AppendLine($"Các thông tin quan trọng: {string.Join("; ", latestMemory.KeyFacts)}");
         }
 
-        // Load grounding data — approved places and events
-        var places = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
-        var events = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
+        // === AVAILABLE DATA ===
+        sb.AppendLine();
+        sb.AppendLine("=== DỮ LIỆU HỆ THỐNG ===");
 
+        // Places — approved only, with category names and description
+        var places = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
         var placeSample = places.Take(20).ToList();
-        var eventSample = events.Take(10).ToList();
 
         if (placeSample.Any())
         {
-            sb.AppendLine("\nDữ liệu địa điểm trong hệ thống:");
+            sb.AppendLine();
+            sb.AppendLine("[ĐỊA ĐIỂM]");
             foreach (var p in placeSample)
             {
-                sb.AppendLine($"- {p.Name}: {p.Description.Take(100).ToArray().Length} ký tự | Địa chỉ: {p.Address} | Tags: {string.Join(", ", p.Tags)}");
+                var desc = p.Description.Length > 100 ? p.Description[..100] + "..." : p.Description;
+                var cats = p.CategoryIds
+                    .Where(id => categoryLookup.ContainsKey(id))
+                    .Select(id => categoryLookup[id]);
+                var catStr = string.Join(", ", cats);
+
+                var parts = new List<string> { $"- {p.Name}" };
+                if (!string.IsNullOrWhiteSpace(catStr)) parts.Add($"Loại: {catStr}");
+                if (!string.IsNullOrWhiteSpace(desc)) parts.Add($"Mô tả: {desc}");
+                parts.Add($"Địa chỉ: {p.Address}");
+                if (p.Latitude.HasValue && p.Longitude.HasValue) parts.Add($"Tọa độ: {p.Latitude}, {p.Longitude}");
+                if (p.Tags.Any()) parts.Add($"Tags: {string.Join(", ", p.Tags)}");
+                sb.AppendLine(string.Join(" | ", parts));
             }
         }
+        else
+        {
+            sb.AppendLine("[ĐỊA ĐIỂM] Không có dữ liệu.");
+        }
+
+        // Events — approved only, with status
+        var events = await _eventRepository.FindAsync(e =>
+            e.ModerationStatus == ModerationStatus.Approved && e.EventStatus != EventStatus.Ended);
+        var eventSample = events.Take(10).ToList();
 
         if (eventSample.Any())
         {
-            sb.AppendLine("\nSự kiện sắp tới:");
+            sb.AppendLine();
+            sb.AppendLine("[SỰ KIỆN]");
             foreach (var e in eventSample)
             {
-                sb.AppendLine($"- {e.Title}: {e.StartAt:dd/MM/yyyy} - {e.EndAt:dd/MM/yyyy} | {e.Address}");
+                var status = e.EventStatus == EventStatus.Ongoing ? "Đang diễn ra" : "Sắp diễn ra";
+                sb.AppendLine($"- {e.Title} | Trạng thái: {status} | {e.StartAt:dd/MM/yyyy} - {e.EndAt:dd/MM/yyyy} | Địa chỉ: {e.Address}");
             }
         }
+        else
+        {
+            sb.AppendLine("[SỰ KIỆN] Không có dữ liệu.");
+        }
+
+        // === CONSTRAINTS ===
+        sb.AppendLine();
+        sb.AppendLine("=== RÀNG BUỘC ===");
+        sb.AppendLine("- KHÔNG được bịa địa điểm hoặc sự kiện không có trong dữ liệu hệ thống.");
+        sb.AppendLine("- Nếu người dùng hỏi ngoài phạm vi du lịch, lịch sự từ chối và hướng về chủ đề du lịch.");
+        sb.AppendLine("- Trả lời ngắn gọn, có cấu trúc, dễ đọc.");
 
         return sb.ToString();
     }

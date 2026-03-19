@@ -34,7 +34,7 @@ public class AdminUserService : IAdminUserService
     {
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null)
-            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         user.Status = UserStatus.Locked;
         await _userRepository.UpdateAsync(user);
@@ -45,10 +45,24 @@ public class AdminUserService : IAdminUserService
     {
         var user = await _userRepository.GetByIdAsync(userId);
         if (user == null)
-            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound);
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         user.Status = UserStatus.Active;
         await _userRepository.UpdateAsync(user);
         return Result.Ok("User unlocked successfully");
+    }
+
+    public async Task<Result> ApproveUserAsync(Guid userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+
+        if (user.Status != UserStatus.PendingApproval)
+            return Result.Fail("User is not pending approval");
+
+        user.Status = UserStatus.Active;
+        await _userRepository.UpdateAsync(user);
+        return Result.Ok("User approved successfully");
     }
 }

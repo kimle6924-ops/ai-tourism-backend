@@ -36,7 +36,7 @@ Mọi entity kế thừa `BaseEntity`:
 | avatar_url | string | | URL ảnh đại diện |
 | role | string (enum) | index | Admin / Contributor / User |
 | administrative_unit_id | Guid? | index | Đơn vị hành chính (cho Contributor) |
-| status | string (enum) | index | Active / Locked |
+| status | string (enum) | index | Active / Locked / PendingApproval |
 | refresh_token | string? | | JWT refresh token |
 | refresh_token_expiry_time | DateTime? | | Thời hạn refresh token |
 
@@ -74,6 +74,8 @@ Mọi entity kế thừa `BaseEntity`:
 | address | string | | Địa chỉ |
 | administrative_unit_id | Guid | index | FK → administrative_units |
 | category_ids | Guid[] | | Danh mục (PostgreSQL array) |
+| latitude | double? | | Vĩ độ (nullable) |
+| longitude | double? | | Kinh độ (nullable) |
 | tags | text[] | | Tags tìm kiếm (PostgreSQL array) |
 | moderation_status | string (enum) | index | Pending / Approved / Rejected |
 | created_by | Guid | | FK → users |
@@ -89,6 +91,8 @@ Mọi entity kế thừa `BaseEntity`:
 | address | string | | Địa chỉ |
 | administrative_unit_id | Guid | index | FK → administrative_units |
 | category_ids | Guid[] | | Danh mục (PostgreSQL array) |
+| latitude | double? | | Vĩ độ (nullable) |
+| longitude | double? | | Kinh độ (nullable) |
 | tags | text[] | | Tags tìm kiếm (PostgreSQL array) |
 | start_at | DateTime | index | Thời gian bắt đầu |
 | end_at | DateTime | index | Thời gian kết thúc |

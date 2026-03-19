@@ -53,6 +53,10 @@ public class AuthService : IAuthService
         if (existingUser != null)
             return Result.Fail<AuthResponse>(AppConstants.Auth.EmailAlreadyExists, StatusCodes.Status409Conflict, AppConstants.ErrorCodes.EmailAlreadyExists);
 
+        // Nếu không phải Contributor thì bỏ qua AdministrativeUnitId
+        if (role != UserRole.Contributor)
+            request.AdministrativeUnitId = null;
+
         // Kiểm tra AdministrativeUnitId tồn tại nếu là Contributor
         if (role == UserRole.Contributor)
         {

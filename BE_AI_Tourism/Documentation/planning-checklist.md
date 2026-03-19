@@ -112,6 +112,29 @@ Danh sach checklist cac phan can ra soat va hoan thien trong he thong.
 - [ ] Bo sung test case cho de xuat ca nhan, de xuat nhom, khong co preference, khong co data, stream bi ngat
 - [ ] Cap nhat tai lieu neu thay doi payload/behavior cua AI Chat
 
+#### System Prompt / Base Prompt
+- [ ] Fix bug `Description.Take(100).ToArray().Length` — hien tai chi tra ve so luong ky tu, khong tra noi dung description thuc te
+- [ ] Enrich `CategoryIds` thanh ten category trong system prompt thay vi gui GUID vo nghia cho AI
+- [ ] Them thong tin category/loai hinh cua Place vao grounding data de AI biet place nao la bien, nha hang, cafe...
+- [ ] Them ngay gio hien tai vao system prompt de AI hieu ngu canh thoi gian (VD: "chieu nay toi ranh")
+- [ ] Them toa do GPS cua user vao system prompt (neu frontend gui vi tri) de AI de xuat "gan ban"
+- [ ] Cau truc lai base prompt thanh cac section ro rang: Role, Rules, Scenarios, User Context, Available Data, Constraints
+- [ ] Bo sung huong dan cu the cho kich ban "de xuat nhom" trong prompt: phan tich tung so thich, tim diem chung, de xuat hoat dong phu hop tat ca
+- [ ] Xem xet gioi han 20 places co du khong, co can filter theo so thich user truoc khi gui cho AI
+- [ ] Xac dinh co can gui them thong tin review/rating cua place de AI uu tien dia diem chat luong cao
+- [ ] Xac dinh co can gui event status (dang dien ra / sap dien ra / da ket thuc) de AI chi de xuat event con hieu luc
+
+#### Test API cho Base Prompt
+- [ ] Su dung `POST /api/geminitest/test-prompt` de test thu system prompt moi voi fake data
+- [ ] Test kich ban 1 — De xuat ca nhan: gui so thich + hoi "chieu nay toi ranh" → kiem tra AI co de xuat dung theo so thich va thoi gian
+- [ ] Test kich ban 2 — De xuat nhom: gui so thich nhieu nguoi khac nhau → kiem tra AI co tim diem chung va de xuat hop ly
+- [ ] Test khi khong co so thich → AI van tra loi hop ly, khong crash
+- [ ] Test khi khong co dia diem/su kien → AI noi ro "khong co du lieu" thay vi bia
+- [ ] Test khi co GPS → AI co uu tien dia diem gan khong
+- [ ] Test AI co bia dia diem ngoai du lieu he thong khong (phai tu choi)
+- [ ] Test AI co tu choi cau hoi ngoai pham vi du lich khong
+- [ ] Sau khi chot prompt, ap dung vao `ChatService.BuildSystemPromptAsync()` chinh thuc
+
 ### Admin Dashboard / Stats
 - [ ] Doi chieu yeu cau thong ke trong `VanDe.txt` voi endpoint `GET /api/admin/stats/overview` hien tai
 - [ ] Xac nhan bo chi so hien tai da du cho Admin hay chua: users, places, events, reviews, media, chat

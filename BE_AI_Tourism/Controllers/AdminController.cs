@@ -1,4 +1,5 @@
 using BE_AI_Tourism.Application.Services.Admin;
+using BE_AI_Tourism.Application.DTOs.Admin;
 using BE_AI_Tourism.Shared.Pagination;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -48,9 +49,9 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("stats/overview")]
-    public async Task<IActionResult> GetStatsOverview()
+    public async Task<IActionResult> GetStatsOverview([FromQuery] StatsOverviewQueryRequest request)
     {
-        var result = await _adminStatsService.GetOverviewAsync();
+        var result = await _adminStatsService.GetOverviewAsync(request.FromUtc, request.ToUtc);
         return StatusCode(result.StatusCode, result);
     }
 }

@@ -33,7 +33,29 @@ Danh sách các API endpoints trong hệ thống.
 | PATCH | `/api/admin/users/{id}/lock` | Khóa tài khoản user | Admin |
 | PATCH | `/api/admin/users/{id}/unlock` | Mở khóa tài khoản user | Admin |
 | PATCH | `/api/admin/users/{id}/approve` | Duyệt tài khoản Contributor (PendingApproval → Active) | Admin |
-| GET | `/api/admin/stats/overview` | Thống kê tổng quan hệ thống | Admin |
+| GET | `/api/admin/stats/overview` | Thống kê tổng quan + time-series theo ngày (`fromUtc`, `toUtc`) | Admin |
+
+**Query params cho `/api/admin/stats/overview`:**
+- `fromUtc` (optional, ISO-8601 UTC): mặc định `now - 29 days`
+- `toUtc` (optional, ISO-8601 UTC): mặc định `now`
+
+**Response chính:**
+- `users`: total, by role, by status
+- `places`, `events`: total + breakdown moderation status (và `events` có thêm breakdown event status)
+- `reviews`: total, by status, `averageRating`
+- `moderation`: pending places/events + total pending workload
+- `chat`: total conversations/messages + số mới trong range
+- `content`: categories, administrative units, media assets, total media bytes
+- `timeSeries`: daily count cho users/places/events/reviews trong khoảng thời gian yêu cầu
+
+**Error cases:**
+- `400 BAD_REQUEST`: `fromUtc > toUtc`
+
+**Manual test cases (Admin Stats):**
+- DB rỗng: tất cả số liệu = `0`, `timeSeries` vẫn trả đủ các ngày trong range với `count = 0`.
+- Dữ liệu lớn: seed số lượng lớn users/places/events/reviews/messages, đảm bảo endpoint phản hồi ổn định và không timeout.
+- Nhiều trạng thái: có đủ `UserStatus`, `ModerationStatus`, `EventStatus`, `ReviewStatus`, kiểm tra breakdown map đúng key và đúng số lượng.
+- Range custom: gọi với `fromUtc/toUtc` cụ thể, xác nhận `timeSeries` chỉ nằm trong range và `chat.*InRange` đúng.
 
 ---
 

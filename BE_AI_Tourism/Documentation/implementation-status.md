@@ -70,7 +70,7 @@ Trạng thái các tính năng trong hệ thống.
 | Media Cloudinary (Phase 5) | Done | Upload signature/finalize, set-primary, reorder, delete |
 | Review + Discovery (Phase 6) | Done | CRUD review (upsert), search/filter places+events |
 | AI Chat (Phase 7) | Done | Gemini streaming SSE + context memory (summary + key facts) |
-| Admin Stats (Phase 8) | In Progress | Overview API đã có endpoint/service, còn tối ưu hiệu năng + mở rộng chỉ số |
+| Admin Stats (Phase 8) | Done | Overview + daily time-series, aggregate query tối ưu DB-side |
 | Docs + Hardening (Phase 9) | Not Started | Swagger, rate limit, logging |
 
 ---
@@ -120,18 +120,18 @@ Trạng thái các tính năng trong hệ thống.
 - Phase 5 Media Cloudinary: hoàn thành.
 - Phase 6 Review + Discovery: hoàn thành.
 - Phase 7 AI Chat: hoàn thành.
-- Phase 8 Admin Stats: đang triển khai endpoint tổng quan.
+- Phase 8 Admin Stats: đã hoàn thiện overview + time-series và tối ưu truy vấn aggregate.
 
 ## Phase 8: Admin Stats
 
 | Tính năng | Trạng thái | Ghi chú |
 |-----------|-----------|---------|
-| Stats DTOs | Done | `StatsOverviewResponse`, `UserStats`, `PlaceStats`, `EventStats`, `ReviewStats`, `ChatStats`, `ContentStats` |
-| AdminStatsService | Done | Tổng hợp số liệu users/places/events/reviews/chat/content |
+| Stats DTOs | Done | Bổ sung `StatsRange`, `ModerationStats`, `TimeSeriesStats`, `DailyCountPoint`, query DTO `StatsOverviewQueryRequest` |
+| AdminStatsService | Done | Aggregate query DB-side (COUNT/GROUP BY/AVG), không load full bảng vào memory |
 | IAdminStatsService | Done | Contract cho stats service |
-| AdminController endpoint | Done | `GET /api/admin/stats/overview` (Admin only) |
+| AdminController endpoint | Done | `GET /api/admin/stats/overview` (Admin only) hỗ trợ `fromUtc`, `toUtc` |
 | DI registration | Done | `IAdminStatsService -> AdminStatsService` |
-| Query optimization | Planned | Hiện tại dùng `GetAllAsync()` cho từng bảng, cần tối ưu bằng aggregate query |
+| Query optimization | Done | Đã thay `GetAllAsync()` bằng aggregate query trực tiếp trên `AppDbContext` |
 
 ## Phase 7: AI Chat
 

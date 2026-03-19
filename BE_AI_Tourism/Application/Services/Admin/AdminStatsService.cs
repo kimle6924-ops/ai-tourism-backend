@@ -1,104 +1,233 @@
 using BE_AI_Tourism.Application.DTOs.Admin;
 using BE_AI_Tourism.Domain.Enums;
-using BE_AI_Tourism.Domain.Interfaces;
+using BE_AI_Tourism.Infrastructure.Database;
+using BE_AI_Tourism.Shared.Constants;
 using BE_AI_Tourism.Shared.Core;
+using Microsoft.EntityFrameworkCore;
 
 namespace BE_AI_Tourism.Application.Services.Admin;
 
 public class AdminStatsService : IAdminStatsService
 {
-    private readonly IRepository<Domain.Entities.User> _userRepository;
-    private readonly IRepository<Domain.Entities.Place> _placeRepository;
-    private readonly IRepository<Domain.Entities.Event> _eventRepository;
-    private readonly IRepository<Domain.Entities.Review> _reviewRepository;
-    private readonly IRepository<Domain.Entities.AiConversation> _conversationRepository;
-    private readonly IRepository<Domain.Entities.AiMessage> _messageRepository;
-    private readonly IRepository<Domain.Entities.Category> _categoryRepository;
-    private readonly IRepository<Domain.Entities.AdministrativeUnit> _adminUnitRepository;
-    private readonly IRepository<Domain.Entities.MediaAsset> _mediaRepository;
+    private readonly AppDbContext _dbContext;
 
-    public AdminStatsService(
-        IRepository<Domain.Entities.User> userRepository,
-        IRepository<Domain.Entities.Place> placeRepository,
-        IRepository<Domain.Entities.Event> eventRepository,
-        IRepository<Domain.Entities.Review> reviewRepository,
-        IRepository<Domain.Entities.AiConversation> conversationRepository,
-        IRepository<Domain.Entities.AiMessage> messageRepository,
-        IRepository<Domain.Entities.Category> categoryRepository,
-        IRepository<Domain.Entities.AdministrativeUnit> adminUnitRepository,
-        IRepository<Domain.Entities.MediaAsset> mediaRepository)
+    public AdminStatsService(AppDbContext dbContext)
     {
-        _userRepository = userRepository;
-        _placeRepository = placeRepository;
-        _eventRepository = eventRepository;
-        _reviewRepository = reviewRepository;
-        _conversationRepository = conversationRepository;
-        _messageRepository = messageRepository;
-        _categoryRepository = categoryRepository;
-        _adminUnitRepository = adminUnitRepository;
-        _mediaRepository = mediaRepository;
+        _dbContext = dbContext;
     }
 
-    public async Task<Result<StatsOverviewResponse>> GetOverviewAsync()
+    public async Task<Result<StatsOverviewResponse>> GetOverviewAsync(DateTime? fromUtc = null, DateTime? toUtc = null)
     {
-        var users = (await _userRepository.GetAllAsync()).ToList();
-        var places = (await _placeRepository.GetAllAsync()).ToList();
-        var events = (await _eventRepository.GetAllAsync()).ToList();
-        var reviews = (await _reviewRepository.GetAllAsync()).ToList();
-        var conversations = (await _conversationRepository.GetAllAsync()).ToList();
-        var messages = (await _messageRepository.GetAllAsync()).ToList();
-        var categories = (await _categoryRepository.GetAllAsync()).ToList();
-        var adminUnits = (await _adminUnitRepository.GetAllAsync()).ToList();
-        var media = (await _mediaRepository.GetAllAsync()).ToList();
+        var (rangeFromUtc, rangeToUtc) = ResolveRange(fromUtc, toUtc);
+        if (rangeFromUtc > rangeToUtc)
+        {
+            return Result.Fail<StatsOverviewResponse>(
+                "fromUtc must be less than or equal to toUtc",
+                StatusCodes.Status400BadRequest,
+                AppConstants.ErrorCodes.BadRequest);
+        }
 
-        var activeReviews = reviews.Where(r => r.Status == ReviewStatus.Active).ToList();
+        var rangeEndExclusiveUtc = rangeToUtc.Date.AddDays(1);
+
+        // Aggregate metrics (DB-side COUNT/GROUP BY/AVG)
+        var totalUsers = await _dbContext.Users.AsNoTracking().CountAsync();
+        var usersByRoleRows = await _dbContext.Users.AsNoTracking()
+            .GroupBy(u => u.Role)
+            .Select(g => new { Value = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var usersByStatusRows = await _dbContext.Users.AsNoTracking()
+            .GroupBy(u => u.Status)
+            .Select(g => new { Value = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var totalPlaces = await _dbContext.Places.AsNoTracking().CountAsync();
+        var placesByModerationRows = await _dbContext.Places.AsNoTracking()
+            .GroupBy(p => p.ModerationStatus)
+            .Select(g => new { Value = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var totalEvents = await _dbContext.Events.AsNoTracking().CountAsync();
+        var eventsByModerationRows = await _dbContext.Events.AsNoTracking()
+            .GroupBy(e => e.ModerationStatus)
+            .Select(g => new { Value = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var eventsByStatusRows = await _dbContext.Events.AsNoTracking()
+            .GroupBy(e => e.EventStatus)
+            .Select(g => new { Value = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var totalReviews = await _dbContext.Reviews.AsNoTracking().CountAsync();
+        var reviewsByStatusRows = await _dbContext.Reviews.AsNoTracking()
+            .GroupBy(r => r.Status)
+            .Select(g => new { Value = g.Key, Count = g.Count() })
+            .ToListAsync();
+        var avgActiveRating = await _dbContext.Reviews.AsNoTracking()
+            .Where(r => r.Status == ReviewStatus.Active)
+            .Select(r => (double?)r.Rating)
+            .AverageAsync() ?? 0d;
+
+        var totalConversations = await _dbContext.AiConversations.AsNoTracking().CountAsync();
+        var totalMessages = await _dbContext.AiMessages.AsNoTracking().CountAsync();
+
+        var totalCategories = await _dbContext.Categories.AsNoTracking().CountAsync();
+        var totalAdministrativeUnits = await _dbContext.AdministrativeUnits.AsNoTracking().CountAsync();
+        var totalMediaAssets = await _dbContext.MediaAssets.AsNoTracking().CountAsync();
+        var totalMediaBytes = await _dbContext.MediaAssets.AsNoTracking()
+            .Select(m => (long?)m.Bytes)
+            .SumAsync() ?? 0L;
+
+        // Daily time-series in selected range
+        var usersSeries = await BuildDailySeriesAsync(_dbContext.Users.AsNoTracking(), rangeFromUtc, rangeEndExclusiveUtc);
+        var placesSeries = await BuildDailySeriesAsync(_dbContext.Places.AsNoTracking(), rangeFromUtc, rangeEndExclusiveUtc);
+        var eventsSeries = await BuildDailySeriesAsync(_dbContext.Events.AsNoTracking(), rangeFromUtc, rangeEndExclusiveUtc);
+        var reviewsSeries = await BuildDailySeriesAsync(_dbContext.Reviews.AsNoTracking(), rangeFromUtc, rangeEndExclusiveUtc);
+
+        var newConversationsInRange = await _dbContext.AiConversations.AsNoTracking()
+            .CountAsync(c => c.CreatedAt >= rangeFromUtc && c.CreatedAt < rangeEndExclusiveUtc);
+        var newMessagesInRange = await _dbContext.AiMessages.AsNoTracking()
+            .CountAsync(m => m.CreatedAt >= rangeFromUtc && m.CreatedAt < rangeEndExclusiveUtc);
+
+        var userRoleMap = BuildEnumMap(Enum.GetValues<UserRole>(), usersByRoleRows.Select(x => (x.Value, x.Count)));
+        var userStatusMap = BuildEnumMap(Enum.GetValues<UserStatus>(), usersByStatusRows.Select(x => (x.Value, x.Count)));
+        var placeModerationMap = BuildEnumMap(Enum.GetValues<ModerationStatus>(), placesByModerationRows.Select(x => (x.Value, x.Count)));
+        var eventModerationMap = BuildEnumMap(Enum.GetValues<ModerationStatus>(), eventsByModerationRows.Select(x => (x.Value, x.Count)));
+        var eventStatusMap = BuildEnumMap(Enum.GetValues<EventStatus>(), eventsByStatusRows.Select(x => (x.Value, x.Count)));
+        var reviewStatusMap = BuildEnumMap(Enum.GetValues<ReviewStatus>(), reviewsByStatusRows.Select(x => (x.Value, x.Count)));
 
         var response = new StatsOverviewResponse
         {
+            GeneratedAtUtc = DateTime.UtcNow,
+            Range = new StatsRange
+            {
+                FromUtc = rangeFromUtc,
+                ToUtc = rangeToUtc,
+                Granularity = "day"
+            },
             Users = new UserStats
             {
-                Total = users.Count,
-                Admins = users.Count(u => u.Role == UserRole.Admin),
-                Contributors = users.Count(u => u.Role == UserRole.Contributor),
-                RegularUsers = users.Count(u => u.Role == UserRole.User),
-                Active = users.Count(u => u.Status == UserStatus.Active),
-                Locked = users.Count(u => u.Status == UserStatus.Locked)
+                Total = totalUsers,
+                Admins = userRoleMap[UserRole.Admin.ToString()],
+                Contributors = userRoleMap[UserRole.Contributor.ToString()],
+                RegularUsers = userRoleMap[UserRole.User.ToString()],
+                Active = userStatusMap[UserStatus.Active.ToString()],
+                Locked = userStatusMap[UserStatus.Locked.ToString()],
+                PendingApproval = userStatusMap[UserStatus.PendingApproval.ToString()],
+                ByRole = userRoleMap,
+                ByStatus = userStatusMap
             },
             Places = new PlaceStats
             {
-                Total = places.Count,
-                Pending = places.Count(p => p.ModerationStatus == ModerationStatus.Pending),
-                Approved = places.Count(p => p.ModerationStatus == ModerationStatus.Approved),
-                Rejected = places.Count(p => p.ModerationStatus == ModerationStatus.Rejected)
+                Total = totalPlaces,
+                Pending = placeModerationMap[ModerationStatus.Pending.ToString()],
+                Approved = placeModerationMap[ModerationStatus.Approved.ToString()],
+                Rejected = placeModerationMap[ModerationStatus.Rejected.ToString()],
+                ByModerationStatus = placeModerationMap
             },
             Events = new EventStats
             {
-                Total = events.Count,
-                Pending = events.Count(e => e.ModerationStatus == ModerationStatus.Pending),
-                Approved = events.Count(e => e.ModerationStatus == ModerationStatus.Approved),
-                Rejected = events.Count(e => e.ModerationStatus == ModerationStatus.Rejected),
-                Upcoming = events.Count(e => e.EventStatus == EventStatus.Upcoming),
-                Ongoing = events.Count(e => e.EventStatus == EventStatus.Ongoing),
-                Ended = events.Count(e => e.EventStatus == EventStatus.Ended)
+                Total = totalEvents,
+                Pending = eventModerationMap[ModerationStatus.Pending.ToString()],
+                Approved = eventModerationMap[ModerationStatus.Approved.ToString()],
+                Rejected = eventModerationMap[ModerationStatus.Rejected.ToString()],
+                Upcoming = eventStatusMap[EventStatus.Upcoming.ToString()],
+                Ongoing = eventStatusMap[EventStatus.Ongoing.ToString()],
+                Ended = eventStatusMap[EventStatus.Ended.ToString()],
+                ByModerationStatus = eventModerationMap,
+                ByEventStatus = eventStatusMap
             },
             Reviews = new ReviewStats
             {
-                Total = activeReviews.Count,
-                AverageRating = activeReviews.Any() ? Math.Round(activeReviews.Average(r => r.Rating), 2) : 0
+                Total = totalReviews,
+                Active = reviewStatusMap[ReviewStatus.Active.ToString()],
+                Hidden = reviewStatusMap[ReviewStatus.Hidden.ToString()],
+                Deleted = reviewStatusMap[ReviewStatus.Deleted.ToString()],
+                AverageRating = Math.Round(avgActiveRating, 2),
+                ByStatus = reviewStatusMap
+            },
+            Moderation = new ModerationStats
+            {
+                PendingPlaces = placeModerationMap[ModerationStatus.Pending.ToString()],
+                PendingEvents = eventModerationMap[ModerationStatus.Pending.ToString()],
+                TotalPending = placeModerationMap[ModerationStatus.Pending.ToString()] + eventModerationMap[ModerationStatus.Pending.ToString()]
             },
             Chat = new ChatStats
             {
-                TotalConversations = conversations.Count,
-                TotalMessages = messages.Count
+                TotalConversations = totalConversations,
+                TotalMessages = totalMessages,
+                NewConversationsInRange = newConversationsInRange,
+                NewMessagesInRange = newMessagesInRange
             },
             Content = new ContentStats
             {
-                Categories = categories.Count,
-                AdministrativeUnits = adminUnits.Count,
-                MediaAssets = media.Count
+                Categories = totalCategories,
+                AdministrativeUnits = totalAdministrativeUnits,
+                MediaAssets = totalMediaAssets,
+                TotalMediaBytes = totalMediaBytes
+            },
+            TimeSeries = new TimeSeriesStats
+            {
+                Users = usersSeries,
+                Places = placesSeries,
+                Events = eventsSeries,
+                Reviews = reviewsSeries
             }
         };
 
         return Result.Ok(response);
+    }
+
+    private static Dictionary<string, int> BuildEnumMap<TEnum>(
+        IEnumerable<TEnum> enumValues,
+        IEnumerable<(TEnum Value, int Count)> rows) where TEnum : struct, Enum
+    {
+        var map = enumValues.ToDictionary(v => v.ToString(), _ => 0);
+        foreach (var row in rows)
+            map[row.Value.ToString()] = row.Count;
+        return map;
+    }
+
+    private static async Task<List<DailyCountPoint>> BuildDailySeriesAsync<TEntity>(
+        IQueryable<TEntity> query,
+        DateTime fromUtcInclusive,
+        DateTime toUtcExclusive) where TEntity : BaseEntity
+    {
+        var rows = await query
+            .Where(e => e.CreatedAt >= fromUtcInclusive && e.CreatedAt < toUtcExclusive)
+            .GroupBy(e => e.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToListAsync();
+
+        var countByDate = rows.ToDictionary(x => DateOnly.FromDateTime(x.Date), x => x.Count);
+        var result = new List<DailyCountPoint>();
+        var from = DateOnly.FromDateTime(fromUtcInclusive);
+        var to = DateOnly.FromDateTime(toUtcExclusive.AddDays(-1));
+
+        for (var day = from; day <= to; day = day.AddDays(1))
+        {
+            result.Add(new DailyCountPoint
+            {
+                Date = day,
+                Count = countByDate.GetValueOrDefault(day, 0)
+            });
+        }
+
+        return result;
+    }
+
+    private static (DateTime fromUtc, DateTime toUtc) ResolveRange(DateTime? fromUtc, DateTime? toUtc)
+    {
+        var resolvedTo = EnsureUtc(toUtc ?? DateTime.UtcNow);
+        var resolvedFrom = EnsureUtc(fromUtc ?? resolvedTo.AddDays(-29));
+        return (resolvedFrom.Date, resolvedTo.Date);
+    }
+
+    private static DateTime EnsureUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
     }
 }

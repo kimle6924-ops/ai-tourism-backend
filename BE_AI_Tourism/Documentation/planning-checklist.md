@@ -198,15 +198,15 @@ Danh sach checklist cac phan can ra soat va hoan thien trong he thong.
 ---
 
 ### Admin Dashboard / Stats
-- [ ] Doi chieu yeu cau thong ke trong `VanDe.txt` voi endpoint `GET /api/admin/stats/overview` hien tai
-- [ ] Xac nhan bo chi so hien tai da du cho Admin hay chua: users, places, events, reviews, media, chat
-- [ ] Bo sung checklist cho cac chi so Admin can theo doi theo mo ta goc: so luong nguoi dung, dia diem, luot danh gia
-- [ ] Xac dinh co can tach thong ke tong quan va thong ke theo thoi gian
-- [ ] Xac dinh co can thong ke theo trang thai duyet, theo vai tro user, theo don vi hanh chinh
-- [ ] Kiem tra `AdminStatsService` hien tai dang dung `GetAllAsync()` cho tung bang va danh dau can toi uu aggregate query
-- [ ] Xac dinh co can them chi so cho moderation workload, media usage, chat usage
-- [ ] Bo sung test case cho dashboard khi database rong, du lieu lon, va du lieu co nhieu trang thai
-- [ ] Cap nhat tai lieu API va implementation-status khi chot pham vi stats
+- [x] Doi chieu yeu cau thong ke trong `VanDe.txt` voi endpoint `GET /api/admin/stats/overview` hien tai — chot pham vi voi stakeholder: users/places/events/reviews/media/chat
+- [x] Xac nhan bo chi so hien tai da du cho Admin hay chua: users, places, events, reviews, media, chat — da bo sung breakdown day du
+- [x] Bo sung checklist cho cac chi so Admin can theo doi theo mo ta goc: so luong nguoi dung, dia diem, luot danh gia — da co total + breakdown + average rating
+- [x] Xac dinh co can tach thong ke tong quan va thong ke theo thoi gian — da tach: overview + `timeSeries` theo ngay
+- [x] Xac dinh co can thong ke theo trang thai duyet, theo vai tro user, theo don vi hanh chinh — da lam role/status/moderation; chot KHONG thong ke theo don vi hanh chinh (phase sau)
+- [x] Kiem tra `AdminStatsService` hien tai dang dung `GetAllAsync()` cho tung bang va danh dau can toi uu aggregate query — da toi uu query DB-side
+- [x] Xac dinh co can them chi so cho moderation workload, media usage, chat usage — da bo sung `moderation`, `content.totalMediaBytes`, `chat.*InRange`
+- [x] Bo sung test case cho dashboard khi database rong, du lieu lon, va du lieu co nhieu trang thai — da bo sung test cases manual trong tai lieu endpoint stats
+- [x] Cap nhat tai lieu API va implementation-status khi chot pham vi stats
 
 ### Discovery / Recommendation
 - [ ] Doi chieu chuc nang Discovery/Recommendation voi `VanDe.txt` (tim kiem, tra cuu, de xuat theo so thich, de xuat theo GPS)

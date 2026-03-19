@@ -5,5 +5,5 @@ namespace BE_AI_Tourism.Application.Services.Admin;
 
 public interface IAdminStatsService
 {
-    Task<Result<StatsOverviewResponse>> GetOverviewAsync();
+    Task<Result<StatsOverviewResponse>> GetOverviewAsync(DateTime? fromUtc = null, DateTime? toUtc = null);
 }

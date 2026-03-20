@@ -181,7 +181,7 @@ public static class ApiDocSections
         Lỗi: 404 nếu không tìm thấy. 403 nếu không có quyền.
 
         POST /api/places/seed — Admin
-        Tạo sẵn 8 place mẫu (khu vực Bản Cát Cát, Sa Pa), tự động Approved + tạo ảnh mặc định cho mỗi place. Bỏ qua nếu place cùng tên đã tồn tại (gọi nhiều lần không sao). Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu: phải seed admin (POST /api/dbtest/seed-admin) và seed categories (POST /api/categories/seed) trước khi gọi API này.
+        Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định cho mỗi place. Bỏ qua nếu place cùng tên đã tồn tại (gọi nhiều lần không sao). Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu: phải seed admin (POST /api/dbtest/seed-admin) và seed categories (POST /api/categories/seed) trước khi gọi API này.
         """;
 
     public static string Events() => """
@@ -330,7 +330,7 @@ public static class ApiDocSections
         ## Test / Dev — Public (chỉ dùng khi phát triển)
 
         GET /api/dbtest — test kết nối database
-        POST /api/dbtest/create-tables — tạo toàn bộ tables
+        POST /api/dbtest/create-tables — tạo toàn bộ tables (query reset=true để xóa schema cũ và tạo lại từ đầu)
         POST /api/dbtest/seed-admin — tạo admin mặc định (email: admin@aitourism.vn, password: admin123)
 
         POST /api/geminitests — Body: prompt* (string) → response (string)

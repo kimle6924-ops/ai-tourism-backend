@@ -68,7 +68,7 @@ public class PlaceController : ControllerBase
     }
 
     [HttpPost("seed")]
-    [Authorize(Roles = "Admin")]
+    [AllowAnonymous]
     public async Task<IActionResult> Seed()
     {
         var result = await _placeService.SeedAsync();

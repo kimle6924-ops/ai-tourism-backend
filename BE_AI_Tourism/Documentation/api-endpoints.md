@@ -148,7 +148,7 @@ Body: giống POST
 **DELETE `/{id}`** — Admin/Contributor (Admin xóa tất cả, Contributor chỉ xóa place mình tạo trong scope) → Result
 
 **POST `/seed`** — Admin
-Tạo sẵn 8 place mẫu (Bản Cát Cát, Sa Pa), tự động Approved + tạo ảnh mặc định. Bỏ qua nếu place cùng tên đã tồn tại. Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu đã seed admin và seed categories trước.
+Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định. Bỏ qua nếu place cùng tên đã tồn tại. Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu đã seed admin và seed categories trước.
 
 ---
 
@@ -275,7 +275,7 @@ Body: `content`* (string)
 
 **GET `/api/dbtest`** — No auth, test kết nối database
 
-**POST `/api/dbtest/create-tables`** — No auth, tạo toàn bộ tables
+**POST `/api/dbtest/create-tables`** — No auth, tạo toàn bộ tables (`?reset=true` để xóa schema cũ và tạo lại từ đầu)
 
 **POST `/api/dbtest/seed-admin`** — No auth, tạo admin mặc định (admin@aitourism.vn / admin123)
 

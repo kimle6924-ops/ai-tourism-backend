@@ -31,11 +31,24 @@ public class DbTestController : ControllerBase
     }
 
     [HttpPost("create-tables")]
-    public async Task<IActionResult> CreateTables()
+    public async Task<IActionResult> CreateTables([FromQuery] bool reset = false)
     {
+        if (reset)
+        {
+            await _context.Database.EnsureDeletedAsync();
+        }
+
         var created = await _context.Database.EnsureCreatedAsync();
-        var message = created ? "All tables created successfully" : "Tables already exist";
-        return Ok(Result.Ok<object>(new { Status = "OK", Message = message }));
+        var message = created
+            ? (reset ? "Database reset and all tables created successfully" : "All tables created successfully")
+            : "Tables already exist";
+
+        return Ok(Result.Ok<object>(new
+        {
+            Status = "OK",
+            Message = message,
+            Reset = reset
+        }));
     }
 
     [HttpPost("seed-admin")]

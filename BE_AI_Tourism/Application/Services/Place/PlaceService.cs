@@ -7,6 +7,7 @@ using BE_AI_Tourism.Shared.Constants;
 using BE_AI_Tourism.Shared.Core;
 using BE_AI_Tourism.Shared.Pagination;
 using MapsterMapper;
+using Npgsql;
 
 namespace BE_AI_Tourism.Application.Services.Place;
 
@@ -163,154 +164,238 @@ public class PlaceService : IPlaceService
 
     public async Task<Result<IEnumerable<PlaceResponse>>> SeedAsync()
     {
-        // Tìm admin user làm creator
-        var admin = await _userRepository.FindOneAsync(u => u.Role == UserRole.Admin);
-        if (admin == null)
-            return Result.Fail<IEnumerable<PlaceResponse>>("Chưa có tài khoản Admin. Hãy seed admin trước.", StatusCodes.Status400BadRequest, "NO_ADMIN");
-
-        // Tìm hoặc tạo đơn vị hành chính: Sa Pa, Lào Cai
-        var laoCai = await _adminUnitRepository.FindOneAsync(u => u.Code == "lao-cai");
-        if (laoCai == null)
+        try
         {
-            laoCai = new AdministrativeUnit { Name = "Lào Cai", Level = AdministrativeLevel.Province, Code = "lao-cai" };
-            await _adminUnitRepository.AddAsync(laoCai);
-        }
+            // Tìm admin user làm creator
+            var allUsers = await _userRepository.GetAllAsync();
+            var admin = allUsers.FirstOrDefault(u => u.Role == UserRole.Admin);
+            if (admin == null)
+                return Result.Fail<IEnumerable<PlaceResponse>>("Chưa có tài khoản Admin. Hãy seed admin trước.", StatusCodes.Status400BadRequest, "NO_ADMIN");
 
-        var saPa = await _adminUnitRepository.FindOneAsync(u => u.Code == "sa-pa");
-        if (saPa == null)
-        {
-            saPa = new AdministrativeUnit { Name = "Sa Pa", Level = AdministrativeLevel.Ward, Code = "sa-pa", ParentId = laoCai.Id };
-            await _adminUnitRepository.AddAsync(saPa);
-        }
-
-        // Tìm category IDs theo slug
-        var vanHoaLichSu = await _categoryRepository.FindOneAsync(c => c.Slug == "van-hoa-lich-su");
-        var duLichSinhThai = await _categoryRepository.FindOneAsync(c => c.Slug == "du-lich-sinh-thai");
-        var checkInSongAo = await _categoryRepository.FindOneAsync(c => c.Slug == "check-in-song-ao");
-        var trekkingKhamPha = await _categoryRepository.FindOneAsync(c => c.Slug == "trekking-kham-pha");
-        var thienNhien = await _categoryRepository.FindOneAsync(c => c.Slug == "thien-nhien");
-        var chillThuGian = await _categoryRepository.FindOneAsync(c => c.Slug == "chill-thu-gian");
-
-        var defaultImage = "https://res.cloudinary.com/dhwljelir/image/upload/v1773759088/samples/chair.png";
-
-        var seedData = new List<(string Name, string Desc, string Address, double Lat, double Lng, List<Guid> CatIds, List<string> Tags)>
-        {
-            (
-                "Bản Cát Cát",
-                "Bản làng du lịch nổi tiếng tại Sa Pa. Nơi du khách có thể khám phá văn hóa người H'Mông và khung cảnh núi rừng hùng vĩ.",
-                "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
-                22.3263, 103.8437,
-                new List<Guid> { vanHoaLichSu?.Id ?? Guid.Empty, duLichSinhThai?.Id ?? Guid.Empty }.Where(id => id != Guid.Empty).ToList(),
-                new List<string> { "sapa", "bản làng", "văn hóa H'Mông", "trekking" }
-            ),
-            (
-                "Bản Cát Cát – Điểm Check-in",
-                "Điểm check-in nổi tiếng với nhà gỗ truyền thống, suối và ruộng bậc thang tuyệt đẹp.",
-                "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
-                22.3260, 103.8440,
-                new List<Guid> { checkInSongAo?.Id ?? Guid.Empty, vanHoaLichSu?.Id ?? Guid.Empty }.Where(id => id != Guid.Empty).ToList(),
-                new List<string> { "sapa", "check-in", "ruộng bậc thang", "nhà gỗ" }
-            ),
-            (
-                "Bản Cát Cát – Trekking",
-                "Không gian thiên nhiên trong lành, thích hợp trekking và khám phá đời sống người dân bản địa.",
-                "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
-                22.3265, 103.8435,
-                new List<Guid> { duLichSinhThai?.Id ?? Guid.Empty, trekkingKhamPha?.Id ?? Guid.Empty }.Where(id => id != Guid.Empty).ToList(),
-                new List<string> { "sapa", "trekking", "sinh thái", "bản địa" }
-            ),
-            (
-                "Bản Cát Cát – Ruộng Bậc Thang",
-                "Ruộng bậc thang và làng truyền thống tạo nên khung cảnh đặc trưng vùng Tây Bắc.",
-                "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
-                22.3258, 103.8442,
-                new List<Guid> { thienNhien?.Id ?? Guid.Empty, duLichSinhThai?.Id ?? Guid.Empty }.Where(id => id != Guid.Empty).ToList(),
-                new List<string> { "sapa", "ruộng bậc thang", "Tây Bắc", "phong cảnh" }
-            ),
-            (
-                "Bản Cát Cát – Văn Hóa Dân Tộc",
-                "Trải nghiệm cuộc sống bản làng và văn hóa dân tộc thiểu số đặc sắc.",
-                "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
-                22.3270, 103.8430,
-                new List<Guid> { vanHoaLichSu?.Id ?? Guid.Empty }.Where(id => id != Guid.Empty).ToList(),
-                new List<string> { "sapa", "dân tộc thiểu số", "văn hóa", "trải nghiệm" }
-            ),
-            (
-                "Bản Cát Cát – Nghỉ Dưỡng",
-                "Khung cảnh núi rừng, nhà gỗ và không gian nghỉ dưỡng bình yên.",
-                "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
-                22.3262, 103.8438,
-                new List<Guid> { chillThuGian?.Id ?? Guid.Empty, thienNhien?.Id ?? Guid.Empty }.Where(id => id != Guid.Empty).ToList(),
-                new List<string> { "sapa", "nghỉ dưỡng", "bình yên", "núi rừng" }
-            ),
-            (
-                "Bản Cát Cát – Chụp Ảnh",
-                "Nơi lý tưởng để chụp ảnh và trải nghiệm thiên nhiên Tây Bắc.",
-                "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
-                22.3267, 103.8433,
-                new List<Guid> { checkInSongAo?.Id ?? Guid.Empty, thienNhien?.Id ?? Guid.Empty }.Where(id => id != Guid.Empty).ToList(),
-                new List<string> { "sapa", "chụp ảnh", "Tây Bắc", "thiên nhiên" }
-            ),
-            (
-                "Bản Cát Cát – Tham Quan",
-                "Điểm tham quan nổi tiếng với phong cảnh thiên nhiên và văn hóa bản địa.",
-                "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
-                22.3255, 103.8445,
-                new List<Guid> { thienNhien?.Id ?? Guid.Empty, vanHoaLichSu?.Id ?? Guid.Empty }.Where(id => id != Guid.Empty).ToList(),
-                new List<string> { "sapa", "tham quan", "phong cảnh", "bản địa" }
-            )
-        };
-
-        var created = new List<Domain.Entities.Place>();
-
-        foreach (var (name, desc, address, lat, lng, catIds, tags) in seedData)
-        {
-            var existing = await _placeRepository.FindOneAsync(p => p.Name == name);
-            if (existing != null)
-                continue;
-
-            var place = new Domain.Entities.Place
+            // Tìm hoặc tạo đơn vị hành chính: Sa Pa, Lào Cai
+            var allUnits = await _adminUnitRepository.GetAllAsync();
+            var laoCai = allUnits.FirstOrDefault(u => u.Code == "lao-cai");
+            if (laoCai == null)
             {
-                Name = name,
-                Description = desc,
-                Address = address,
-                AdministrativeUnitId = saPa.Id,
-                Latitude = lat,
-                Longitude = lng,
-                CategoryIds = catIds,
-                Tags = tags,
-                ModerationStatus = ModerationStatus.Approved,
-                CreatedBy = admin.Id,
-                ApprovedBy = admin.Id,
-                ApprovedAt = DateTime.UtcNow
+                laoCai = new AdministrativeUnit { Name = "Lào Cai", Level = AdministrativeLevel.Province, Code = "lao-cai" };
+                await _adminUnitRepository.AddAsync(laoCai);
+            }
+
+            var saPa = allUnits.FirstOrDefault(u => u.Code == "sa-pa");
+            if (saPa == null)
+            {
+                saPa = new AdministrativeUnit { Name = "Sa Pa", Level = AdministrativeLevel.Ward, Code = "sa-pa", ParentId = laoCai.Id };
+                await _adminUnitRepository.AddAsync(saPa);
+            }
+
+            // Tìm category IDs theo slug
+            var allCategories = await _categoryRepository.GetAllAsync();
+            var catBySlug = allCategories.ToDictionary(c => c.Slug, c => c.Id);
+
+            Guid? CatId(string slug) => catBySlug.TryGetValue(slug, out var id) ? id : null;
+
+            var defaultImage = "https://res.cloudinary.com/dhwljelir/image/upload/v1773759088/samples/chair.png";
+
+            var seedData = new List<(string Name, string Desc, string Address, double Lat, double Lng, string[] CatSlugs, List<string> Tags)>
+            {
+                (
+                    "Bản Cát Cát",
+                    "Bản làng du lịch nổi tiếng tại Sa Pa. Nơi du khách có thể khám phá văn hóa người H'Mông và khung cảnh núi rừng hùng vĩ.",
+                    "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                    22.3263, 103.8437,
+                    new[] { "du-lich-van-hoa", "du-lich-sinh-thai" },
+                    new List<string> { "sapa", "bản làng", "văn hóa H'Mông", "trekking" }
+                ),
+                (
+                    "Bản Cát Cát – Điểm Check-in",
+                    "Điểm check-in nổi tiếng với nhà gỗ truyền thống, suối và ruộng bậc thang tuyệt đẹp.",
+                    "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                    22.3260, 103.8440,
+                    new[] { "du-lich-van-hoa", "du-lich-sinh-thai" },
+                    new List<string> { "sapa", "check-in", "ruộng bậc thang", "nhà gỗ" }
+                ),
+                (
+                    "Bản Cát Cát – Trekking",
+                    "Không gian thiên nhiên trong lành, thích hợp trekking và khám phá đời sống người dân bản địa.",
+                    "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                    22.3265, 103.8435,
+                    new[] { "du-lich-sinh-thai", "du-lich-mao-hiem" },
+                    new List<string> { "sapa", "trekking", "sinh thái", "bản địa" }
+                ),
+                (
+                    "Bản Cát Cát – Ruộng Bậc Thang",
+                    "Ruộng bậc thang và làng truyền thống tạo nên khung cảnh đặc trưng vùng Tây Bắc.",
+                    "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                    22.3258, 103.8442,
+                    new[] { "du-lich-nui", "du-lich-sinh-thai" },
+                    new List<string> { "sapa", "ruộng bậc thang", "Tây Bắc", "phong cảnh" }
+                ),
+                (
+                    "Bản Cát Cát – Văn Hóa Dân Tộc",
+                    "Trải nghiệm cuộc sống bản làng và văn hóa dân tộc thiểu số đặc sắc.",
+                    "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                    22.3270, 103.8430,
+                    new[] { "du-lich-van-hoa" },
+                    new List<string> { "sapa", "dân tộc thiểu số", "văn hóa", "trải nghiệm" }
+                ),
+                (
+                    "Bản Cát Cát – Nghỉ Dưỡng",
+                    "Khung cảnh núi rừng, nhà gỗ và không gian nghỉ dưỡng bình yên.",
+                    "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                    22.3262, 103.8438,
+                    new[] { "resort", "du-lich-sinh-thai" },
+                    new List<string> { "sapa", "nghỉ dưỡng", "bình yên", "núi rừng" }
+                ),
+                (
+                    "Bản Cát Cát – Chụp Ảnh",
+                    "Nơi lý tưởng để chụp ảnh và trải nghiệm thiên nhiên Tây Bắc.",
+                    "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                    22.3267, 103.8433,
+                    new[] { "du-lich-sinh-thai", "du-lich-nui" },
+                    new List<string> { "sapa", "chụp ảnh", "Tây Bắc", "thiên nhiên" }
+                ),
+                (
+                    "Bản Cát Cát – Tham Quan",
+                    "Điểm tham quan nổi tiếng với phong cảnh thiên nhiên và văn hóa bản địa.",
+                    "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                    22.3255, 103.8445,
+                    new[] { "du-lich-van-hoa", "du-lich-sinh-thai" },
+                    new List<string> { "sapa", "tham quan", "phong cảnh", "bản địa" }
+                ),
+                (
+                    "Núi Hàm Rồng",
+                    "Khu du lịch trên núi với vườn hoa, điểm ngắm toàn cảnh thị xã Sa Pa và không khí mát lạnh quanh năm.",
+                    "Khu du lịch Hàm Rồng, Sa Pa, Lào Cai",
+                    22.3366, 103.8414,
+                    new[] { "du-lich-nui", "du-lich-sinh-thai" },
+                    new List<string> { "ham rong", "san may", "view dep", "sapa" }
+                ),
+                (
+                    "Nhà thờ Đá Sa Pa",
+                    "Biểu tượng kiến trúc Pháp cổ giữa trung tâm thị xã, thuận tiện tham quan và chụp ảnh.",
+                    "Quảng trường Sa Pa, Sa Pa, Lào Cai",
+                    22.3361, 103.8434,
+                    new[] { "du-lich-van-hoa", "du-lich-tam-linh" },
+                    new List<string> { "nha tho da", "kien truc", "check-in", "trung tam" }
+                ),
+                (
+                    "Thung lũng Mường Hoa",
+                    "Thung lũng nổi tiếng với ruộng bậc thang và bãi đá cổ, phù hợp trải nghiệm thiên nhiên bản địa.",
+                    "Mường Hoa, Sa Pa, Lào Cai",
+                    22.3179, 103.8622,
+                    new[] { "du-lich-sinh-thai", "du-lich-van-hoa" },
+                    new List<string> { "muong hoa", "ruong bac thang", "bai da co", "trekking" }
+                ),
+                (
+                    "Đèo Ô Quy Hồ",
+                    "Một trong tứ đại đỉnh đèo Tây Bắc, cảnh quan hùng vĩ, phù hợp săn mây và ngắm hoàng hôn.",
+                    "Đèo Ô Quy Hồ, Sa Pa, Lào Cai",
+                    22.3850, 103.7782,
+                    new[] { "du-lich-nui", "du-lich-mao-hiem" },
+                    new List<string> { "o quy ho", "san may", "phuot", "tay bac" }
+                ),
+                (
+                    "Thác Bạc Sa Pa",
+                    "Thác nước tự nhiên cao, nước chảy mạnh quanh năm, là điểm dừng nổi bật trên cung đường Ô Quy Hồ.",
+                    "QL4D, San Sả Hồ, Sa Pa, Lào Cai",
+                    22.3562, 103.7892,
+                    new[] { "du-lich-sinh-thai", "du-lich-nui" },
+                    new List<string> { "thac bac", "thien nhien", "song ao", "sapa" }
+                ),
+                (
+                    "Sun World Fansipan Legend",
+                    "Tổ hợp du lịch với cáp treo Fansipan và các điểm tâm linh, trải nghiệm săn mây trên đỉnh cao Đông Dương.",
+                    "Nguyễn Chí Thanh, Sa Pa, Lào Cai",
+                    22.3390, 103.8105,
+                    new[] { "du-lich-nui", "du-lich-tam-linh" },
+                    new List<string> { "fansipan", "cap treo", "san may", "tam linh" }
+                ),
+                (
+                    "Chợ đêm Sa Pa",
+                    "Không gian mua sắm và ẩm thực địa phương về đêm, phù hợp trải nghiệm văn hóa bản địa.",
+                    "Đường N1, trung tâm Sa Pa, Lào Cai",
+                    22.3368, 103.8452,
+                    new[] { "cho-truyen-thong", "am-thuc-duong-pho" },
+                    new List<string> { "cho dem", "am thuc", "dac san", "van hoa" }
+                ),
+                (
+                    "Hồ Sa Pa",
+                    "Hồ nước trung tâm với đường dạo bộ thoáng mát, thích hợp thư giãn và ngắm cảnh buổi chiều.",
+                    "Khu hồ trung tâm Sa Pa, Lào Cai",
+                    22.3397, 103.8461,
+                    new[] { "cong-vien", "du-lich-sinh-thai" },
+                    new List<string> { "ho sapa", "di bo", "thu gian", "check-in" }
+                )
             };
 
-            await _placeRepository.AddAsync(place);
+            var created = new List<Domain.Entities.Place>();
+            var existingNames = (await _placeRepository.GetAllAsync())
+                .Select(p => p.Name)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            // Tạo ảnh mặc định
-            var media = new MediaAsset
+            foreach (var (name, desc, address, lat, lng, catSlugs, tags) in seedData)
             {
-                ResourceType = ResourceType.Place,
-                ResourceId = place.Id,
-                Url = defaultImage,
-                SecureUrl = defaultImage,
-                PublicId = $"seed/place-{place.Id}",
-                Format = "png",
-                MimeType = "image/png",
-                Bytes = 0,
-                Width = 800,
-                Height = 600,
-                IsPrimary = true,
-                SortOrder = 0,
-                UploadedBy = admin.Id
-            };
+                if (existingNames.Contains(name))
+                    continue;
 
-            await _mediaRepository.AddAsync(media);
-            created.Add(place);
+                var catIds = catSlugs.Select(s => CatId(s)).Where(id => id.HasValue).Select(id => id!.Value).ToList();
+
+                var place = new Domain.Entities.Place
+                {
+                    Name = name,
+                    Description = desc,
+                    Address = address,
+                    AdministrativeUnitId = saPa.Id,
+                    Latitude = lat,
+                    Longitude = lng,
+                    CategoryIds = catIds,
+                    Tags = tags,
+                    ModerationStatus = ModerationStatus.Approved,
+                    CreatedBy = admin.Id,
+                    ApprovedBy = admin.Id,
+                    ApprovedAt = DateTime.UtcNow
+                };
+
+                await _placeRepository.AddAsync(place);
+
+                // Tạo ảnh mặc định
+                var media = new MediaAsset
+                {
+                    ResourceType = ResourceType.Place,
+                    ResourceId = place.Id,
+                    Url = defaultImage,
+                    SecureUrl = defaultImage,
+                    PublicId = $"seed/place-{place.Id}",
+                    Format = "png",
+                    MimeType = "image/png",
+                    Bytes = 0,
+                    Width = 800,
+                    Height = 600,
+                    IsPrimary = true,
+                    SortOrder = 0,
+                    UploadedBy = admin.Id
+                };
+
+                await _mediaRepository.AddAsync(media);
+                created.Add(place);
+                existingNames.Add(name);
+            }
+
+            var responses = created.Select(p => _mapper.Map<PlaceResponse>(p));
+            return Result.Ok(responses, StatusCodes.Status201Created);
         }
+        catch (Exception ex)
+        {
+            if (ex is PostgresException pg && pg.SqlState == "42703")
+            {
+                return Result.Fail<IEnumerable<PlaceResponse>>(
+                    $"Seed lỗi: {pg.MessageText}. Schema DB đang lệch naming cột. Hãy gọi POST /api/dbtest/create-tables?reset=true rồi seed lại.",
+                    StatusCodes.Status500InternalServerError,
+                    "SEED_SCHEMA_MISMATCH");
+            }
 
-        var responses = created.Select(p => _mapper.Map<PlaceResponse>(p));
-        return Result.Ok(responses, StatusCodes.Status201Created);
+            return Result.Fail<IEnumerable<PlaceResponse>>($"Seed lỗi: {ex.Message}", StatusCodes.Status500InternalServerError, "SEED_ERROR");
+        }
     }
 
     private async Task<bool> HasPermission(Domain.Entities.Place place, Guid userId, string role, Guid? userAdminUnitId)

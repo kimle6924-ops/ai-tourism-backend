@@ -42,6 +42,7 @@ public class DiscoveryService : IDiscoveryService
             .Take(request.PageSize)
             .ToList();
         var responses = items.Select(p => _mapper.Map<PlaceResponse>(p)).ToList();
+        await EnrichPlaceAverageRatingsAsync(responses);
 
         return Result.Ok(PaginationResponse<PlaceResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
@@ -61,6 +62,7 @@ public class DiscoveryService : IDiscoveryService
             .Take(request.PageSize)
             .ToList();
         var responses = items.Select(e => _mapper.Map<EventResponse>(e)).ToList();
+        await EnrichEventAverageRatingsAsync(responses);
 
         return Result.Ok(PaginationResponse<EventResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
@@ -165,5 +167,43 @@ public class DiscoveryService : IDiscoveryService
 
         return query.OrderByDescending(e =>
             avgRatings.ContainsKey(e.Id) ? avgRatings[e.Id] : 0);
+    }
+
+    private async Task EnrichPlaceAverageRatingsAsync(List<PlaceResponse> responses)
+    {
+        if (responses.Count == 0)
+            return;
+
+        var placeIds = responses.Select(x => x.Id).Distinct().ToList();
+        var reviews = await _reviewRepository.FindAsync(
+            r => r.ResourceType == ResourceType.Place
+                 && placeIds.Contains(r.ResourceId)
+                 && r.Status == ReviewStatus.Active);
+
+        var avgRatings = reviews
+            .GroupBy(r => r.ResourceId)
+            .ToDictionary(g => g.Key, g => g.Average(r => r.Rating));
+
+        foreach (var response in responses)
+            response.AverageRating = avgRatings.TryGetValue(response.Id, out var avg) ? avg : 0;
+    }
+
+    private async Task EnrichEventAverageRatingsAsync(List<EventResponse> responses)
+    {
+        if (responses.Count == 0)
+            return;
+
+        var eventIds = responses.Select(x => x.Id).Distinct().ToList();
+        var reviews = await _reviewRepository.FindAsync(
+            r => r.ResourceType == ResourceType.Event
+                 && eventIds.Contains(r.ResourceId)
+                 && r.Status == ReviewStatus.Active);
+
+        var avgRatings = reviews
+            .GroupBy(r => r.ResourceId)
+            .ToDictionary(g => g.Key, g => g.Average(r => r.Rating));
+
+        foreach (var response in responses)
+            response.AverageRating = avgRatings.TryGetValue(response.Id, out var avg) ? avg : 0;
     }
 }

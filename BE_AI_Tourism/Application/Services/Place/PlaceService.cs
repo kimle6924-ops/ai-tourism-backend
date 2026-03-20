@@ -14,6 +14,7 @@ namespace BE_AI_Tourism.Application.Services.Place;
 public class PlaceService : IPlaceService
 {
     private readonly IRepository<Domain.Entities.Place> _placeRepository;
+    private readonly IRepository<Domain.Entities.Review> _reviewRepository;
     private readonly IRepository<AdministrativeUnit> _adminUnitRepository;
     private readonly IRepository<Domain.Entities.Category> _categoryRepository;
     private readonly IRepository<MediaAsset> _mediaRepository;
@@ -23,6 +24,7 @@ public class PlaceService : IPlaceService
 
     public PlaceService(
         IRepository<Domain.Entities.Place> placeRepository,
+        IRepository<Domain.Entities.Review> reviewRepository,
         IRepository<AdministrativeUnit> adminUnitRepository,
         IRepository<Domain.Entities.Category> categoryRepository,
         IRepository<MediaAsset> mediaRepository,
@@ -31,6 +33,7 @@ public class PlaceService : IPlaceService
         IMapper mapper)
     {
         _placeRepository = placeRepository;
+        _reviewRepository = reviewRepository;
         _adminUnitRepository = adminUnitRepository;
         _categoryRepository = categoryRepository;
         _mediaRepository = mediaRepository;
@@ -67,7 +70,9 @@ public class PlaceService : IPlaceService
         };
 
         await _placeRepository.AddAsync(entity);
-        return Result.Ok(_mapper.Map<PlaceResponse>(entity), StatusCodes.Status201Created);
+        var response = _mapper.Map<PlaceResponse>(entity);
+        response.AverageRating = 0;
+        return Result.Ok(response, StatusCodes.Status201Created);
     }
 
     public async Task<Result<PlaceResponse>> GetByIdAsync(Guid id)
@@ -76,7 +81,10 @@ public class PlaceService : IPlaceService
         if (entity == null)
             return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-        return Result.Ok(_mapper.Map<PlaceResponse>(entity));
+        var response = _mapper.Map<PlaceResponse>(entity);
+        var ratingMap = await GetAverageRatingsAsync([entity.Id]);
+        response.AverageRating = ratingMap.TryGetValue(entity.Id, out var avg) ? avg : 0;
+        return Result.Ok(response);
     }
 
     public async Task<Result<PaginationResponse<PlaceResponse>>> GetApprovedPagedAsync(PaginationRequest request)
@@ -84,6 +92,7 @@ public class PlaceService : IPlaceService
         var all = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
         var items = all.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
         var responses = items.Select(p => _mapper.Map<PlaceResponse>(p)).ToList();
+        await EnrichAverageRatingsAsync(responses);
 
         return Result.Ok(PaginationResponse<PlaceResponse>.Create(
             responses, all.Count(), request.PageNumber, request.PageSize));
@@ -118,6 +127,7 @@ public class PlaceService : IPlaceService
         var totalCount = all.Count();
         var items = all.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
         var responses = items.Select(p => _mapper.Map<PlaceResponse>(p)).ToList();
+        await EnrichAverageRatingsAsync(responses);
 
         return Result.Ok(PaginationResponse<PlaceResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
@@ -146,7 +156,10 @@ public class PlaceService : IPlaceService
         entity.Tags = request.Tags;
 
         await _placeRepository.UpdateAsync(entity);
-        return Result.Ok(_mapper.Map<PlaceResponse>(entity));
+        var response = _mapper.Map<PlaceResponse>(entity);
+        var ratingMap = await GetAverageRatingsAsync([entity.Id]);
+        response.AverageRating = ratingMap.TryGetValue(entity.Id, out var avg) ? avg : 0;
+        return Result.Ok(response);
     }
 
     public async Task<Result> DeleteAsync(Guid id, Guid userId, string role, Guid? userAdminUnitId)
@@ -407,5 +420,31 @@ public class PlaceService : IPlaceService
             return await _scopeService.IsInScopeAsync(userAdminUnitId.Value, place.AdministrativeUnitId);
 
         return false;
+    }
+
+    private async Task EnrichAverageRatingsAsync(List<PlaceResponse> responses)
+    {
+        if (responses.Count == 0)
+            return;
+
+        var ratingMap = await GetAverageRatingsAsync(responses.Select(x => x.Id));
+        foreach (var response in responses)
+            response.AverageRating = ratingMap.TryGetValue(response.Id, out var avg) ? avg : 0;
+    }
+
+    private async Task<Dictionary<Guid, double>> GetAverageRatingsAsync(IEnumerable<Guid> placeIds)
+    {
+        var ids = placeIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return [];
+
+        var reviews = await _reviewRepository.FindAsync(
+            r => r.ResourceType == ResourceType.Place
+                 && ids.Contains(r.ResourceId)
+                 && r.Status == ReviewStatus.Active);
+
+        return reviews
+            .GroupBy(r => r.ResourceId)
+            .ToDictionary(g => g.Key, g => g.Average(r => r.Rating));
     }
 }

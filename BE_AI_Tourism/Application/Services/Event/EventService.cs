@@ -13,17 +13,20 @@ namespace BE_AI_Tourism.Application.Services.Event;
 public class EventService : IEventService
 {
     private readonly IRepository<Domain.Entities.Event> _eventRepository;
+    private readonly IRepository<Domain.Entities.Review> _reviewRepository;
     private readonly IRepository<AdministrativeUnit> _adminUnitRepository;
     private readonly IScopeService _scopeService;
     private readonly IMapper _mapper;
 
     public EventService(
         IRepository<Domain.Entities.Event> eventRepository,
+        IRepository<Domain.Entities.Review> reviewRepository,
         IRepository<AdministrativeUnit> adminUnitRepository,
         IScopeService scopeService,
         IMapper mapper)
     {
         _eventRepository = eventRepository;
+        _reviewRepository = reviewRepository;
         _adminUnitRepository = adminUnitRepository;
         _scopeService = scopeService;
         _mapper = mapper;
@@ -60,7 +63,9 @@ public class EventService : IEventService
         };
 
         await _eventRepository.AddAsync(entity);
-        return Result.Ok(_mapper.Map<EventResponse>(entity), StatusCodes.Status201Created);
+        var response = _mapper.Map<EventResponse>(entity);
+        response.AverageRating = 0;
+        return Result.Ok(response, StatusCodes.Status201Created);
     }
 
     public async Task<Result<EventResponse>> GetByIdAsync(Guid id)
@@ -69,7 +74,10 @@ public class EventService : IEventService
         if (entity == null)
             return Result.Fail<EventResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-        return Result.Ok(_mapper.Map<EventResponse>(entity));
+        var response = _mapper.Map<EventResponse>(entity);
+        var ratingMap = await GetAverageRatingsAsync([entity.Id]);
+        response.AverageRating = ratingMap.TryGetValue(entity.Id, out var avg) ? avg : 0;
+        return Result.Ok(response);
     }
 
     public async Task<Result<PaginationResponse<EventResponse>>> GetApprovedPagedAsync(PaginationRequest request)
@@ -77,6 +85,7 @@ public class EventService : IEventService
         var all = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
         var items = all.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
         var responses = items.Select(e => _mapper.Map<EventResponse>(e)).ToList();
+        await EnrichAverageRatingsAsync(responses);
 
         return Result.Ok(PaginationResponse<EventResponse>.Create(
             responses, all.Count(), request.PageNumber, request.PageSize));
@@ -109,6 +118,7 @@ public class EventService : IEventService
         var totalCount = all.Count();
         var items = all.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
         var responses = items.Select(e => _mapper.Map<EventResponse>(e)).ToList();
+        await EnrichAverageRatingsAsync(responses);
 
         return Result.Ok(PaginationResponse<EventResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
@@ -140,7 +150,10 @@ public class EventService : IEventService
         entity.EventStatus = request.EventStatus;
 
         await _eventRepository.UpdateAsync(entity);
-        return Result.Ok(_mapper.Map<EventResponse>(entity));
+        var response = _mapper.Map<EventResponse>(entity);
+        var ratingMap = await GetAverageRatingsAsync([entity.Id]);
+        response.AverageRating = ratingMap.TryGetValue(entity.Id, out var avg) ? avg : 0;
+        return Result.Ok(response);
     }
 
     public async Task<Result> DeleteAsync(Guid id, Guid userId, string role, Guid? userAdminUnitId)
@@ -165,5 +178,31 @@ public class EventService : IEventService
             return await _scopeService.IsInScopeAsync(userAdminUnitId.Value, evt.AdministrativeUnitId);
 
         return false;
+    }
+
+    private async Task EnrichAverageRatingsAsync(List<EventResponse> responses)
+    {
+        if (responses.Count == 0)
+            return;
+
+        var ratingMap = await GetAverageRatingsAsync(responses.Select(x => x.Id));
+        foreach (var response in responses)
+            response.AverageRating = ratingMap.TryGetValue(response.Id, out var avg) ? avg : 0;
+    }
+
+    private async Task<Dictionary<Guid, double>> GetAverageRatingsAsync(IEnumerable<Guid> eventIds)
+    {
+        var ids = eventIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return [];
+
+        var reviews = await _reviewRepository.FindAsync(
+            r => r.ResourceType == ResourceType.Event
+                 && ids.Contains(r.ResourceId)
+                 && r.Status == ReviewStatus.Active);
+
+        return reviews
+            .GroupBy(r => r.ResourceId)
+            .ToDictionary(g => g.Key, g => g.Average(r => r.Rating));
     }
 }

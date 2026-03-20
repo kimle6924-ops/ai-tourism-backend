@@ -83,7 +83,7 @@ public class ChatService : IChatService
     {
         var conversation = await _conversationRepository.GetByIdAsync(conversationId);
         if (conversation == null || conversation.UserId != userId)
-            return Result.Fail<PaginationResponse<MessageResponse>>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+            return Result.Fail<PaginationResponse<MessageResponse>>(AppConstants.Chat.ConversationNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.ConversationNotFound);
 
         var all = await _messageRepository.FindAsync(m => m.ConversationId == conversationId);
         var ordered = all.OrderByDescending(m => m.CreatedAt).ToList();
@@ -99,7 +99,7 @@ public class ChatService : IChatService
     {
         var conversation = await _conversationRepository.GetByIdAsync(conversationId);
         if (conversation == null || conversation.UserId != userId)
-            return Result.Fail<MessageResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+            return Result.Fail<MessageResponse>(AppConstants.Chat.ConversationNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.ConversationNotFound);
 
         // Save user message
         var userMessage = await SaveMessageAsync(conversationId, userId, MessageRole.User, request.Content);
@@ -122,16 +122,20 @@ public class ChatService : IChatService
         return Result.Ok(_mapper.Map<MessageResponse>(aiMessage));
     }
 
+    public async Task<Result> ValidateConversationAsync(Guid conversationId, Guid userId)
+    {
+        var conversation = await _conversationRepository.GetByIdAsync(conversationId);
+        if (conversation == null || conversation.UserId != userId)
+            return Result.Fail(AppConstants.Chat.ConversationNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.ConversationNotFound);
+
+        return Result.Ok();
+    }
+
     public async IAsyncEnumerable<string> StreamMessageAsync(
         Guid conversationId, SendMessageRequest request, Guid userId,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var conversation = await _conversationRepository.GetByIdAsync(conversationId);
-        if (conversation == null || conversation.UserId != userId)
-        {
-            yield return "[ERROR] Conversation not found";
-            yield break;
-        }
 
         // Save user message
         await SaveMessageAsync(conversationId, userId, MessageRole.User, request.Content);
@@ -188,7 +192,11 @@ public class ChatService : IChatService
         sb.AppendLine("- Trả lời bằng tiếng Việt, thân thiện, ngắn gọn.");
         sb.AppendLine("- CHỈ đề xuất địa điểm và sự kiện có trong phần [DỮ LIỆU HỆ THỐNG] bên dưới. KHÔNG bịa thông tin.");
         sb.AppendLine("- Khi đề xuất, luôn kèm tên địa điểm, địa chỉ, và lý do phù hợp.");
-        sb.AppendLine("- Nếu không có dữ liệu phù hợp trong hệ thống, nói rõ và gợi ý người dùng thử tìm kiếm khác.");
+        sb.AppendLine("- Nếu thiếu bất kỳ dữ liệu nào (địa điểm, sự kiện, sở thích người dùng), BẮT BUỘC phải:");
+        sb.AppendLine("  1. Thông báo rõ ràng đang thiếu thông tin gì (VD: \"Hiện tại hệ thống chưa có dữ liệu sự kiện\").");
+        sb.AppendLine("  2. Vẫn cố gắng đưa ra gợi ý hữu ích từ những dữ liệu còn lại (VD: thiếu sự kiện thì gợi ý địa điểm, thiếu sở thích thì gợi ý những nơi phổ biến).");
+        sb.AppendLine("  3. Đề xuất người dùng cung cấp thêm thông tin hoặc cập nhật sở thích để được hỗ trợ tốt hơn.");
+        sb.AppendLine("- KHÔNG BAO GIỜ trả lời trống hoặc chỉ nói \"không có dữ liệu\" rồi dừng. Luôn cung cấp giá trị cho người dùng.");
         sb.AppendLine("- Ưu tiên đề xuất địa điểm phù hợp sở thích người dùng.");
 
         // === SCENARIOS ===
@@ -302,6 +310,7 @@ public class ChatService : IChatService
         sb.AppendLine("- KHÔNG được bịa địa điểm hoặc sự kiện không có trong dữ liệu hệ thống.");
         sb.AppendLine("- Nếu người dùng hỏi ngoài phạm vi du lịch, lịch sự từ chối và hướng về chủ đề du lịch.");
         sb.AppendLine("- Trả lời ngắn gọn, có cấu trúc, dễ đọc.");
+        sb.AppendLine("- QUAN TRỌNG: Dù thiếu dữ liệu, LUÔN phải trả lời có nội dung. Nói rõ thiếu gì + gợi ý từ dữ liệu còn lại hoặc lời khuyên chung về du lịch địa phương.");
 
         return sb.ToString();
     }

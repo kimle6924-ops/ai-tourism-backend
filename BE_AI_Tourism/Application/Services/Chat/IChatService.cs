@@ -10,5 +10,6 @@ public interface IChatService
     Task<Result<PaginationResponse<ConversationResponse>>> GetConversationsAsync(Guid userId, PaginationRequest request);
     Task<Result<PaginationResponse<MessageResponse>>> GetMessagesAsync(Guid conversationId, Guid userId, PaginationRequest request);
     Task<Result<MessageResponse>> SendMessageAsync(Guid conversationId, SendMessageRequest request, Guid userId);
+    Task<Result> ValidateConversationAsync(Guid conversationId, Guid userId);
     IAsyncEnumerable<string> StreamMessageAsync(Guid conversationId, SendMessageRequest request, Guid userId, CancellationToken cancellationToken);
 }

@@ -51,6 +51,16 @@ public class ChatController : ControllerBase
     [HttpPost("conversations/{id:guid}/messages/stream")]
     public async Task StreamMessage(Guid id, [FromBody] SendMessageRequest request)
     {
+        // Validate conversation exists BEFORE starting SSE, so we can return proper 404
+        var validation = await _chatService.ValidateConversationAsync(id, GetUserId());
+        if (!validation.Success)
+        {
+            Response.StatusCode = validation.StatusCode;
+            Response.ContentType = "application/json";
+            await Response.WriteAsJsonAsync(validation);
+            return;
+        }
+
         Response.ContentType = "text/event-stream";
         Response.Headers.Append("Cache-Control", "no-cache");
         Response.Headers.Append("Connection", "keep-alive");

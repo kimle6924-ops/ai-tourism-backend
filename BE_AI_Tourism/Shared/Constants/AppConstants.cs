@@ -71,6 +71,9 @@ public static class AppConstants
         // Category
         public const string SlugAlreadyExists = "SLUG_ALREADY_EXISTS";
 
+        // Chat
+        public const string ConversationNotFound = "CONVERSATION_NOT_FOUND";
+
         // Admin User
         public const string UserNotPendingApproval = "USER_NOT_PENDING_APPROVAL";
     }
@@ -97,5 +100,10 @@ public static class AppConstants
     public static class AdminUser
     {
         public const string UserNotPendingApproval = "User is not pending approval";
+    }
+
+    public static class Chat
+    {
+        public const string ConversationNotFound = "Cuộc trò chuyện không tồn tại hoặc không thuộc về bạn";
     }
 }

@@ -179,6 +179,9 @@ public static class ApiDocSections
         DELETE /api/places/{id} — Admin/Contributor
         Admin xóa tất cả. Contributor chỉ xóa place mình tạo và trong scope.
         Lỗi: 404 nếu không tìm thấy. 403 nếu không có quyền.
+
+        POST /api/places/seed — Admin
+        Tạo sẵn 8 place mẫu (khu vực Bản Cát Cát, Sa Pa), tự động Approved + tạo ảnh mặc định cho mỗi place. Bỏ qua nếu place cùng tên đã tồn tại (gọi nhiều lần không sao). Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu: phải seed admin (POST /api/dbtest/seed-admin) và seed categories (POST /api/categories/seed) trước khi gọi API này.
         """;
 
     public static string Events() => """

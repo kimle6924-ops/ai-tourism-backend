@@ -147,6 +147,9 @@ Body: giống POST
 
 **DELETE `/{id}`** — Admin/Contributor (Admin xóa tất cả, Contributor chỉ xóa place mình tạo trong scope) → Result
 
+**POST `/seed`** — Admin
+Tạo sẵn 8 place mẫu (Bản Cát Cát, Sa Pa), tự động Approved + tạo ảnh mặc định. Bỏ qua nếu place cùng tên đã tồn tại. Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu đã seed admin và seed categories trước.
+
 ---
 
 ## Events (`/api/events`)

@@ -67,6 +67,14 @@ public class PlaceController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpPost("seed")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Seed()
+    {
+        var result = await _placeService.SeedAsync();
+        return StatusCode(result.StatusCode, result);
+    }
+
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirst(AppConstants.JwtClaimTypes.UserId)!.Value);
 

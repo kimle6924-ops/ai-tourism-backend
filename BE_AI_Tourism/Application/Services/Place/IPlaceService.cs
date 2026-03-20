@@ -12,4 +12,5 @@ public interface IPlaceService
     Task<Result<PaginationResponse<PlaceResponse>>> GetAllPagedAsync(PaginationRequest request, string role, Guid? userAdminUnitId);
     Task<Result<PlaceResponse>> UpdateAsync(Guid id, UpdatePlaceRequest request, Guid userId, string role, Guid? userAdminUnitId);
     Task<Result> DeleteAsync(Guid id, Guid userId, string role, Guid? userAdminUnitId);
+    Task<Result<IEnumerable<PlaceResponse>>> SeedAsync();
 }

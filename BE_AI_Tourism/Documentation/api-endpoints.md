@@ -84,6 +84,19 @@ Danh sách các API endpoints trong hệ thống.
 | POST | `/api/categories` | Tạo danh mục | Admin |
 | PUT | `/api/categories/{id}` | Cập nhật danh mục | Admin |
 | DELETE | `/api/categories/{id}` | Xóa danh mục | Admin |
+| POST | `/api/categories/seed` | Seed danh sách category mẫu (18 mục) | Admin |
+
+**Seed data (`POST /api/categories/seed`):**
+
+Tạo sẵn 18 category, bỏ qua nếu slug đã tồn tại:
+
+| Type | Categories |
+|------|-----------|
+| `theme` | Thiên nhiên, Thành phố, Ẩm thực, Văn hóa – Lịch sử, Lễ hội – sự kiện |
+| `style` | Chill – thư giãn, Vui vẻ – năng động, Sôi động – náo nhiệt, Phiêu lưu – khám phá |
+| `activity` | Trekking / khám phá, Du lịch sinh thái, Check-in sống ảo, Giải trí / vui chơi |
+| `budget` | Giá rẻ – tiết kiệm, Cao cấp – sang chảnh |
+| `companion` | Gia đình, Cặp đôi, Nhóm bạn |
 
 ---
 

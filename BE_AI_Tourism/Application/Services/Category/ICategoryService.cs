@@ -13,4 +13,5 @@ public interface ICategoryService
     Task<Result<IEnumerable<CategoryResponse>>> GetByTypeAsync(string type);
     Task<Result<CategoryResponse>> UpdateAsync(Guid id, UpdateCategoryRequest request);
     Task<Result> DeleteAsync(Guid id);
+    Task<Result<IEnumerable<CategoryResponse>>> SeedAsync();
 }

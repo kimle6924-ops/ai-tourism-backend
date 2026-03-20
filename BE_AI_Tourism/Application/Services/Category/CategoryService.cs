@@ -96,4 +96,52 @@ public class CategoryService : ICategoryService
         await _repository.DeleteAsync(id);
         return Result.Ok("Category deleted successfully");
     }
+
+    public async Task<Result<IEnumerable<CategoryResponse>>> SeedAsync()
+    {
+        var seedData = new List<(string Name, string Slug, string Type)>
+        {
+            ("Thiên nhiên", "thien-nhien", "theme"),
+            ("Thành phố", "thanh-pho", "theme"),
+            ("Ẩm thực", "am-thuc", "theme"),
+            ("Văn hóa – Lịch sử", "van-hoa-lich-su", "theme"),
+            ("Lễ hội – sự kiện", "le-hoi-su-kien", "theme"),
+            ("Chill – thư giãn", "chill-thu-gian", "style"),
+            ("Vui vẻ – năng động", "vui-ve-nang-dong", "style"),
+            ("Sôi động – náo nhiệt", "soi-dong-nao-nhiet", "style"),
+            ("Phiêu lưu – khám phá", "phieu-luu-kham-pha", "style"),
+            ("Trekking / khám phá", "trekking-kham-pha", "activity"),
+            ("Du lịch sinh thái", "du-lich-sinh-thai", "activity"),
+            ("Check-in sống ảo", "check-in-song-ao", "activity"),
+            ("Giải trí / vui chơi", "giai-tri-vui-choi", "activity"),
+            ("Giá rẻ – tiết kiệm", "gia-re-tiet-kiem", "budget"),
+            ("Cao cấp – sang chảnh", "cao-cap-sang-chanh", "budget"),
+            ("Gia đình", "gia-dinh", "companion"),
+            ("Cặp đôi", "cap-doi", "companion"),
+            ("Nhóm bạn", "nhom-ban", "companion")
+        };
+
+        var created = new List<Domain.Entities.Category>();
+
+        foreach (var (name, slug, type) in seedData)
+        {
+            var existing = await _repository.FindOneAsync(c => c.Slug == slug);
+            if (existing != null)
+                continue;
+
+            var entity = new Domain.Entities.Category
+            {
+                Name = name,
+                Slug = slug,
+                Type = type,
+                IsActive = true
+            };
+
+            await _repository.AddAsync(entity);
+            created.Add(entity);
+        }
+
+        var responses = created.Select(c => _mapper.Map<CategoryResponse>(c));
+        return Result.Ok(responses, StatusCodes.Status201Created);
+    }
 }

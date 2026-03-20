@@ -72,4 +72,12 @@ public class CategoryController : ControllerBase
         var result = await _service.DeleteAsync(id);
         return StatusCode(result.StatusCode, result);
     }
+
+    [HttpPost("seed")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Seed()
+    {
+        var result = await _service.SeedAsync();
+        return StatusCode(result.StatusCode, result);
+    }
 }

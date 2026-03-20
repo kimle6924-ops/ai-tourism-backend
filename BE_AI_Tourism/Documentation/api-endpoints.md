@@ -1,197 +1,289 @@
 # API Endpoints
 
-Danh sách các API endpoints trong hệ thống.
+## Quy ước chung
+
+**Response wrapper:** Mọi API đều trả về `Result<T>` gồm: `success` (bool), `data` (T), `message`, `errorCode`, `statusCode`. Lỗi validation trả thêm `errors[]`.
+
+**Phân trang:** Các API có phân trang nhận query `pageNumber` (int), `pageSize` (int). Response: `items[]`, `totalCount`, `pageNumber`, `pageSize`, `totalPages`, `hasPreviousPage`, `hasNextPage`.
+
+**Quyền truy cập (Auth):**
+- `Public` — Không cần đăng nhập, ai cũng gọi được.
+- `Login` — Cần đăng nhập (gửi header `Authorization: Bearer <accessToken>`). Mọi role (Admin, Contributor, User) đều được.
+- `Admin` — Chỉ role Admin (0) mới được gọi. Trả 403 nếu không đủ quyền.
+- `Admin/Contributor` — Role Admin (0) hoặc Contributor (1). Contributor bị giới hạn scope theo đơn vị hành chính được gán khi đăng ký (chỉ thao tác với dữ liệu thuộc đơn vị hành chính của mình). Admin không bị giới hạn scope.
+- Không có token hoặc token hết hạn → trả 401 Unauthorized.
+
+**Enums (gửi/nhận dạng số int):**
+- UserRole: 0=Admin, 1=Contributor, 2=User
+- UserStatus: 0=Active, 1=Locked, 2=PendingApproval
+- AdministrativeLevel: 0=Central, 1=Province, 2=Ward, 3=Neighborhood
+- ModerationStatus: 0=Pending, 1=Approved, 2=Rejected
+- EventStatus: 0=Upcoming, 1=Ongoing, 2=Ended
+- ReviewStatus: 0=Active, 1=Hidden, 2=Deleted
+- ResourceType: 0=Place, 1=Event
+- ConversationStatus: 0=Active, 1=Archived
+- MessageRole: 0=User, 1=Assistant, 2=System
 
 ---
 
-## Auth
+## Auth (`/api/auth`) — Public
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| POST | `/api/auth/register` | Đăng ký tài khoản | No |
-| POST | `/api/auth/login` | Đăng nhập | No |
-| POST | `/api/auth/refresh` | Refresh JWT token | No |
+**POST `/register`** — Public
+Body: `email`* (string), `password`* (string), `fullName`* (string), `phone`* (string), `role?` (UserRole: 0=Admin/1=Contributor/2=User, mặc định 2), `administrativeUnitId?` (guid, bắt buộc nếu role=Contributor), `categoryIds` (guid[], sở thích ban đầu)
+→ AuthResponse: `accessToken`, `refreshToken`, `expiresAt`, `user` (UserResponse)
 
----
+**POST `/login`** — Public
+Body: `email`* (string), `password`* (string)
+→ AuthResponse
 
-## User
-
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| GET | `/api/user/me` | Lấy thông tin user hiện tại | Yes |
-| PUT | `/api/user/me` | Cập nhật profile | Yes |
-| GET | `/api/user/me/preferences` | Lấy sở thích | Yes |
-| PUT | `/api/user/me/preferences` | Cập nhật sở thích | Yes |
+**POST `/refresh`** — Public
+Body: `refreshToken`* (string)
+→ AuthResponse
 
 ---
 
-## Admin
+## User (`/api/user`) — Login (mọi role)
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| GET | `/api/admin/users` | Danh sách users (phân trang) | Admin |
-| PATCH | `/api/admin/users/{id}/lock` | Khóa tài khoản user | Admin |
-| PATCH | `/api/admin/users/{id}/unlock` | Mở khóa tài khoản user | Admin |
-| PATCH | `/api/admin/users/{id}/approve` | Duyệt tài khoản Contributor (PendingApproval → Active) | Admin |
-| GET | `/api/admin/stats/overview` | Thống kê tổng quan + time-series theo ngày (`fromUtc`, `toUtc`) | Admin |
+**GET `/me`** — Login → UserResponse: `id`, `email`, `fullName`, `phone`, `avatarUrl`, `role` (0=Admin/1=Contributor/2=User), `status` (0=Active/1=Locked/2=PendingApproval)
 
-**Query params cho `/api/admin/stats/overview`:**
-- `fromUtc` (optional, ISO-8601 UTC): mặc định `now - 29 days`
-- `toUtc` (optional, ISO-8601 UTC): mặc định `now`
+**PUT `/me`** — Login
+Body: `fullName?` (string), `phone?` (string), `avatarUrl?` (string)
+→ UserResponse
 
-**Response chính:**
-- `users`: total, by role, by status
-- `places`, `events`: total + breakdown moderation status (và `events` có thêm breakdown event status)
-- `reviews`: total, by status, `averageRating`
-- `moderation`: pending places/events + total pending workload
-- `chat`: total conversations/messages + số mới trong range
-- `content`: categories, administrative units, media assets, total media bytes
-- `timeSeries`: daily count cho users/places/events/reviews trong khoảng thời gian yêu cầu
+**GET `/me/preferences`** — Login → PreferencesResponse: `categoryIds` (guid[])
 
-**Error cases:**
-- `400 BAD_REQUEST`: `fromUtc > toUtc`
-
-**Manual test cases (Admin Stats):**
-- DB rỗng: tất cả số liệu = `0`, `timeSeries` vẫn trả đủ các ngày trong range với `count = 0`.
-- Dữ liệu lớn: seed số lượng lớn users/places/events/reviews/messages, đảm bảo endpoint phản hồi ổn định và không timeout.
-- Nhiều trạng thái: có đủ `UserStatus`, `ModerationStatus`, `EventStatus`, `ReviewStatus`, kiểm tra breakdown map đúng key và đúng số lượng.
-- Range custom: gọi với `fromUtc/toUtc` cụ thể, xác nhận `timeSeries` chỉ nằm trong range và `chat.*InRange` đúng.
+**PUT `/me/preferences`** — Login
+Body: `categoryIds`* (guid[])
+→ PreferencesResponse
 
 ---
 
-## Administrative Units
+## Admin (`/api/admin`) — Admin only
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| GET | `/api/administrative-units` | Danh sách đơn vị hành chính (phân trang) | No |
-| GET | `/api/administrative-units/{id}` | Chi tiết đơn vị hành chính | No |
-| GET | `/api/administrative-units/by-level/{level}` | Lấy theo cấp (Central/Province/Ward/Neighborhood) | No |
-| GET | `/api/administrative-units/{id}/children` | Lấy đơn vị con | No |
-| POST | `/api/administrative-units` | Tạo đơn vị hành chính | Admin |
-| PUT | `/api/administrative-units/{id}` | Cập nhật đơn vị hành chính | Admin |
-| DELETE | `/api/administrative-units/{id}` | Xóa đơn vị hành chính | Admin |
+**GET `/users`** — Admin, phân trang → UserResponse[]
+
+**PATCH `/users/{id}/lock`** — Admin → UserResponse (khóa tài khoản, chuyển status→1=Locked)
+
+**PATCH `/users/{id}/unlock`** — Admin → UserResponse (mở khóa, chuyển status→0=Active)
+
+**PATCH `/users/{id}/approve`** — Admin → UserResponse (duyệt Contributor: status 2=PendingApproval → 0=Active)
+
+**GET `/stats/overview`** — Admin
+Query: `fromUtc?` (ISO-8601, mặc định now-29d), `toUtc?` (ISO-8601, mặc định now)
+→ StatsOverviewResponse gồm: `users` (total, byRole, byStatus), `places` (total, byModerationStatus), `events` (total, byModerationStatus, byEventStatus), `reviews` (total, byStatus, averageRating), `moderation` (pendingPlaces, pendingEvents), `chat` (totalConversations, totalMessages, newInRange), `content` (categories, administrativeUnits, mediaAssets, totalMediaBytes), `timeSeries` (daily count users/places/events/reviews)
+Lỗi 400 nếu fromUtc > toUtc.
 
 ---
 
-## Categories
+## Administrative Units (`/api/administrative-units`)
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| GET | `/api/categories` | Danh sách danh mục (phân trang) | No |
-| GET | `/api/categories/active` | Danh sách danh mục đang hoạt động | No |
-| GET | `/api/categories/by-type/{type}` | Lấy theo loại (tourism/food/entertainment/event/accommodation/shopping) | No |
-| GET | `/api/categories/{id}` | Chi tiết danh mục | No |
-| POST | `/api/categories` | Tạo danh mục | Admin |
-| PUT | `/api/categories/{id}` | Cập nhật danh mục | Admin |
-| DELETE | `/api/categories/{id}` | Xóa danh mục | Admin |
-| POST | `/api/categories/seed` | Seed danh sách category mẫu (18 mục) | Admin |
+**GET `/`** — Public, phân trang → AdministrativeUnitResponse[]: `id`, `name`, `level` (0=Central/1=Province/2=Ward/3=Neighborhood), `parentId?`, `code`, `createdAt`, `updatedAt`
 
-**Seed data (`POST /api/categories/seed`):**
+**GET `/{id}`** — Public → AdministrativeUnitResponse
 
+**GET `/by-level/{level}`** — Public, level: 0=Central/1=Province/2=Ward/3=Neighborhood → AdministrativeUnitResponse[]
+
+**GET `/{id}/children`** — Public → AdministrativeUnitResponse[]
+
+**POST `/`** — Admin
+Body: `name`* (string), `level`* (int: 0=Central/1=Province/2=Ward/3=Neighborhood), `parentId?` (guid), `code`* (string)
+→ AdministrativeUnitResponse
+
+**PUT `/{id}`** — Admin
+Body: `name`* (string), `code`* (string)
+→ AdministrativeUnitResponse
+
+**DELETE `/{id}`** — Admin → Result
+
+---
+
+## Categories (`/api/categories`)
+
+**GET `/`** — Public, phân trang → CategoryResponse[]: `id`, `name`, `slug`, `type`, `isActive`, `createdAt`, `updatedAt`
+
+**GET `/active`** — Public → CategoryResponse[] (chỉ isActive=true)
+
+**GET `/by-type/{type}`** — Public, type = theme/style/activity/budget/companion → CategoryResponse[]
+
+**GET `/{id}`** — Public → CategoryResponse
+
+**POST `/`** — Admin
+Body: `name`* (string, max 100), `slug`* (string, max 100, format: a-z0-9 và dấu -), `type`* (string, max 50)
+→ CategoryResponse. Lỗi 409 nếu slug đã tồn tại.
+
+**PUT `/{id}`** — Admin
+Body: `name`* (string), `slug`* (string), `type`* (string), `isActive` (bool, default true)
+→ CategoryResponse
+
+**DELETE `/{id}`** — Admin → Result
+
+**POST `/seed`** — Admin
 Tạo sẵn 18 category, bỏ qua nếu slug đã tồn tại:
-
-| Type | Categories |
-|------|-----------|
-| `theme` | Thiên nhiên, Thành phố, Ẩm thực, Văn hóa – Lịch sử, Lễ hội – sự kiện |
-| `style` | Chill – thư giãn, Vui vẻ – năng động, Sôi động – náo nhiệt, Phiêu lưu – khám phá |
-| `activity` | Trekking / khám phá, Du lịch sinh thái, Check-in sống ảo, Giải trí / vui chơi |
-| `budget` | Giá rẻ – tiết kiệm, Cao cấp – sang chảnh |
-| `companion` | Gia đình, Cặp đôi, Nhóm bạn |
+- theme: Thiên nhiên, Thành phố, Ẩm thực, Văn hóa – Lịch sử, Lễ hội – sự kiện
+- style: Chill – thư giãn, Vui vẻ – năng động, Sôi động – náo nhiệt, Phiêu lưu – khám phá
+- activity: Trekking / khám phá, Du lịch sinh thái, Check-in sống ảo, Giải trí / vui chơi
+- budget: Giá rẻ – tiết kiệm, Cao cấp – sang chảnh
+- companion: Gia đình, Cặp đôi, Nhóm bạn
 
 ---
 
-## Places
+## Places (`/api/places`)
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| GET | `/api/places` | Danh sách địa điểm đã duyệt (phân trang) | No |
-| GET | `/api/places/all` | Tất cả địa điểm (phân trang) | Admin, Contributor |
-| GET | `/api/places/{id}` | Chi tiết địa điểm | No |
-| POST | `/api/places` | Tạo địa điểm | Admin, Contributor (scope) |
-| PUT | `/api/places/{id}` | Cập nhật địa điểm | Admin, Contributor (scope) |
-| DELETE | `/api/places/{id}` | Xóa địa điểm | Admin, Contributor (scope) |
+PlaceResponse: `id`, `name`, `description`, `address`, `administrativeUnitId`, `latitude?`, `longitude?`, `categoryIds` (guid[]), `tags` (string[]), `moderationStatus` (0=Pending/1=Approved/2=Rejected), `createdBy`, `approvedBy?`, `approvedAt?`, `createdAt`, `updatedAt`
 
----
+**GET `/`** — Public, phân trang → PlaceResponse[] (chỉ moderationStatus=1 Approved)
 
-## Events
+**GET `/all`** — Admin/Contributor, phân trang → PlaceResponse[] (tất cả status, Contributor chỉ thấy dữ liệu trong scope đơn vị hành chính của mình)
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| GET | `/api/events` | Danh sách sự kiện đã duyệt (phân trang) | No |
-| GET | `/api/events/all` | Tất cả sự kiện (phân trang) | Admin, Contributor |
-| GET | `/api/events/{id}` | Chi tiết sự kiện | No |
-| POST | `/api/events` | Tạo sự kiện | Admin, Contributor (scope) |
-| PUT | `/api/events/{id}` | Cập nhật sự kiện | Admin, Contributor (scope) |
-| DELETE | `/api/events/{id}` | Xóa sự kiện | Admin, Contributor (scope) |
+**GET `/{id}`** — Public → PlaceResponse
+
+**POST `/`** — Admin/Contributor (Contributor chỉ tạo trong scope đơn vị hành chính của mình)
+Body: `name`* (string), `description`* (string), `address`* (string), `administrativeUnitId`* (guid), `latitude?` (double), `longitude?` (double), `categoryIds` (guid[]), `tags` (string[])
+→ PlaceResponse (tự động moderationStatus=0 Pending, cần Admin/Contributor cấp trên duyệt)
+
+**PUT `/{id}`** — Admin/Contributor (Admin sửa tất cả, Contributor chỉ sửa place mình tạo trong scope)
+Body: giống POST
+→ PlaceResponse
+
+**DELETE `/{id}`** — Admin/Contributor (Admin xóa tất cả, Contributor chỉ xóa place mình tạo trong scope) → Result
 
 ---
 
-## Moderation
+## Events (`/api/events`)
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| PATCH | `/api/moderation/{resourceType}/{id}/approve` | Duyệt Place/Event | Admin, Contributor (scope cấp trên) |
-| PATCH | `/api/moderation/{resourceType}/{id}/reject` | Từ chối Place/Event | Admin, Contributor (scope cấp trên) |
-| GET | `/api/moderation/{resourceType}/{id}/logs` | Lịch sử duyệt | Admin, Contributor |
+EventResponse: `id`, `title`, `description`, `address`, `administrativeUnitId`, `latitude?`, `longitude?`, `categoryIds` (guid[]), `tags` (string[]), `startAt`, `endAt`, `eventStatus` (0=Upcoming/1=Ongoing/2=Ended), `moderationStatus` (0=Pending/1=Approved/2=Rejected), `createdBy`, `approvedBy?`, `approvedAt?`, `createdAt`, `updatedAt`
 
-> `resourceType`: `Place` hoặc `Event`
+**GET `/`** — Public, phân trang → EventResponse[] (chỉ moderationStatus=1 Approved)
 
----
+**GET `/all`** — Admin/Contributor, phân trang → EventResponse[] (tất cả status, Contributor chỉ thấy trong scope)
 
-## Media
+**GET `/{id}`** — Public → EventResponse
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| POST | `/api/media/upload-signature` | Cấp signature cho frontend upload Cloudinary | Admin, Contributor (scope) |
-| POST | `/api/media/finalize` | Lưu metadata sau khi upload thành công | Admin, Contributor (scope) |
-| GET | `/api/media/by-resource?resourceType=Place&resourceId=xxx` | Lấy ảnh theo resource | No |
-| PATCH | `/api/media/{id}/set-primary` | Đặt ảnh chính | Admin, Contributor (scope) |
-| PATCH | `/api/media/reorder` | Sắp xếp thứ tự ảnh | Admin, Contributor (scope) |
-| DELETE | `/api/media/{id}` | Xóa ảnh (DB + Cloudinary) | Admin, Contributor (scope) |
+**POST `/`** — Admin/Contributor (Contributor chỉ tạo trong scope đơn vị hành chính của mình)
+Body: `title`* (string), `description`* (string), `address`* (string), `administrativeUnitId`* (guid), `latitude?` (double), `longitude?` (double), `categoryIds` (guid[]), `tags` (string[]), `startAt`* (datetime), `endAt`* (datetime)
+→ EventResponse (tự động moderationStatus=0 Pending)
+
+**PUT `/{id}`** — Admin/Contributor (Admin sửa tất cả, Contributor chỉ sửa event mình tạo trong scope)
+Body: giống POST + `eventStatus` (int: 0=Upcoming/1=Ongoing/2=Ended)
+→ EventResponse
+
+**DELETE `/{id}`** — Admin/Contributor (Admin xóa tất cả, Contributor chỉ xóa event mình tạo trong scope) → Result
 
 ---
 
-## Reviews
+## Moderation (`/api/moderation`) — Admin/Contributor
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| POST | `/api/reviews` | Tạo/cập nhật review (upsert — 1 user 1 review/resource) | Yes |
-| PATCH | `/api/reviews/{id}` | Sửa review (chỉ chủ review) | Yes |
-| DELETE | `/api/reviews/{id}` | Xóa review (chủ review hoặc Admin) | Yes |
-| GET | `/api/reviews?resourceType=Place&resourceId=xxx` | Danh sách review theo resource (phân trang) | No |
-| GET | `/api/reviews/mine?resourceType=Place&resourceId=xxx` | Review của user hiện tại cho resource | Yes |
+resourceType trong URL: `Place` hoặc `Event`. Contributor chỉ duyệt/từ chối dữ liệu thuộc scope đơn vị hành chính cấp dưới của mình. Admin duyệt tất cả.
 
----
+**PATCH `/{resourceType}/{id}/approve`** — Admin/Contributor
+Body: `note`* (string)
+→ ModerationLogResponse: `id`, `resourceType`, `resourceId`, `action`, `note`, `actedBy`, `actedAt`
+(Chuyển moderationStatus → 1=Approved)
 
-## Discovery
+**PATCH `/{resourceType}/{id}/reject`** — Admin/Contributor
+Body: `note`* (string)
+→ ModerationLogResponse (chuyển moderationStatus → 2=Rejected)
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| GET | `/api/discovery/places` | Tìm kiếm/lọc địa điểm | No |
-| GET | `/api/discovery/events` | Tìm kiếm/lọc sự kiện | No |
-
-**Query params:** `search`, `categoryId`, `administrativeUnitId`, `tag`, `sortBy` (newest/oldest/rating/name/startdate), `pageNumber`, `pageSize`
+**GET `/{resourceType}/{id}/logs`** — Admin/Contributor → ModerationLogResponse[]
 
 ---
 
-## Chat AI
+## Media (`/api/media`)
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| POST | `/api/chat/conversations` | Tạo cuộc trò chuyện mới | Yes |
-| GET | `/api/chat/conversations` | Danh sách cuộc trò chuyện (phân trang) | Yes |
-| GET | `/api/chat/conversations/{id}/messages` | Lịch sử tin nhắn (phân trang) | Yes |
-| POST | `/api/chat/conversations/{id}/messages` | Gửi tin nhắn (non-streaming) | Yes |
-| POST | `/api/chat/conversations/{id}/messages/stream` | Gửi tin nhắn (SSE streaming) | Yes |
+MediaAssetResponse: `id`, `resourceType` (0=Place/1=Event), `resourceId`, `url`, `secureUrl`, `publicId`, `format`, `mimeType`, `bytes`, `width`, `height`, `isPrimary`, `sortOrder`, `uploadedBy`, `createdAt`
+
+**POST `/upload-signature`** — Admin/Contributor (Contributor chỉ upload cho resource trong scope)
+Body: `resourceType`* (int: 0=Place/1=Event), `resourceId`* (guid)
+→ UploadSignatureResponse: `signature`, `timestamp` (long), `apiKey`, `cloudName`, `folder`
+(Frontend dùng signature này để upload trực tiếp lên Cloudinary)
+
+**POST `/finalize`** — Admin/Contributor (Contributor chỉ finalize cho resource trong scope)
+Body: `resourceType`* (int: 0=Place/1=Event), `resourceId`* (guid), `publicId`* (string), `url`* (string), `secureUrl`* (string), `format`* (string), `mimeType`* (string), `bytes`* (long), `width`* (int), `height`* (int)
+→ MediaAssetResponse (lưu metadata sau khi upload Cloudinary thành công)
+
+**GET `/by-resource?resourceType=Place&resourceId=xxx`** — Public → MediaAssetResponse[]
+
+**PATCH `/{id}/set-primary`** — Admin/Contributor → MediaAssetResponse
+
+**PATCH `/reorder`** — Admin/Contributor
+Body: `orderedIds`* (guid[]) — danh sách media ID theo thứ tự mong muốn
+→ Result
+
+**DELETE `/{id}`** — Admin/Contributor → Result (xóa cả DB và Cloudinary)
+
+---
+
+## Reviews (`/api/reviews`)
+
+ReviewResponse: `id`, `resourceType` (0=Place/1=Event), `resourceId`, `userId`, `rating`, `comment`, `status` (0=Active/1=Hidden/2=Deleted), `createdAt`, `updatedAt`
+
+**POST `/`** — Login (upsert: 1 user chỉ có 1 review/resource, gọi lại sẽ cập nhật review cũ)
+Body: `resourceType`* (int: 0=Place/1=Event), `resourceId`* (guid), `rating`* (int), `comment`* (string)
+→ ReviewResponse
+
+**PATCH `/{id}`** — Login (chỉ chủ review mới sửa được, người khác → 403)
+Body: `rating`* (int), `comment`* (string)
+→ ReviewResponse
+
+**DELETE `/{id}`** — Login (chủ review hoặc Admin mới xóa được) → Result
+
+**GET `/?resourceType=Place&resourceId=xxx`** — Public, phân trang → ReviewResponse[]
+
+**GET `/mine?resourceType=Place&resourceId=xxx`** — Login → ReviewResponse (review của user hiện tại cho resource đó)
+
+---
+
+## Discovery (`/api/discovery`) — Public
+
+**GET `/places`** — Public, phân trang (chỉ trả place đã Approved)
+Query: `search?` (string), `categoryId?` (guid), `administrativeUnitId?` (guid), `tag?` (string), `sortBy` (newest/oldest/rating/name, default: newest)
+→ PlaceResponse[]
+
+**GET `/events`** — Public, phân trang (chỉ trả event đã Approved)
+Query: `search?` (string), `categoryId?` (guid), `administrativeUnitId?` (guid), `tag?` (string), `sortBy` (newest/oldest/rating/name/startdate, default: newest)
+→ EventResponse[]
+
+---
+
+## Chat AI (`/api/chat`) — Login (mọi role)
+
+ConversationResponse: `id`, `title`, `model`, `status` (0=Active/1=Archived), `lastMessageAt`, `createdAt`
+MessageResponse: `id`, `conversationId`, `role` (0=User/1=Assistant/2=System), `content`, `tokenCount`, `citations`, `createdAt`
+
+**POST `/conversations`** — Login
+Body: `title`* (string)
+→ ConversationResponse
+
+**GET `/conversations`** — Login, phân trang → ConversationResponse[] (chỉ conversation của user hiện tại)
+
+**GET `/conversations/{id}/messages`** — Login, phân trang → MessageResponse[] (chỉ xem conversation của mình)
+
+**POST `/conversations/{id}/messages`** — Login
+Body: `content`* (string)
+→ MessageResponse (AI trả lời dựa trên dữ liệu thực: places, events, preferences của user)
+
+**POST `/conversations/{id}/messages/stream`** — Login
+Body: `content`* (string)
+→ SSE stream, mỗi chunk: `data: {"content":"..."}`, kết thúc: `data: [DONE]`
 
 ---
 
 ## Test / Dev
 
-| Method | Endpoint | Mô tả | Auth |
-|--------|----------|-------|------|
-| GET | `/api/dbtest` | Test kết nối database | No |
-| POST | `/api/dbtest/create-tables` | Tạo toàn bộ tables | No |
-| POST | `/api/dbtest/seed-admin` | Tạo tài khoản Admin mặc định (`admin@aitourism.vn` / `admin123`) | No |
-| POST | `/api/geminitest` | Test Gemini AI (body: `{"prompt": "..."}`) | No |
-| POST | `/api/geminitest/test-prompt` | Test base prompt AI với fake data | No |
+**GET `/api/dbtest`** — No auth, test kết nối database
+
+**POST `/api/dbtest/create-tables`** — No auth, tạo toàn bộ tables
+
+**POST `/api/dbtest/seed-admin`** — No auth, tạo admin mặc định (admin@aitourism.vn / admin123)
+
+**POST `/api/geminitests`** — No auth
+Body: `prompt`* (string)
+→ `response` (string) — gửi prompt thẳng cho Gemini
+
+**POST `/api/geminitests/ask-api`** — No auth
+Body: `question`* (string)
+→ `question`, `answer` — hỏi Gemini về các API trong dự án (dùng file này làm knowledge base)
+
+**POST `/api/geminitests/test-prompt`** — No auth
+Body: `userMessage`* (string), `userPreferences?` (string[]), `userLatitude?` (double), `userLongitude?` (double), `fakePlaces?` (object[]: name, category?, description?, address?, rating?, tags?, latitude?, longitude?), `fakeEvents?` (object[]: title, description?, address?, status?, startAt?, endAt?)
+→ `systemPrompt`, `userMessage`, `aiResponse` — test base prompt AI với fake data

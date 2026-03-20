@@ -61,6 +61,86 @@ public class GeminiTestController : ControllerBase
     }
 
     /// <summary>
+    /// API hỏi đáp về các endpoint trong dự án — Gemini đọc api-endpoints.md làm knowledge base
+    /// Body: { "question": "API tạo danh mục dùng sao?" }
+    /// </summary>
+    [HttpPost("ask-api")]
+    public async Task<IActionResult> AskApi([FromBody] AskApiRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Question))
+            return BadRequest(Result.Fail("Question is required"));
+
+        // Đọc file api-endpoints.md làm knowledge
+        var docPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "Documentation", "api-endpoints.md");
+        if (!System.IO.File.Exists(docPath))
+            return StatusCode(500, Result.Fail("Không tìm thấy file api-endpoints.md"));
+
+        var apiDoc = await System.IO.File.ReadAllTextAsync(docPath);
+
+        var systemPrompt = $"""
+            Bạn là "Trợ lý API" của dự án "Du Lịch Địa Phương".
+            Dưới đây là toàn bộ tài liệu API endpoints của dự án:
+
+            {apiDoc}
+
+            === PHONG CÁCH TRẢ LỜI ===
+            - Luôn xưng "em", gọi người hỏi là "anh".
+            - Trả lời bằng tiếng Việt, thân thiện, ngắn gọn, xúc tích. Không dài dòng, không lặp lại thông tin thừa.
+            - Đi thẳng vào vấn đề, không mở đầu kiểu "Dạ anh ơi, để em giải thích..." quá dài.
+
+            === QUY TẮC ===
+            - CHỈ trả lời dựa trên tài liệu API bên trên. KHÔNG bịa thêm endpoint, field, hoặc giá trị enum không có trong tài liệu.
+            - Khi giải thích một API, LUÔN nêu rõ:
+              + Method và URL đầy đủ
+              + Quyền truy cập: Public (ai cũng gọi được), Login (cần JWT token), Admin (chỉ Admin), Admin/Contributor (Admin hoặc Contributor trong scope)
+              + Nếu là Admin/Contributor, giải thích rõ Contributor bị giới hạn scope đơn vị hành chính như thế nào
+              + Các tham số cần gửi (bắt buộc/tùy chọn) và kiểu dữ liệu
+              + Response trả về
+            - Với các field kiểu enum, LUÔN nêu rõ giá trị số (int) tương ứng. VD: "role gửi dạng số: 0=Admin, 1=Contributor, 2=User". Không được chỉ nêu tên enum mà không kèm số.
+            - Nếu người dùng hỏi về API không có trong tài liệu, nói rõ là chưa có.
+            - Có thể so sánh, phân loại, liệt kê nhóm API khi người dùng yêu cầu.
+
+            === QUAN TRỌNG ===
+            - Nếu không chắc chắn hoặc câu hỏi nằm ngoài phạm vi tài liệu API bên trên, KHÔNG ĐƯỢC trả lời bừa. Hãy nói: "Em chưa có đủ dữ liệu để trả lời chính xác câu này anh ơi. Tài liệu API hiện tại chưa bao gồm thông tin đó."
+            - KHÔNG suy đoán, KHÔNG bịa thông tin. Chỉ trả lời những gì có trong tài liệu.
+            """;
+
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_geminiOptions.Model}:generateContent?key={_geminiOptions.ApiKey}";
+
+        var body = new
+        {
+            system_instruction = new
+            {
+                parts = new[] { new { text = systemPrompt } }
+            },
+            contents = new[]
+            {
+                new { role = "user", parts = new[] { new { text = request.Question } } }
+            }
+        };
+
+        var client = _httpClientFactory.CreateClient();
+        var json = JsonSerializer.Serialize(body);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync(url, content);
+        var responseBody = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+            return StatusCode((int)response.StatusCode, Result.Fail($"Gemini error: {responseBody}"));
+
+        using var doc = JsonDocument.Parse(responseBody);
+        var text = doc.RootElement
+            .GetProperty("candidates")[0]
+            .GetProperty("content")
+            .GetProperty("parts")[0]
+            .GetProperty("text")
+            .GetString();
+
+        return Ok(Result.Ok<object>(new { Question = request.Question, Answer = text }));
+    }
+
+    /// <summary>
     /// API test base prompt — gui system prompt + fake data + user message cho Gemini
     /// De test xem AI tra loi co dung kich ban VanDe.txt khong
     /// </summary>
@@ -280,4 +360,13 @@ public class FakeEvent
     public string? Status { get; set; }
     public DateTime? StartAt { get; set; }
     public DateTime? EndAt { get; set; }
+}
+
+public class AskApiRequest
+{
+    /// <summary>
+    /// Câu hỏi về API trong dự án
+    /// VD: "API tạo danh mục dùng sao?", "Liệt kê các API cần Auth"
+    /// </summary>
+    public string Question { get; set; } = string.Empty;
 }

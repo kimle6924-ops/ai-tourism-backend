@@ -73,6 +73,7 @@ public static class AppConstants
 
         // Chat
         public const string ConversationNotFound = "CONVERSATION_NOT_FOUND";
+        public const string InvalidConversationId = "INVALID_CONVERSATION_ID";
 
         // Admin User
         public const string UserNotPendingApproval = "USER_NOT_PENDING_APPROVAL";
@@ -105,5 +106,6 @@ public static class AppConstants
     public static class Chat
     {
         public const string ConversationNotFound = "Cuộc trò chuyện không tồn tại hoặc không thuộc về bạn";
+        public const string InvalidConversationId = "ID cuộc trò chuyện không hợp lệ. Vui lòng truyền đúng định dạng UUID";
     }
 }

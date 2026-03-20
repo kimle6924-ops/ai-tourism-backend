@@ -2,6 +2,7 @@ using System.Text.Json;
 using BE_AI_Tourism.Application.DTOs.Chat;
 using BE_AI_Tourism.Application.Services.Chat;
 using BE_AI_Tourism.Shared.Constants;
+using BE_AI_Tourism.Shared.Core;
 using BE_AI_Tourism.Shared.Pagination;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -34,25 +35,39 @@ public class ChatController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpGet("conversations/{id:guid}/messages")]
-    public async Task<IActionResult> GetMessages(Guid id, [FromQuery] PaginationRequest request)
+    [HttpGet("conversations/{id}/messages")]
+    public async Task<IActionResult> GetMessages(string id, [FromQuery] PaginationRequest request)
     {
-        var result = await _chatService.GetMessagesAsync(id, GetUserId(), request);
+        if (!TryParseConversationId(id, out var conversationId))
+            return BadRequest(Result.Fail(AppConstants.Chat.InvalidConversationId, StatusCodes.Status400BadRequest, AppConstants.ErrorCodes.InvalidConversationId));
+
+        var result = await _chatService.GetMessagesAsync(conversationId, GetUserId(), request);
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpPost("conversations/{id:guid}/messages")]
-    public async Task<IActionResult> SendMessage(Guid id, [FromBody] SendMessageRequest request)
+    [HttpPost("conversations/{id}/messages")]
+    public async Task<IActionResult> SendMessage(string id, [FromBody] SendMessageRequest request)
     {
-        var result = await _chatService.SendMessageAsync(id, request, GetUserId());
+        if (!TryParseConversationId(id, out var conversationId))
+            return BadRequest(Result.Fail(AppConstants.Chat.InvalidConversationId, StatusCodes.Status400BadRequest, AppConstants.ErrorCodes.InvalidConversationId));
+
+        var result = await _chatService.SendMessageAsync(conversationId, request, GetUserId());
         return StatusCode(result.StatusCode, result);
     }
 
-    [HttpPost("conversations/{id:guid}/messages/stream")]
-    public async Task StreamMessage(Guid id, [FromBody] SendMessageRequest request)
+    [HttpPost("conversations/{id}/messages/stream")]
+    public async Task StreamMessage(string id, [FromBody] SendMessageRequest request)
     {
+        if (!TryParseConversationId(id, out var conversationId))
+        {
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            Response.ContentType = "application/json";
+            await Response.WriteAsJsonAsync(Result.Fail(AppConstants.Chat.InvalidConversationId, StatusCodes.Status400BadRequest, AppConstants.ErrorCodes.InvalidConversationId));
+            return;
+        }
+
         // Validate conversation exists BEFORE starting SSE, so we can return proper 404
-        var validation = await _chatService.ValidateConversationAsync(id, GetUserId());
+        var validation = await _chatService.ValidateConversationAsync(conversationId, GetUserId());
         if (!validation.Success)
         {
             Response.StatusCode = validation.StatusCode;
@@ -69,7 +84,7 @@ public class ChatController : ControllerBase
 
         try
         {
-            await foreach (var chunk in _chatService.StreamMessageAsync(id, request, GetUserId(), cancellationToken))
+            await foreach (var chunk in _chatService.StreamMessageAsync(conversationId, request, GetUserId(), cancellationToken))
             {
                 var data = JsonSerializer.Serialize(new { content = chunk });
                 await Response.WriteAsync($"data: {data}\n\n", cancellationToken);
@@ -84,6 +99,9 @@ public class ChatController : ControllerBase
             // Client disconnected — normal behavior
         }
     }
+
+    private static bool TryParseConversationId(string id, out Guid conversationId)
+        => Guid.TryParse(id, out conversationId);
 
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirst(AppConstants.JwtClaimTypes.UserId)!.Value);

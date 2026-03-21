@@ -91,7 +91,7 @@ public class ReviewService : IReviewService
         return Result.Ok("Review deleted successfully");
     }
 
-    public async Task<Result<PaginationResponse<ReviewResponse>>> GetByResourceAsync(ResourceType resourceType, Guid resourceId, PaginationRequest request)
+    public async Task<Result<ReviewListResponse>> GetByResourceAsync(ResourceType resourceType, Guid resourceId, PaginationRequest request)
     {
         var all = await _reviewRepository.FindAsync(
             r => r.ResourceType == resourceType && r.ResourceId == resourceId && r.Status == ReviewStatus.Active);
@@ -99,8 +99,16 @@ public class ReviewService : IReviewService
         var items = ordered.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
         var responses = items.Select(r => _mapper.Map<ReviewResponse>(r)).ToList();
 
-        return Result.Ok(PaginationResponse<ReviewResponse>.Create(
-            responses, ordered.Count, request.PageNumber, request.PageSize));
+        var totalReviews = ordered.Count;
+        var averageRating = totalReviews > 0 ? Math.Round(ordered.Average(r => r.Rating), 1) : 0;
+
+        return Result.Ok(new ReviewListResponse
+        {
+            AverageRating = averageRating,
+            TotalReviews = totalReviews,
+            Reviews = PaginationResponse<ReviewResponse>.Create(
+                responses, totalReviews, request.PageNumber, request.PageSize)
+        });
     }
 
     public async Task<Result<ReviewResponse>> GetUserReviewAsync(ResourceType resourceType, Guid resourceId, Guid userId)

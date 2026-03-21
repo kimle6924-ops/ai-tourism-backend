@@ -16,15 +16,18 @@ public class UserController : ControllerBase
     private readonly IUserService _userService;
     private readonly IValidator<UpdateUserRequest> _updateUserValidator;
     private readonly IValidator<UpdatePreferencesRequest> _updatePreferencesValidator;
+    private readonly IValidator<UpdateLocationRequest> _updateLocationValidator;
 
     public UserController(
         IUserService userService,
         IValidator<UpdateUserRequest> updateUserValidator,
-        IValidator<UpdatePreferencesRequest> updatePreferencesValidator)
+        IValidator<UpdatePreferencesRequest> updatePreferencesValidator,
+        IValidator<UpdateLocationRequest> updateLocationValidator)
     {
         _userService = userService;
         _updateUserValidator = updateUserValidator;
         _updatePreferencesValidator = updatePreferencesValidator;
+        _updateLocationValidator = updateLocationValidator;
     }
 
     private Guid GetCurrentUserId()
@@ -55,6 +58,17 @@ public class UserController : ControllerBase
     public async Task<IActionResult> GetPreferences()
     {
         var result = await _userService.GetPreferencesAsync(GetCurrentUserId());
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpPut("me/location")]
+    public async Task<IActionResult> UpdateLocation([FromBody] UpdateLocationRequest request)
+    {
+        var validation = await _updateLocationValidator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return BadRequest(Shared.Core.Result.ValidationFail(validation.Errors));
+
+        var result = await _userService.UpdateLocationAsync(GetCurrentUserId(), request);
         return StatusCode(result.StatusCode, result);
     }
 

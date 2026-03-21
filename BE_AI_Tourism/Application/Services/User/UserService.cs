@@ -56,6 +56,19 @@ public class UserService : IUserService
         return Result.Ok(response);
     }
 
+    public async Task<Result<UserResponse>> UpdateLocationAsync(Guid userId, UpdateLocationRequest request)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return Result.Fail<UserResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+
+        user.Latitude = request.Latitude;
+        user.Longitude = request.Longitude;
+
+        await _userRepository.UpdateAsync(user);
+        return Result.Ok(_mapper.Map<UserResponse>(user));
+    }
+
     public async Task<Result<PreferencesResponse>> UpdatePreferencesAsync(Guid userId, UpdatePreferencesRequest request)
     {
         var preference = await _preferenceRepository.FindOneAsync(p => p.UserId == userId);

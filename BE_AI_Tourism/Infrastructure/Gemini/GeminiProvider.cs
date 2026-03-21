@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace BE_AI_Tourism.Infrastructure.Gemini;
 
-public class GeminiProvider : IGeminiProvider
+public class cGeminiProvider : IGeminiProvider
 {
     private readonly GeminiOptions _options;
     private readonly IHttpClientFactory _httpClientFactory;

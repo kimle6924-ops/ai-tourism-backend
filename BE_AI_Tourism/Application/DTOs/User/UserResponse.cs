@@ -11,4 +11,6 @@ public class UserResponse
     public string AvatarUrl { get; set; } = string.Empty;
     public UserRole Role { get; set; }
     public UserStatus Status { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
 }

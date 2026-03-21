@@ -9,4 +9,5 @@ public interface IUserService
     Task<Result<UserResponse>> UpdateProfileAsync(Guid userId, UpdateUserRequest request);
     Task<Result<PreferencesResponse>> GetPreferencesAsync(Guid userId);
     Task<Result<PreferencesResponse>> UpdatePreferencesAsync(Guid userId, UpdatePreferencesRequest request);
+    Task<Result<UserResponse>> UpdateLocationAsync(Guid userId, UpdateLocationRequest request);
 }

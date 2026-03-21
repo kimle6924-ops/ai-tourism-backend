@@ -13,6 +13,8 @@ public class User : BaseEntity
     public UserRole Role { get; set; } = UserRole.User;
     public Guid? AdministrativeUnitId { get; set; }
     public UserStatus Status { get; set; } = UserStatus.Active;
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiryTime { get; set; }
 }

@@ -22,6 +22,7 @@ public class EventResponse
     public Guid? ApprovedBy { get; set; }
     public DateTime? ApprovedAt { get; set; }
     public double AverageRating { get; set; }
+    public double? DistanceKm { get; set; }
     public List<MediaAssetResponse> Images { get; set; } = [];
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

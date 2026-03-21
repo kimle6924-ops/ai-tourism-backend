@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using BE_AI_Tourism.Application.DTOs.Discovery;
 using BE_AI_Tourism.Application.Services.Discovery;
 using Microsoft.AspNetCore.Authorization;
@@ -44,4 +45,23 @@ public class DiscoveryController : ControllerBase
         var result = await _discoveryService.SimpleSearchEventsAsync(request);
         return StatusCode(result.StatusCode, result);
     }
+
+    [Authorize]
+    [HttpGet("recommend/places")]
+    public async Task<IActionResult> RecommendPlaces([FromQuery] RecommendRequest request)
+    {
+        var result = await _discoveryService.RecommendPlacesAsync(GetCurrentUserId(), request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize]
+    [HttpGet("recommend/events")]
+    public async Task<IActionResult> RecommendEvents([FromQuery] RecommendRequest request)
+    {
+        var result = await _discoveryService.RecommendEventsAsync(GetCurrentUserId(), request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    private Guid GetCurrentUserId()
+        => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 }

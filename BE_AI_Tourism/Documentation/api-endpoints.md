@@ -266,6 +266,19 @@ Query: `search?` (string), `sortBy` (newest/oldest/rating/name, default: newest)
 Query: `search?` (string), `sortBy` (newest/oldest/rating/name/startdate, default: newest), `averageRating?` (int: 5→đúng 5.0, 4→4.0–4.99, 3→3.0–3.99, 2→2.0–2.99, 1→1.0–1.99)
 → EventResponse[]
 
+### Gợi ý theo vị trí + sở thích (`/api/discovery/recommend`) — Login
+
+Tự lấy vị trí (latitude/longitude) và sở thích (categoryIds) của user đang đăng nhập. Ưu tiên place/event match sở thích trước, sau đó sắp theo khoảng cách gần → xa. Yêu cầu user phải cập nhật vị trí trước (`PUT /api/users/me/location`), nếu chưa trả 400.
+
+**GET `/recommend/places`** — Login, phân trang
+Query: `maxDistanceKm?` (double, lọc khoảng cách tối đa km, không truyền → trả tất cả)
+→ PlaceResponse[] (mỗi item có thêm `distanceKm`)
+
+**GET `/recommend/events`** — Login, phân trang
+Query: `maxDistanceKm?` (double)
+Chỉ trả event chưa kết thúc (Ended). Ưu tiên match sở thích, sắp theo khoảng cách.
+→ EventResponse[] (mỗi item có thêm `distanceKm`)
+
 ---
 
 ## Chat AI (`/api/chat`) — Login (mọi role)

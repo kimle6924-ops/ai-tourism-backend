@@ -318,6 +318,19 @@ public static class ApiDocSections
         GET /api/discovery/search/events — Public, phân trang (chỉ trả event đã Approved)
         Query: search? (string, tìm trong title và description), sortBy (newest/oldest/rating/name/startdate, default: newest), averageRating? (int: 5 → chỉ lấy rating đúng 5.0, 4 → rating từ 4.0 đến 4.99, 3 → từ 3.0 đến 3.99, tương tự cho 2 và 1. Không truyền thì không lọc theo rating)
         → EventResponse[] (mỗi item có averageRating)
+
+        ### Gợi ý theo vị trí + sở thích — Login
+
+        GET /api/discovery/recommend/places — Login, phân trang
+        Query: maxDistanceKm? (double, lọc khoảng cách tối đa, không truyền thì trả tất cả)
+        Tự lấy vị trí (latitude/longitude) và sở thích (categoryIds) của user đang đăng nhập. Ưu tiên place match sở thích trước, sau đó sắp theo khoảng cách gần → xa. Response có thêm distanceKm (khoảng cách từ user đến place, km).
+        Yêu cầu: user phải cập nhật vị trí trước (PUT /api/users/me/location), nếu chưa trả 400.
+        → PlaceResponse[] (mỗi item có averageRating, distanceKm)
+
+        GET /api/discovery/recommend/events — Login, phân trang
+        Query: maxDistanceKm? (double)
+        Tương tự recommend places nhưng cho events. Chỉ trả event chưa kết thúc (Ended). Ưu tiên match sở thích, sắp theo khoảng cách.
+        → EventResponse[] (mỗi item có averageRating, distanceKm)
         """;
 
     public static string Chat() => """

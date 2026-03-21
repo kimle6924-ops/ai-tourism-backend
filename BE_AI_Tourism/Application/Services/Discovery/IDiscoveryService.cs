@@ -12,4 +12,6 @@ public interface IDiscoveryService
     Task<Result<PaginationResponse<EventResponse>>> SearchEventsAsync(DiscoveryRequest request);
     Task<Result<PaginationResponse<PlaceResponse>>> SimpleSearchPlacesAsync(SimpleSearchRequest request);
     Task<Result<PaginationResponse<EventResponse>>> SimpleSearchEventsAsync(SimpleSearchRequest request);
+    Task<Result<PaginationResponse<PlaceResponse>>> RecommendPlacesAsync(Guid userId, RecommendRequest request);
+    Task<Result<PaginationResponse<EventResponse>>> RecommendEventsAsync(Guid userId, RecommendRequest request);
 }

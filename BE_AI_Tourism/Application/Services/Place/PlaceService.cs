@@ -445,6 +445,6 @@ public class PlaceService : IPlaceService
 
         return reviews
             .GroupBy(r => r.ResourceId)
-            .ToDictionary(g => g.Key, g => g.Average(r => r.Rating));
+            .ToDictionary(g => g.Key, g => Math.Round(g.Average(r => r.Rating), 1));
     }
 }

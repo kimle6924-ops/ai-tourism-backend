@@ -62,7 +62,7 @@ public static class ApiDocSections
     public static string User() => """
         ## User (/api/user) — Login (mọi role)
 
-        GET /api/user/me — Login → UserResponse: id, email, fullName, phone, avatarUrl, role (0=Admin/1=Contributor/2=User), status (0=Active/1=Locked/2=PendingApproval)
+        GET /api/user/me — Login → UserResponse: id, email, fullName, phone, avatarUrl, role (0=Admin/1=Contributor/2=User), status (0=Active/1=Locked/2=PendingApproval), latitude? (double), longitude? (double)
 
         PUT /api/user/me — Login
         Body: fullName? (string, max 100), phone? (string, max 20), avatarUrl? (string, max 500)
@@ -70,6 +70,11 @@ public static class ApiDocSections
         → UserResponse
 
         GET /api/user/me/preferences — Login → PreferencesResponse: categoryIds (guid[])
+
+        PUT /api/user/me/location — Login
+        Body: latitude* (double, -90 đến 90), longitude* (double, -180 đến 180)
+        Cập nhật vị trí hiện tại của user.
+        → UserResponse
 
         PUT /api/user/me/preferences — Login
         Body: categoryIds* (guid[], bắt buộc không null)
@@ -267,7 +272,7 @@ public static class ApiDocSections
     public static string Reviews() => """
         ## Reviews (/api/reviews)
 
-        ReviewResponse: id, resourceType (0=Place/1=Event), resourceId, userId, rating, comment, status (0=Active/1=Hidden/2=Deleted), createdAt, updatedAt
+        ReviewResponse: id, resourceType (0=Place/1=Event), resourceId, userId, userFullName (string, tên user), userAvatarUrl (string, ảnh đại diện user), rating, comment, status (0=Active/1=Hidden/2=Deleted), createdAt, updatedAt
 
         POST /api/reviews — Login
         Body: resourceType* (int: 0=Place/1=Event), resourceId* (guid), rating* (int, từ 1 đến 5), comment? (string, max 1000)

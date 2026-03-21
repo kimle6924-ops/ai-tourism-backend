@@ -44,13 +44,17 @@ Body: `refreshToken`* (string)
 
 ## User (`/api/user`) — Login (mọi role)
 
-**GET `/me`** — Login → UserResponse: `id`, `email`, `fullName`, `phone`, `avatarUrl`, `role` (0=Admin/1=Contributor/2=User), `status` (0=Active/1=Locked/2=PendingApproval)
+**GET `/me`** — Login → UserResponse: `id`, `email`, `fullName`, `phone`, `avatarUrl`, `role` (0=Admin/1=Contributor/2=User), `status` (0=Active/1=Locked/2=PendingApproval), `latitude?` (double), `longitude?` (double)
 
 **PUT `/me`** — Login
 Body: `fullName?` (string), `phone?` (string), `avatarUrl?` (string)
 → UserResponse
 
 **GET `/me/preferences`** — Login → PreferencesResponse: `categoryIds` (guid[])
+
+**PUT `/me/location`** — Login
+Body: `latitude`* (double, -90 đến 90), `longitude`* (double, -180 đến 180)
+→ UserResponse
 
 **PUT `/me/preferences`** — Login
 Body: `categoryIds`* (guid[])
@@ -221,7 +225,7 @@ Body: `orderedIds`* (guid[]) — danh sách media ID theo thứ tự mong muốn
 
 ## Reviews (`/api/reviews`)
 
-ReviewResponse: `id`, `resourceType` (0=Place/1=Event), `resourceId`, `userId`, `rating`, `comment`, `status` (0=Active/1=Hidden/2=Deleted), `createdAt`, `updatedAt`
+ReviewResponse: `id`, `resourceType` (0=Place/1=Event), `resourceId`, `userId`, `userFullName` (string), `userAvatarUrl` (string), `rating`, `comment`, `status` (0=Active/1=Hidden/2=Deleted), `createdAt`, `updatedAt`
 
 **POST `/`** — Login (mỗi lần gọi tạo 1 review mới, 1 user có thể đánh giá nhiều lần cho cùng 1 resource)
 Body: `resourceType`* (int: 0=Place/1=Event), `resourceId`* (guid), `rating`* (int), `comment`* (string)

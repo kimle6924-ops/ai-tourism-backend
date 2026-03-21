@@ -119,9 +119,7 @@ public class AdministrativeUnitService : IAdministrativeUnitService
     {
         return (parentLevel, childLevel) switch
         {
-            (AdministrativeLevel.Central, AdministrativeLevel.Province) => true,
             (AdministrativeLevel.Province, AdministrativeLevel.Ward) => true,
-            (AdministrativeLevel.Ward, AdministrativeLevel.Neighborhood) => true,
             _ => false
         };
     }

@@ -19,11 +19,11 @@ public class CreateAdministrativeUnitRequestValidator : AbstractValidator<Create
             .IsInEnum().WithMessage("Invalid administrative level");
 
         RuleFor(x => x.ParentId)
-            .NotNull().When(x => x.Level != Domain.Enums.AdministrativeLevel.Central)
-            .WithMessage("ParentId is required for non-Central levels");
+            .NotNull().When(x => x.Level == Domain.Enums.AdministrativeLevel.Ward)
+            .WithMessage("ParentId is required for Ward level");
 
         RuleFor(x => x.ParentId)
-            .Null().When(x => x.Level == Domain.Enums.AdministrativeLevel.Central)
-            .WithMessage("Central level must not have a parent");
+            .Null().When(x => x.Level == Domain.Enums.AdministrativeLevel.Province)
+            .WithMessage("Province level must not have a parent");
     }
 }

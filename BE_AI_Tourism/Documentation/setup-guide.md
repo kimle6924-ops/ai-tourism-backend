@@ -519,7 +519,7 @@ Frontend cần biết các giá trị enum khi gọi API:
 | Enum | Giá trị |
 |------|---------|
 | UserRole | `User`, `Contributor`, `Admin` |
-| AdministrativeLevel | `Central`, `Province`, `Ward`, `Neighborhood` |
+| AdministrativeLevel | `Province`, `Ward` |
 | ModerationStatus | `Pending`, `Approved`, `Rejected` |
 | EventStatus | `Upcoming`, `Ongoing`, `Ended` |
 | ReviewStatus | `Active`, `Hidden`, `Deleted` |

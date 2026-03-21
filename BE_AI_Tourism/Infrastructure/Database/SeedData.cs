@@ -17,122 +17,61 @@ public static class SeedData
         if (await context.AdministrativeUnits.AnyAsync())
             return;
 
-        // Central
-        var central = new AdministrativeUnit
-        {
-            Id = Guid.NewGuid(),
-            Name = "Trung ương",
-            Level = AdministrativeLevel.Central,
-            Code = "TW",
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        // 63 Tỉnh/Thành phố
+        // 34 Tỉnh/Thành phố (theo API v2 post-2025 merger)
         var provinces = new List<AdministrativeUnit>
         {
-            CreateProvince("Hà Nội", "HN", central.Id),
-            CreateProvince("Hồ Chí Minh", "HCM", central.Id),
-            CreateProvince("Đà Nẵng", "DN", central.Id),
-            CreateProvince("Hải Phòng", "HP", central.Id),
-            CreateProvince("Cần Thơ", "CT", central.Id),
-            CreateProvince("An Giang", "AG", central.Id),
-            CreateProvince("Bà Rịa - Vũng Tàu", "BRVT", central.Id),
-            CreateProvince("Bắc Giang", "BG", central.Id),
-            CreateProvince("Bắc Kạn", "BK", central.Id),
-            CreateProvince("Bạc Liêu", "BL", central.Id),
-            CreateProvince("Bắc Ninh", "BN", central.Id),
-            CreateProvince("Bến Tre", "BT", central.Id),
-            CreateProvince("Bình Định", "BDI", central.Id),
-            CreateProvince("Bình Dương", "BD", central.Id),
-            CreateProvince("Bình Phước", "BP", central.Id),
-            CreateProvince("Bình Thuận", "BTH", central.Id),
-            CreateProvince("Cà Mau", "CM", central.Id),
-            CreateProvince("Cao Bằng", "CB", central.Id),
-            CreateProvince("Đắk Lắk", "DL", central.Id),
-            CreateProvince("Đắk Nông", "DNo", central.Id),
-            CreateProvince("Điện Biên", "DB", central.Id),
-            CreateProvince("Đồng Nai", "DNa", central.Id),
-            CreateProvince("Đồng Tháp", "DT", central.Id),
-            CreateProvince("Gia Lai", "GL", central.Id),
-            CreateProvince("Hà Giang", "HG", central.Id),
-            CreateProvince("Hà Nam", "HNa", central.Id),
-            CreateProvince("Hà Tĩnh", "HT", central.Id),
-            CreateProvince("Hải Dương", "HD", central.Id),
-            CreateProvince("Hậu Giang", "HGi", central.Id),
-            CreateProvince("Hòa Bình", "HB", central.Id),
-            CreateProvince("Hưng Yên", "HY", central.Id),
-            CreateProvince("Khánh Hòa", "KH", central.Id),
-            CreateProvince("Kiên Giang", "KG", central.Id),
-            CreateProvince("Kon Tum", "KT", central.Id),
-            CreateProvince("Lai Châu", "LC", central.Id),
-            CreateProvince("Lâm Đồng", "LD", central.Id),
-            CreateProvince("Lạng Sơn", "LS", central.Id),
-            CreateProvince("Lào Cai", "LCa", central.Id),
-            CreateProvince("Long An", "LA", central.Id),
-            CreateProvince("Nam Định", "ND", central.Id),
-            CreateProvince("Nghệ An", "NA", central.Id),
-            CreateProvince("Ninh Bình", "NB", central.Id),
-            CreateProvince("Ninh Thuận", "NT", central.Id),
-            CreateProvince("Phú Thọ", "PT", central.Id),
-            CreateProvince("Phú Yên", "PY", central.Id),
-            CreateProvince("Quảng Bình", "QB", central.Id),
-            CreateProvince("Quảng Nam", "QN", central.Id),
-            CreateProvince("Quảng Ngãi", "QNg", central.Id),
-            CreateProvince("Quảng Ninh", "QNi", central.Id),
-            CreateProvince("Quảng Trị", "QT", central.Id),
-            CreateProvince("Sóc Trăng", "ST", central.Id),
-            CreateProvince("Sơn La", "SL", central.Id),
-            CreateProvince("Tây Ninh", "TNi", central.Id),
-            CreateProvince("Thái Bình", "TB", central.Id),
-            CreateProvince("Thái Nguyên", "TN", central.Id),
-            CreateProvince("Thanh Hóa", "TH", central.Id),
-            CreateProvince("Thừa Thiên Huế", "TTH", central.Id),
-            CreateProvince("Tiền Giang", "TG", central.Id),
-            CreateProvince("Trà Vinh", "TV", central.Id),
-            CreateProvince("Tuyên Quang", "TQ", central.Id),
-            CreateProvince("Vĩnh Long", "VL", central.Id),
-            CreateProvince("Vĩnh Phúc", "VP", central.Id),
-            CreateProvince("Yên Bái", "YB", central.Id),
+            CreateProvince("Thành phố Hà Nội", "1"),
+            CreateProvince("Tỉnh Cao Bằng", "4"),
+            CreateProvince("Tỉnh Tuyên Quang", "8"),
+            CreateProvince("Tỉnh Điện Biên", "11"),
+            CreateProvince("Tỉnh Lai Châu", "12"),
+            CreateProvince("Tỉnh Sơn La", "14"),
+            CreateProvince("Tỉnh Lào Cai", "15"),
+            CreateProvince("Tỉnh Thái Nguyên", "19"),
+            CreateProvince("Tỉnh Lạng Sơn", "20"),
+            CreateProvince("Tỉnh Quảng Ninh", "22"),
+            CreateProvince("Tỉnh Hòa Bình", "17"),
+            CreateProvince("Tỉnh Ninh Bình", "37"),
+            CreateProvince("Tỉnh Thanh Hóa", "38"),
+            CreateProvince("Tỉnh Nghệ An", "40"),
+            CreateProvince("Tỉnh Hà Tĩnh", "42"),
+            CreateProvince("Tỉnh Thừa Thiên Huế", "46"),
+            CreateProvince("Thành phố Đà Nẵng", "48"),
+            CreateProvince("Tỉnh Quảng Nam", "49"),
+            CreateProvince("Tỉnh Quảng Ngãi", "51"),
+            CreateProvince("Tỉnh Bình Định", "52"),
+            CreateProvince("Tỉnh Khánh Hòa", "56"),
+            CreateProvince("Tỉnh Gia Lai", "64"),
+            CreateProvince("Tỉnh Đắk Lắk", "66"),
+            CreateProvince("Tỉnh Lâm Đồng", "68"),
+            CreateProvince("Tỉnh Bình Phước", "70"),
+            CreateProvince("Tỉnh Bình Dương", "74"),
+            CreateProvince("Thành phố Hồ Chí Minh", "79"),
+            CreateProvince("Tỉnh Đồng Nai", "75"),
+            CreateProvince("Tỉnh Bà Rịa - Vũng Tàu", "77"),
+            CreateProvince("Tỉnh Long An", "80"),
+            CreateProvince("Tỉnh Tiền Giang", "82"),
+            CreateProvince("Tỉnh An Giang", "89"),
+            CreateProvince("Thành phố Cần Thơ", "92"),
+            CreateProvince("Tỉnh Kiên Giang", "91"),
         };
 
-        // Seed một số Phường/Xã mẫu cho Đà Nẵng
-        var daNang = provinces.First(p => p.Code == "DN");
+        // Seed một số Ward mẫu cho Đà Nẵng
+        var daNang = provinces.First(p => p.Code == "48");
         var wards = new List<AdministrativeUnit>
         {
-            CreateWard("Quận Hải Châu", "DN-HC", daNang.Id),
-            CreateWard("Quận Thanh Khê", "DN-TK", daNang.Id),
-            CreateWard("Quận Sơn Trà", "DN-ST", daNang.Id),
-            CreateWard("Quận Ngũ Hành Sơn", "DN-NHS", daNang.Id),
-            CreateWard("Quận Liên Chiểu", "DN-LC", daNang.Id),
-            CreateWard("Quận Cẩm Lệ", "DN-CL", daNang.Id),
-            CreateWard("Huyện Hòa Vang", "DN-HV", daNang.Id),
-            CreateWard("Huyện Hoàng Sa", "DN-HS", daNang.Id),
+            CreateWard("Quận Hải Châu", "490", daNang.Id),
+            CreateWard("Quận Thanh Khê", "491", daNang.Id),
+            CreateWard("Quận Sơn Trà", "492", daNang.Id),
+            CreateWard("Quận Ngũ Hành Sơn", "493", daNang.Id),
+            CreateWard("Quận Liên Chiểu", "494", daNang.Id),
+            CreateWard("Quận Cẩm Lệ", "495", daNang.Id),
+            CreateWard("Huyện Hòa Vang", "497", daNang.Id),
+            CreateWard("Huyện Hoàng Sa", "498", daNang.Id),
         };
 
-        // Seed một số Tổ dân phố mẫu cho Quận Hải Châu
-        var haiChau = wards.First(w => w.Code == "DN-HC");
-        var neighborhoods = new List<AdministrativeUnit>
-        {
-            CreateNeighborhood("Phường Thạch Thang", "DN-HC-TT", haiChau.Id),
-            CreateNeighborhood("Phường Thanh Bình", "DN-HC-TB", haiChau.Id),
-            CreateNeighborhood("Phường Thuận Phước", "DN-HC-TP", haiChau.Id),
-            CreateNeighborhood("Phường Hải Châu 1", "DN-HC-HC1", haiChau.Id),
-            CreateNeighborhood("Phường Hải Châu 2", "DN-HC-HC2", haiChau.Id),
-            CreateNeighborhood("Phường Phước Ninh", "DN-HC-PN", haiChau.Id),
-            CreateNeighborhood("Phường Hòa Thuận Tây", "DN-HC-HTT", haiChau.Id),
-            CreateNeighborhood("Phường Hòa Thuận Đông", "DN-HC-HTD", haiChau.Id),
-            CreateNeighborhood("Phường Nam Dương", "DN-HC-ND", haiChau.Id),
-            CreateNeighborhood("Phường Bình Hiên", "DN-HC-BH", haiChau.Id),
-            CreateNeighborhood("Phường Bình Thuận", "DN-HC-BT", haiChau.Id),
-            CreateNeighborhood("Phường Hòa Cường Bắc", "DN-HC-HCB", haiChau.Id),
-            CreateNeighborhood("Phường Hòa Cường Nam", "DN-HC-HCN", haiChau.Id),
-        };
-
-        await context.AdministrativeUnits.AddAsync(central);
         await context.AdministrativeUnits.AddRangeAsync(provinces);
         await context.AdministrativeUnits.AddRangeAsync(wards);
-        await context.AdministrativeUnits.AddRangeAsync(neighborhoods);
         await context.SaveChangesAsync();
     }
 
@@ -188,14 +127,14 @@ public static class SeedData
         await context.SaveChangesAsync();
     }
 
-    private static AdministrativeUnit CreateProvince(string name, string code, Guid parentId)
+    private static AdministrativeUnit CreateProvince(string name, string code)
     {
         return new AdministrativeUnit
         {
             Id = Guid.NewGuid(),
             Name = name,
             Level = AdministrativeLevel.Province,
-            ParentId = parentId,
+            ParentId = null,
             Code = code,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -209,20 +148,6 @@ public static class SeedData
             Id = Guid.NewGuid(),
             Name = name,
             Level = AdministrativeLevel.Ward,
-            ParentId = parentId,
-            Code = code,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-    }
-
-    private static AdministrativeUnit CreateNeighborhood(string name, string code, Guid parentId)
-    {
-        return new AdministrativeUnit
-        {
-            Id = Guid.NewGuid(),
-            Name = name,
-            Level = AdministrativeLevel.Neighborhood,
             ParentId = parentId,
             Code = code,
             CreatedAt = DateTime.UtcNow,

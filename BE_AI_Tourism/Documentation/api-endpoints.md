@@ -16,7 +16,7 @@
 **Enums (gửi/nhận dạng số int):**
 - UserRole: 0=Admin, 1=Contributor, 2=User
 - UserStatus: 0=Active, 1=Locked, 2=PendingApproval
-- AdministrativeLevel: 0=Central, 1=Province, 2=Ward, 3=Neighborhood
+- AdministrativeLevel: 0=Province, 1=Ward
 - ModerationStatus: 0=Pending, 1=Approved, 2=Rejected
 - EventStatus: 0=Upcoming, 1=Ongoing, 2=Ended
 - ReviewStatus: 0=Active, 1=Hidden, 2=Deleted
@@ -81,16 +81,16 @@ Lỗi 400 nếu fromUtc > toUtc.
 
 ## Administrative Units (`/api/administrative-units`)
 
-**GET `/`** — Public, phân trang → AdministrativeUnitResponse[]: `id`, `name`, `level` (0=Central/1=Province/2=Ward/3=Neighborhood), `parentId?`, `code`, `createdAt`, `updatedAt`
+**GET `/`** — Public, phân trang → AdministrativeUnitResponse[]: `id`, `name`, `level` (0=Province/1=Ward), `parentId?`, `code`, `createdAt`, `updatedAt`
 
 **GET `/{id}`** — Public → AdministrativeUnitResponse
 
-**GET `/by-level/{level}`** — Public, level: 0=Central/1=Province/2=Ward/3=Neighborhood → AdministrativeUnitResponse[]
+**GET `/by-level/{level}`** — Public, level: 0=Province/1=Ward → AdministrativeUnitResponse[]
 
 **GET `/{id}/children`** — Public → AdministrativeUnitResponse[]
 
 **POST `/`** — Admin
-Body: `name`* (string), `level`* (int: 0=Central/1=Province/2=Ward/3=Neighborhood), `parentId?` (guid), `code`* (string)
+Body: `name`* (string), `level`* (int: 0=Province/1=Ward), `parentId?` (guid, bắt buộc nếu level=Ward), `code`* (string)
 → AdministrativeUnitResponse
 
 **PUT `/{id}`** — Admin
@@ -298,6 +298,8 @@ Body: `content`* (string)
 **POST `/api/dbtest/create-tables`** — No auth, tạo toàn bộ tables (`?reset=true` để xóa schema cũ và tạo lại từ đầu)
 
 **POST `/api/dbtest/seed-admin`** — No auth, tạo admin mặc định (admin@aitourism.vn / admin123)
+
+**POST `/api/dbtest/reset-and-seed-all`** — No auth, reset toàn bộ database và seed lại tất cả: tạo bảng → seed đơn vị hành chính + categories → seed admin → seed places → seed events. Trả về danh sách từng bước và trạng thái.
 
 **POST `/api/geminitests`** — No auth
 Body: `prompt`* (string)

@@ -2,7 +2,7 @@
 
 ## 1. Mục tiêu sản phẩm
 - Xây backend cho hệ thống du lịch địa phương với 3 nhóm người dùng: `Admin`, `Contributor`, `User`.
-- Contributor quản lý dữ liệu theo phân cấp hành chính: `Central`, `Province`, `Ward`, `Neighborhood`.
+- Contributor quản lý dữ liệu theo phân cấp hành chính: `Province`, `Ward` (2 cấp theo API v2 post-2025 merger).
 - Frontend xử lý GPS, backend chỉ cung cấp dữ liệu để frontend lọc/đề xuất theo vị trí.
 - AI Chatbot dùng Gemini, có truy xuất dữ liệu thực trong PostgreSQL và lưu context theo từng người dùng.
 - Ảnh upload qua Cloudinary, PostgreSQL chỉ lưu link và metadata.
@@ -97,10 +97,8 @@
 - `Contributor` có quyền CRUD nội dung trong phạm vi hành chính được cấp.
 - `User` chỉ xem dữ liệu đã duyệt và tạo/chỉnh review của chính mình.
 - Rule scope:
-- `Central` quản lý toàn bộ.
-- `Province` quản lý province của mình và cấp dưới.
-- `Ward` quản lý ward của mình và neighborhood cấp dưới.
-- `Neighborhood` quản lý dữ liệu neighborhood của mình.
+- `Province` quản lý province của mình và các ward bên dưới.
+- `Ward` quản lý dữ liệu ward của mình.
 - Mọi thao tác sửa/xóa/duyệt đều kiểm tra `role` và `administrative scope` trong service layer.
 
 ## 6. Thiết kế API

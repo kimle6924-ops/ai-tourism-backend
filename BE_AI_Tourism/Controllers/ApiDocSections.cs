@@ -20,12 +20,12 @@ public static class ApiDocSections
         - Admin/Contributor — Role Admin (0) hoặc Contributor (1). Contributor bị giới hạn scope theo đơn vị hành chính được gán khi đăng ký (chỉ thao tác với dữ liệu thuộc đơn vị hành chính của mình và đơn vị con). Admin không bị giới hạn scope.
         - Không có token hoặc token hết hạn → trả 401 Unauthorized.
 
-        Scope (phạm vi quyền Contributor): Contributor được gán 1 đơn vị hành chính khi đăng ký. Contributor có quyền thao tác với dữ liệu thuộc đơn vị đó và tất cả đơn vị con bên dưới. Ví dụ Contributor gán ở Province thì quản lý được cả Ward và Neighborhood bên dưới.
+        Scope (phạm vi quyền Contributor): Contributor được gán 1 đơn vị hành chính khi đăng ký. Contributor có quyền thao tác với dữ liệu thuộc đơn vị đó và tất cả đơn vị con bên dưới. Ví dụ Contributor gán ở Province thì quản lý được cả Ward bên dưới.
 
         Enums (gửi/nhận dạng số int):
         - UserRole: 0=Admin, 1=Contributor, 2=User
         - UserStatus: 0=Active, 1=Locked, 2=PendingApproval
-        - AdministrativeLevel: 0=Central, 1=Province, 2=Ward, 3=Neighborhood
+        - AdministrativeLevel: 0=Province, 1=Ward
         - ModerationStatus: 0=Pending, 1=Approved, 2=Rejected
         - EventStatus: 0=Upcoming, 1=Ongoing, 2=Ended
         - ReviewStatus: 0=Active, 1=Hidden, 2=Deleted
@@ -106,19 +106,19 @@ public static class ApiDocSections
     public static string AdministrativeUnits() => """
         ## Administrative Units (/api/administrative-units)
 
-        Hệ thống phân cấp: Central → Province → Ward → Neighborhood. Central không có parent. Các cấp khác bắt buộc có parentId.
+        Hệ thống phân cấp: Province → Ward. Province không có parent. Ward bắt buộc có parentId trỏ về Province. Dữ liệu đồng bộ từ API provinces.open-api.vn v2 (post-2025 merger).
 
-        GET /api/administrative-units — Public, phân trang → AdministrativeUnitResponse[]: id, name, level (0=Central/1=Province/2=Ward/3=Neighborhood), parentId?, code, createdAt, updatedAt
+        GET /api/administrative-units — Public, phân trang → AdministrativeUnitResponse[]: id, name, level (0=Province/1=Ward), parentId?, code, createdAt, updatedAt
 
         GET /api/administrative-units/{id} — Public → AdministrativeUnitResponse
 
-        GET /api/administrative-units/by-level/{level} — Public, level: 0=Central/1=Province/2=Ward/3=Neighborhood → AdministrativeUnitResponse[]
+        GET /api/administrative-units/by-level/{level} — Public, level: 0=Province/1=Ward → AdministrativeUnitResponse[]
 
         GET /api/administrative-units/{id}/children — Public → AdministrativeUnitResponse[]
 
         POST /api/administrative-units — Admin
-        Body: name* (string, max 200), level* (int: 0/1/2/3), parentId? (guid), code* (string, max 50)
-        Điều kiện: Central (level=0) không cần parentId. Các level khác BẮT BUỘC có parentId và parent phải tồn tại. Code phải duy nhất.
+        Body: name* (string, max 200), level* (int: 0=Province/1=Ward), parentId? (guid, bắt buộc nếu level=Ward), code* (string, max 50)
+        Điều kiện: Province (level=0) không cần parentId. Ward (level=1) BẮT BUỘC có parentId trỏ về Province. Code phải duy nhất.
         Lỗi: 404 nếu parent không tồn tại. 409 nếu code đã tồn tại.
 
         PUT /api/administrative-units/{id} — Admin
@@ -353,6 +353,8 @@ public static class ApiDocSections
         GET /api/dbtest — test kết nối database
         POST /api/dbtest/create-tables — tạo toàn bộ tables (query reset=true để xóa schema cũ và tạo lại từ đầu)
         POST /api/dbtest/seed-admin — tạo admin mặc định (email: admin@aitourism.vn, password: admin123)
+
+        POST /api/dbtest/reset-and-seed-all — reset toàn bộ database và seed lại tất cả dữ liệu: tạo bảng → seed đơn vị hành chính + categories → seed admin → seed places → seed events. Trả về danh sách từng bước thực hiện và trạng thái.
 
         POST /api/geminitests — Body: prompt* (string) → response (string)
 

@@ -185,19 +185,19 @@ public class PlaceService : IPlaceService
             if (admin == null)
                 return Result.Fail<IEnumerable<PlaceResponse>>("Chưa có tài khoản Admin. Hãy seed admin trước.", StatusCodes.Status400BadRequest, "NO_ADMIN");
 
-            // Tìm hoặc tạo đơn vị hành chính: Sa Pa, Lào Cai
+            // Tìm hoặc tạo đơn vị hành chính: Lào Cai (code=15), Sa Pa (code=152)
             var allUnits = await _adminUnitRepository.GetAllAsync();
-            var laoCai = allUnits.FirstOrDefault(u => u.Code == "lao-cai");
+            var laoCai = allUnits.FirstOrDefault(u => u.Code == "15");
             if (laoCai == null)
             {
-                laoCai = new AdministrativeUnit { Name = "Lào Cai", Level = AdministrativeLevel.Province, Code = "lao-cai" };
+                laoCai = new AdministrativeUnit { Name = "Tỉnh Lào Cai", Level = AdministrativeLevel.Province, Code = "15" };
                 await _adminUnitRepository.AddAsync(laoCai);
             }
 
-            var saPa = allUnits.FirstOrDefault(u => u.Code == "sa-pa");
+            var saPa = allUnits.FirstOrDefault(u => u.Code == "152");
             if (saPa == null)
             {
-                saPa = new AdministrativeUnit { Name = "Sa Pa", Level = AdministrativeLevel.Ward, Code = "sa-pa", ParentId = laoCai.Id };
+                saPa = new AdministrativeUnit { Name = "Thị xã Sa Pa", Level = AdministrativeLevel.Ward, Code = "152", ParentId = laoCai.Id };
                 await _adminUnitRepository.AddAsync(saPa);
             }
 

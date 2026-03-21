@@ -89,7 +89,7 @@ public static class AppConstants
     {
         public const string CodeAlreadyExists = "Administrative unit code already exists";
         public const string ParentNotFound = "Parent administrative unit not found";
-        public const string InvalidLevelHierarchy = "Invalid level hierarchy. Central→Province→Ward→Neighborhood";
+        public const string InvalidLevelHierarchy = "Invalid level hierarchy. Province→Ward";
         public const string HasChildren = "Cannot delete administrative unit that has children";
     }
 

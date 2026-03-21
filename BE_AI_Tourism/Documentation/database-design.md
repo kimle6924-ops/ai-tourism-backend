@@ -45,7 +45,7 @@ Mọi entity kế thừa `BaseEntity`:
 | Field | Type | Constraints | Mô tả |
 |-------|------|------------|-------|
 | name | string | required | Tên đơn vị |
-| level | string (enum) | index | Central / Province / Ward / Neighborhood |
+| level | string (enum) | index | Province / Ward |
 | parent_id | Guid? | index | Đơn vị cha |
 | code | string | unique index | Mã đơn vị |
 

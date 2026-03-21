@@ -70,7 +70,7 @@ Danh sach checklist cac phan can ra soat va hoan thien trong he thong.
 
 ### Phan quyen
 - [x] Doi chieu full ma tran quyen trong `VanDe.txt` — 3 role dung, Admin full quyen, Contributor theo scope, User read-only
-- [x] Doi chieu dung 4 cap hanh chinh contributor — Central/Province/Ward/Neighborhood da co trong AdministrativeLevel enum
+- [x] Doi chieu dung 2 cap hanh chinh contributor — Province/Ward (theo API v2 post-2025 merger)
 - [x] Chot ro quy tac ke thua quyen theo cap — ScopeService walk up tree, cap tren quan ly duoc cap duoi
 - [x] Rasoat endpoint nao dang chi check role ma chua check scope hanh chinh — da tim va sua GetAllPaged + Create
 - [x] Bo sung scope check cho luong tao moi Place/Event cua Contributor — CreateAsync check IsInScopeAsync

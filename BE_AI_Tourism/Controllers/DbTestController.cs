@@ -61,46 +61,64 @@ public class DbTestController : ControllerBase
         }));
     }
 
-    [HttpPost("seed-admin")]
-    public async Task<IActionResult> SeedAdmin()
+    [HttpPost("seed-accounts")]
+    public async Task<IActionResult> SeedAccounts()
     {
-        var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == "admin@aitourism.vn");
-        if (existing != null)
-            return Ok(Result.Ok<object>(new
-            {
-                Message = "Admin account already exists",
-                Email = existing.Email,
-                Role = existing.Role.ToString()
-            }));
+        // Lookup đơn vị hành chính để gán cho Contributor
+        var daNang = await _context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "48");
+        var haiChau = await _context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "490");
 
-        var admin = new Domain.Entities.User
+        var seedAccounts = new List<(string Email, string Password, string FullName, string Phone, UserRole Role, Guid? AdminUnitId)>
         {
-            Id = Guid.NewGuid(),
-            Email = "admin@aitourism.vn",
-            Password = _passwordService.Hash("admin123"),
-            FullName = "System Admin",
-            Phone = "0900000000",
-            Role = UserRole.Admin,
-            Status = UserStatus.Active,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            ("admin@aitourism.vn", "admin123", "System Admin", "0900000000", UserRole.Admin, null),
+            ("contributor.province@aitourism.vn", "contributor123", "Nguyễn Văn Tỉnh", "0900000001", UserRole.Contributor, daNang?.Id),
+            ("contributor.ward@aitourism.vn", "contributor123", "Trần Thị Quận", "0900000003", UserRole.Contributor, haiChau?.Id),
+            ("user@aitourism.vn", "user123", "Lê Văn User", "0900000002", UserRole.User, null)
         };
 
-        await _context.Users.AddAsync(admin);
+        var created = new List<object>();
+        var skipped = new List<object>();
+
+        foreach (var (email, password, fullName, phone, role, adminUnitId) in seedAccounts)
+        {
+            var existing = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+            if (existing != null)
+            {
+                skipped.Add(new { Email = email, Role = role.ToString(), Message = "Already exists" });
+                continue;
+            }
+
+            var user = new Domain.Entities.User
+            {
+                Id = Guid.NewGuid(),
+                Email = email,
+                Password = _passwordService.Hash(password),
+                FullName = fullName,
+                Phone = phone,
+                Role = role,
+                AdministrativeUnitId = adminUnitId,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _context.Users.AddAsync(user);
+            created.Add(new { Email = email, Password = password, Role = role.ToString(), AdministrativeUnitId = adminUnitId });
+        }
+
         await _context.SaveChangesAsync();
 
         return Ok(Result.Ok<object>(new
         {
-            Message = "Admin account created",
-            Email = "admin@aitourism.vn",
-            Password = "admin123",
-            Role = "Admin"
+            Message = $"Seed accounts: {created.Count} created, {skipped.Count} skipped",
+            Created = created,
+            Skipped = skipped
         }));
     }
 
     /// <summary>
     /// Reset toàn bộ database, tạo lại bảng, seed tất cả dữ liệu mẫu.
-    /// Thứ tự: reset DB → create tables → seed data (admin units + categories) → seed admin → seed places → seed events
+    /// Thứ tự: reset DB → create tables → seed data (admin units + categories) → seed accounts (admin, contributor, user) → seed places → seed events
     /// </summary>
     [HttpPost("reset-and-seed-all")]
     public async Task<IActionResult> ResetAndSeedAll()
@@ -116,22 +134,35 @@ public class DbTestController : ControllerBase
         await SeedData.SeedAsync(_context);
         steps.Add(new { Step = 2, Action = "Seed administrative units & categories", Status = "OK" });
 
-        // 3. Seed admin account
-        var admin = new Domain.Entities.User
+        // 3. Seed accounts (Admin, 2 Contributor, User)
+        var daNang = await _context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "48");
+        var haiChau = await _context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "490");
+
+        var seedAccounts = new (string Email, string Password, string FullName, string Phone, UserRole Role, Guid? AdminUnitId)[]
         {
-            Id = Guid.NewGuid(),
-            Email = "admin@aitourism.vn",
-            Password = _passwordService.Hash("admin123"),
-            FullName = "System Admin",
-            Phone = "0900000000",
-            Role = UserRole.Admin,
-            Status = UserStatus.Active,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
+            ("admin@aitourism.vn", "admin123", "System Admin", "0900000000", UserRole.Admin, null),
+            ("contributor.province@aitourism.vn", "contributor123", "Nguyễn Văn Tỉnh", "0900000001", UserRole.Contributor, daNang?.Id),
+            ("contributor.ward@aitourism.vn", "contributor123", "Trần Thị Quận", "0900000003", UserRole.Contributor, haiChau?.Id),
+            ("user@aitourism.vn", "user123", "Lê Văn User", "0900000002", UserRole.User, null)
         };
-        await _context.Users.AddAsync(admin);
+        foreach (var (email, password, fullName, phone, role, adminUnitId) in seedAccounts)
+        {
+            await _context.Users.AddAsync(new Domain.Entities.User
+            {
+                Id = Guid.NewGuid(),
+                Email = email,
+                Password = _passwordService.Hash(password),
+                FullName = fullName,
+                Phone = phone,
+                Role = role,
+                AdministrativeUnitId = adminUnitId,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
         await _context.SaveChangesAsync();
-        steps.Add(new { Step = 3, Action = "Seed admin (admin@aitourism.vn / admin123)", Status = "OK" });
+        steps.Add(new { Step = 3, Action = "Seed accounts (admin / 2 contributors / user)", Status = "OK" });
 
         // 4. Seed places
         var placeResult = await _placeService.SeedAsync();

@@ -152,7 +152,7 @@ Body: giống POST
 **DELETE `/{id}`** — Admin/Contributor (Admin xóa tất cả, Contributor chỉ xóa place mình tạo trong scope) → Result
 
 **POST `/seed`** — Admin
-Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định. Bỏ qua nếu place cùng title đã tồn tại. Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu đã seed admin và seed categories trước.
+Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định. Bỏ qua nếu place cùng title đã tồn tại. Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu đã seed accounts và seed categories trước.
 
 ---
 
@@ -297,9 +297,13 @@ Body: `content`* (string)
 
 **POST `/api/dbtest/create-tables`** — No auth, tạo toàn bộ tables (`?reset=true` để xóa schema cũ và tạo lại từ đầu)
 
-**POST `/api/dbtest/seed-admin`** — No auth, tạo admin mặc định (admin@aitourism.vn / admin123)
+**POST `/api/dbtest/seed-accounts`** — No auth, tạo 4 tài khoản mặc định (bỏ qua nếu đã tồn tại):
+- Admin: admin@aitourism.vn / admin123
+- Contributor (Province - Đà Nẵng): contributor.province@aitourism.vn / contributor123
+- Contributor (Ward - Hải Châu): contributor.ward@aitourism.vn / contributor123
+- User: user@aitourism.vn / user123
 
-**POST `/api/dbtest/reset-and-seed-all`** — No auth, reset toàn bộ database và seed lại tất cả: tạo bảng → seed đơn vị hành chính + categories → seed admin → seed places → seed events. Trả về danh sách từng bước và trạng thái.
+**POST `/api/dbtest/reset-and-seed-all`** — No auth, reset toàn bộ database và seed lại tất cả: tạo bảng → seed đơn vị hành chính + categories → seed accounts (admin, 2 contributors, user) → seed places → seed events. Trả về danh sách từng bước và trạng thái.
 
 **POST `/api/geminitests`** — No auth
 Body: `prompt`* (string)

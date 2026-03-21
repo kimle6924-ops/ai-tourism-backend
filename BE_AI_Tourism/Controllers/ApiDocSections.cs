@@ -186,7 +186,7 @@ public static class ApiDocSections
         Lỗi: 404 nếu không tìm thấy. 403 nếu không có quyền.
 
         POST /api/places/seed — Admin
-        Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định cho mỗi place. Bỏ qua nếu place cùng title đã tồn tại (gọi nhiều lần không sao). Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu: phải seed admin (POST /api/dbtest/seed-admin) và seed categories (POST /api/categories/seed) trước khi gọi API này.
+        Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định cho mỗi place. Bỏ qua nếu place cùng title đã tồn tại (gọi nhiều lần không sao). Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu: phải seed accounts (POST /api/dbtest/seed-accounts) và seed categories (POST /api/categories/seed) trước khi gọi API này.
         """;
 
     public static string Events() => """
@@ -352,9 +352,13 @@ public static class ApiDocSections
 
         GET /api/dbtest — test kết nối database
         POST /api/dbtest/create-tables — tạo toàn bộ tables (query reset=true để xóa schema cũ và tạo lại từ đầu)
-        POST /api/dbtest/seed-admin — tạo admin mặc định (email: admin@aitourism.vn, password: admin123)
+        POST /api/dbtest/seed-accounts — tạo 4 tài khoản mặc định (bỏ qua nếu đã tồn tại):
+          Admin: admin@aitourism.vn / admin123
+          Contributor (Province - Đà Nẵng): contributor.province@aitourism.vn / contributor123
+          Contributor (Ward - Hải Châu): contributor.ward@aitourism.vn / contributor123
+          User: user@aitourism.vn / user123
 
-        POST /api/dbtest/reset-and-seed-all — reset toàn bộ database và seed lại tất cả dữ liệu: tạo bảng → seed đơn vị hành chính + categories → seed admin → seed places → seed events. Trả về danh sách từng bước thực hiện và trạng thái.
+        POST /api/dbtest/reset-and-seed-all — reset toàn bộ database và seed lại tất cả dữ liệu: tạo bảng → seed đơn vị hành chính + categories → seed accounts (admin, 2 contributors, user) → seed places → seed events. Trả về danh sách từng bước thực hiện và trạng thái.
 
         POST /api/geminitests — Body: prompt* (string) → response (string)
 

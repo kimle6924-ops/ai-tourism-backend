@@ -230,7 +230,8 @@ Body: `rating`* (int), `comment`* (string)
 
 **DELETE `/{id}`** — Login (chủ review hoặc Admin mới xóa được) → Result
 
-**GET `/?resourceType=Place&resourceId=xxx`** — Public, phân trang → ReviewResponse[]
+**GET `/?resourceType=Place&resourceId=xxx`** — Public, phân trang
+→ ReviewListResponse: `averageRating` (double, làm tròn 1 chữ số), `totalReviews` (int), `reviews` (PaginationResponse\<ReviewResponse\>)
 
 **GET `/mine?resourceType=Place&resourceId=xxx`** — Login → ReviewResponse (review của user hiện tại cho resource đó)
 
@@ -244,6 +245,18 @@ Query: `search?` (string), `categoryId?` (guid), `administrativeUnitId?` (guid),
 
 **GET `/events`** — Public, phân trang (chỉ trả event đã Approved)
 Query: `search?` (string), `categoryId?` (guid), `administrativeUnitId?` (guid), `tag?` (string), `sortBy` (newest/oldest/rating/name/startdate, default: newest)
+→ EventResponse[]
+
+### Simple Search (`/api/discovery/search`) — Public
+
+API tìm kiếm đơn giản, hỗ trợ lọc theo khoảng sao trung bình.
+
+**GET `/search/places`** — Public, phân trang (chỉ trả place đã Approved)
+Query: `search?` (string), `sortBy` (newest/oldest/rating/name, default: newest), `averageRating?` (int: 5→đúng 5.0, 4→4.0–4.99, 3→3.0–3.99, 2→2.0–2.99, 1→1.0–1.99)
+→ PlaceResponse[]
+
+**GET `/search/events`** — Public, phân trang (chỉ trả event đã Approved)
+Query: `search?` (string), `sortBy` (newest/oldest/rating/name/startdate, default: newest), `averageRating?` (int: 5→đúng 5.0, 4→4.0–4.99, 3→3.0–3.99, 2→2.0–2.99, 1→1.0–1.99)
 → EventResponse[]
 
 ---

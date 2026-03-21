@@ -30,4 +30,18 @@ public class DiscoveryController : ControllerBase
         var result = await _discoveryService.SearchEventsAsync(request);
         return StatusCode(result.StatusCode, result);
     }
+
+    [HttpGet("search/places")]
+    public async Task<IActionResult> SimpleSearchPlaces([FromQuery] SimpleSearchRequest request)
+    {
+        var result = await _discoveryService.SimpleSearchPlacesAsync(request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [HttpGet("search/events")]
+    public async Task<IActionResult> SimpleSearchEvents([FromQuery] SimpleSearchRequest request)
+    {
+        var result = await _discoveryService.SimpleSearchEventsAsync(request);
+        return StatusCode(result.StatusCode, result);
+    }
 }

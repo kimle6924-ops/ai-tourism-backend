@@ -10,4 +10,6 @@ public interface IDiscoveryService
 {
     Task<Result<PaginationResponse<PlaceResponse>>> SearchPlacesAsync(DiscoveryRequest request);
     Task<Result<PaginationResponse<EventResponse>>> SearchEventsAsync(DiscoveryRequest request);
+    Task<Result<PaginationResponse<PlaceResponse>>> SimpleSearchPlacesAsync(SimpleSearchRequest request);
+    Task<Result<PaginationResponse<EventResponse>>> SimpleSearchEventsAsync(SimpleSearchRequest request);
 }

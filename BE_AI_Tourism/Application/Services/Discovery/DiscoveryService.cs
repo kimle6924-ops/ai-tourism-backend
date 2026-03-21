@@ -28,21 +28,30 @@ public class DiscoveryService : IDiscoveryService
         _mapper = mapper;
     }
 
+    // ───────────── OLD API (fixed rating sort) ─────────────
+
     public async Task<Result<PaginationResponse<PlaceResponse>>> SearchPlacesAsync(DiscoveryRequest request)
     {
         var all = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
-        var query = all.AsQueryable();
+        var places = all.ToList();
 
-        query = ApplyPlaceFilters(query, request);
-        query = await SortPlaces(query, request.SortBy);
+        places = ApplyPlaceFilters(places, request.Search, request.CategoryId, request.AdministrativeUnitId, request.Tag);
 
-        var totalCount = query.Count();
-        var items = query
+        var avgRatings = await GetAverageRatings(ResourceType.Place, places.Select(p => p.Id));
+        var sorted = SortPlaces(places, request.SortBy, avgRatings);
+
+        var totalCount = sorted.Count;
+        var items = sorted
             .Skip((request.PageNumber - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToList();
-        var responses = items.Select(p => _mapper.Map<PlaceResponse>(p)).ToList();
-        await EnrichPlaceAverageRatingsAsync(responses);
+
+        var responses = items.Select(p =>
+        {
+            var r = _mapper.Map<PlaceResponse>(p);
+            r.AverageRating = avgRatings.TryGetValue(p.Id, out var avg) ? avg : 0;
+            return r;
+        }).ToList();
 
         return Result.Ok(PaginationResponse<PlaceResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
@@ -51,159 +60,209 @@ public class DiscoveryService : IDiscoveryService
     public async Task<Result<PaginationResponse<EventResponse>>> SearchEventsAsync(DiscoveryRequest request)
     {
         var all = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
-        var query = all.AsQueryable();
+        var events = all.ToList();
 
-        query = ApplyEventFilters(query, request);
-        query = await SortEvents(query, request.SortBy);
+        events = ApplyEventFilters(events, request.Search, request.CategoryId, request.AdministrativeUnitId, request.Tag);
 
-        var totalCount = query.Count();
-        var items = query
+        var avgRatings = await GetAverageRatings(ResourceType.Event, events.Select(e => e.Id));
+        var sorted = SortEvents(events, request.SortBy, avgRatings);
+
+        var totalCount = sorted.Count;
+        var items = sorted
             .Skip((request.PageNumber - 1) * request.PageSize)
             .Take(request.PageSize)
             .ToList();
-        var responses = items.Select(e => _mapper.Map<EventResponse>(e)).ToList();
-        await EnrichEventAverageRatingsAsync(responses);
+
+        var responses = items.Select(e =>
+        {
+            var r = _mapper.Map<EventResponse>(e);
+            r.AverageRating = avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0;
+            return r;
+        }).ToList();
 
         return Result.Ok(PaginationResponse<EventResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
     }
 
-    private static IQueryable<Domain.Entities.Place> ApplyPlaceFilters(IQueryable<Domain.Entities.Place> query, DiscoveryRequest request)
+    // ───────────── NEW SIMPLE SEARCH API ─────────────
+
+    public async Task<Result<PaginationResponse<PlaceResponse>>> SimpleSearchPlacesAsync(SimpleSearchRequest request)
     {
-        if (!string.IsNullOrWhiteSpace(request.Search))
+        var all = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
+        var places = all.ToList();
+
+        places = ApplyPlaceFilters(places, request.Search, null, null, null);
+
+        var avgRatings = await GetAverageRatings(ResourceType.Place, places.Select(p => p.Id));
+
+        if (request.AverageRating.HasValue)
+            places = FilterByRating(places, avgRatings, request.AverageRating.Value);
+
+        var sorted = SortPlaces(places, request.SortBy, avgRatings);
+
+        var totalCount = sorted.Count;
+        var items = sorted
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+
+        var responses = items.Select(p =>
         {
-            var search = request.Search.ToLower();
+            var r = _mapper.Map<PlaceResponse>(p);
+            r.AverageRating = avgRatings.TryGetValue(p.Id, out var avg) ? avg : 0;
+            return r;
+        }).ToList();
+
+        return Result.Ok(PaginationResponse<PlaceResponse>.Create(
+            responses, totalCount, request.PageNumber, request.PageSize));
+    }
+
+    public async Task<Result<PaginationResponse<EventResponse>>> SimpleSearchEventsAsync(SimpleSearchRequest request)
+    {
+        var all = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
+        var events = all.ToList();
+
+        events = ApplyEventFilters(events, request.Search, null, null, null);
+
+        var avgRatings = await GetAverageRatings(ResourceType.Event, events.Select(e => e.Id));
+
+        if (request.AverageRating.HasValue)
+            events = FilterByRating(events, avgRatings, request.AverageRating.Value);
+
+        var sorted = SortEvents(events, request.SortBy, avgRatings);
+
+        var totalCount = sorted.Count;
+        var items = sorted
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+
+        var responses = items.Select(e =>
+        {
+            var r = _mapper.Map<EventResponse>(e);
+            r.AverageRating = avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0;
+            return r;
+        }).ToList();
+
+        return Result.Ok(PaginationResponse<EventResponse>.Create(
+            responses, totalCount, request.PageNumber, request.PageSize));
+    }
+
+    // ───────────── FILTERS ─────────────
+
+    private static List<Domain.Entities.Place> ApplyPlaceFilters(
+        List<Domain.Entities.Place> places, string? search, Guid? categoryId, Guid? adminUnitId, string? tag)
+    {
+        var query = places.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.ToLower();
             query = query.Where(p =>
-                p.Name.ToLower().Contains(search) ||
-                p.Description.ToLower().Contains(search));
+                p.Name.ToLower().Contains(s) ||
+                p.Description.ToLower().Contains(s));
         }
 
-        if (request.CategoryId.HasValue)
-            query = query.Where(p => p.CategoryIds.Contains(request.CategoryId.Value));
+        if (categoryId.HasValue)
+            query = query.Where(p => p.CategoryIds.Contains(categoryId.Value));
 
-        if (request.AdministrativeUnitId.HasValue)
-            query = query.Where(p => p.AdministrativeUnitId == request.AdministrativeUnitId.Value);
+        if (adminUnitId.HasValue)
+            query = query.Where(p => p.AdministrativeUnitId == adminUnitId.Value);
 
-        if (!string.IsNullOrWhiteSpace(request.Tag))
+        if (!string.IsNullOrWhiteSpace(tag))
         {
-            var tag = request.Tag.ToLower();
-            query = query.Where(p => p.Tags.Any(t => t.ToLower().Contains(tag)));
+            var t = tag.ToLower();
+            query = query.Where(p => p.Tags.Any(x => x.ToLower().Contains(t)));
         }
 
-        return query;
+        return query.ToList();
     }
 
-    private static IQueryable<Domain.Entities.Event> ApplyEventFilters(IQueryable<Domain.Entities.Event> query, DiscoveryRequest request)
+    private static List<Domain.Entities.Event> ApplyEventFilters(
+        List<Domain.Entities.Event> events, string? search, Guid? categoryId, Guid? adminUnitId, string? tag)
     {
-        if (!string.IsNullOrWhiteSpace(request.Search))
+        var query = events.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(search))
         {
-            var search = request.Search.ToLower();
+            var s = search.ToLower();
             query = query.Where(e =>
-                e.Title.ToLower().Contains(search) ||
-                e.Description.ToLower().Contains(search));
+                e.Title.ToLower().Contains(s) ||
+                e.Description.ToLower().Contains(s));
         }
 
-        if (request.CategoryId.HasValue)
-            query = query.Where(e => e.CategoryIds.Contains(request.CategoryId.Value));
+        if (categoryId.HasValue)
+            query = query.Where(e => e.CategoryIds.Contains(categoryId.Value));
 
-        if (request.AdministrativeUnitId.HasValue)
-            query = query.Where(e => e.AdministrativeUnitId == request.AdministrativeUnitId.Value);
+        if (adminUnitId.HasValue)
+            query = query.Where(e => e.AdministrativeUnitId == adminUnitId.Value);
 
-        if (!string.IsNullOrWhiteSpace(request.Tag))
+        if (!string.IsNullOrWhiteSpace(tag))
         {
-            var tag = request.Tag.ToLower();
-            query = query.Where(e => e.Tags.Any(t => t.ToLower().Contains(tag)));
+            var t = tag.ToLower();
+            query = query.Where(e => e.Tags.Any(x => x.ToLower().Contains(t)));
         }
 
-        return query;
+        return query.ToList();
     }
 
-    private async Task<IQueryable<Domain.Entities.Place>> SortPlaces(IQueryable<Domain.Entities.Place> query, string sortBy)
+    // ───────────── RATING FILTER ─────────────
+
+    private static List<T> FilterByRating<T>(
+        List<T> items, Dictionary<Guid, double> avgRatings, int ratingValue)
+        where T : Domain.Entities.BaseEntity
+    {
+        if (ratingValue == 5)
+            return items.Where(x => avgRatings.TryGetValue(x.Id, out var avg) && avg == 5.0).ToList();
+
+        double min = ratingValue;
+        double max = ratingValue + 1;
+        return items.Where(x =>
+            avgRatings.TryGetValue(x.Id, out var avg) && avg >= min && avg < max).ToList();
+    }
+
+    // ───────────── SORTING ─────────────
+
+    private static List<Domain.Entities.Place> SortPlaces(
+        List<Domain.Entities.Place> places, string sortBy, Dictionary<Guid, double> avgRatings)
     {
         return sortBy.ToLower() switch
         {
-            "rating" => await SortByAverageRating(query),
-            "name" => query.OrderBy(p => p.Name),
-            "oldest" => query.OrderBy(p => p.CreatedAt),
-            _ => query.OrderByDescending(p => p.CreatedAt) // newest
+            "rating" => places.OrderByDescending(p => avgRatings.TryGetValue(p.Id, out var avg) ? avg : 0).ToList(),
+            "name" => places.OrderBy(p => p.Name).ToList(),
+            "oldest" => places.OrderBy(p => p.CreatedAt).ToList(),
+            _ => places.OrderByDescending(p => p.CreatedAt).ToList()
         };
     }
 
-    private async Task<IQueryable<Domain.Entities.Event>> SortEvents(IQueryable<Domain.Entities.Event> query, string sortBy)
+    private static List<Domain.Entities.Event> SortEvents(
+        List<Domain.Entities.Event> events, string sortBy, Dictionary<Guid, double> avgRatings)
     {
         return sortBy.ToLower() switch
         {
-            "rating" => await SortByAverageRatingEvents(query),
-            "name" => query.OrderBy(e => e.Title),
-            "oldest" => query.OrderBy(e => e.CreatedAt),
-            "startdate" => query.OrderBy(e => e.StartAt),
-            _ => query.OrderByDescending(e => e.CreatedAt) // newest
+            "rating" => events.OrderByDescending(e => avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0).ToList(),
+            "name" => events.OrderBy(e => e.Title).ToList(),
+            "oldest" => events.OrderBy(e => e.CreatedAt).ToList(),
+            "startdate" => events.OrderBy(e => e.StartAt).ToList(),
+            _ => events.OrderByDescending(e => e.CreatedAt).ToList()
         };
     }
 
-    private async Task<IQueryable<Domain.Entities.Place>> SortByAverageRating(IQueryable<Domain.Entities.Place> query)
+    // ───────────── RATING HELPERS ─────────────
+
+    private async Task<Dictionary<Guid, double>> GetAverageRatings(ResourceType resourceType, IEnumerable<Guid> resourceIds)
     {
-        var placeIds = query.Select(p => p.Id).ToList();
+        var ids = resourceIds.ToList();
+        if (ids.Count == 0)
+            return new Dictionary<Guid, double>();
+
         var reviews = await _reviewRepository.FindAsync(
-            r => r.ResourceType == ResourceType.Place && placeIds.Contains(r.ResourceId) && r.Status == ReviewStatus.Active);
-
-        var avgRatings = reviews
-            .GroupBy(r => r.ResourceId)
-            .ToDictionary(g => g.Key, g => g.Average(r => r.Rating));
-
-        return query.OrderByDescending(p =>
-            avgRatings.ContainsKey(p.Id) ? avgRatings[p.Id] : 0);
-    }
-
-    private async Task<IQueryable<Domain.Entities.Event>> SortByAverageRatingEvents(IQueryable<Domain.Entities.Event> query)
-    {
-        var eventIds = query.Select(e => e.Id).ToList();
-        var reviews = await _reviewRepository.FindAsync(
-            r => r.ResourceType == ResourceType.Event && eventIds.Contains(r.ResourceId) && r.Status == ReviewStatus.Active);
-
-        var avgRatings = reviews
-            .GroupBy(r => r.ResourceId)
-            .ToDictionary(g => g.Key, g => g.Average(r => r.Rating));
-
-        return query.OrderByDescending(e =>
-            avgRatings.ContainsKey(e.Id) ? avgRatings[e.Id] : 0);
-    }
-
-    private async Task EnrichPlaceAverageRatingsAsync(List<PlaceResponse> responses)
-    {
-        if (responses.Count == 0)
-            return;
-
-        var placeIds = responses.Select(x => x.Id).Distinct().ToList();
-        var reviews = await _reviewRepository.FindAsync(
-            r => r.ResourceType == ResourceType.Place
-                 && placeIds.Contains(r.ResourceId)
+            r => r.ResourceType == resourceType
+                 && ids.Contains(r.ResourceId)
                  && r.Status == ReviewStatus.Active);
 
-        var avgRatings = reviews
+        return reviews
             .GroupBy(r => r.ResourceId)
-            .ToDictionary(g => g.Key, g => g.Average(r => r.Rating));
-
-        foreach (var response in responses)
-            response.AverageRating = avgRatings.TryGetValue(response.Id, out var avg) ? avg : 0;
-    }
-
-    private async Task EnrichEventAverageRatingsAsync(List<EventResponse> responses)
-    {
-        if (responses.Count == 0)
-            return;
-
-        var eventIds = responses.Select(x => x.Id).Distinct().ToList();
-        var reviews = await _reviewRepository.FindAsync(
-            r => r.ResourceType == ResourceType.Event
-                 && eventIds.Contains(r.ResourceId)
-                 && r.Status == ReviewStatus.Active);
-
-        var avgRatings = reviews
-            .GroupBy(r => r.ResourceId)
-            .ToDictionary(g => g.Key, g => g.Average(r => r.Rating));
-
-        foreach (var response in responses)
-            response.AverageRating = avgRatings.TryGetValue(response.Id, out var avg) ? avg : 0;
+            .ToDictionary(g => g.Key, g => Math.Round(g.Average(r => r.Rating), 1));
     }
 }

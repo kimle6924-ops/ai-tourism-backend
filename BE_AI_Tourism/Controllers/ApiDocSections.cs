@@ -282,7 +282,8 @@ public static class ApiDocSections
         Chủ review hoặc Admin mới xóa được.
         Lỗi: 404 nếu không tìm thấy. 403 nếu không phải chủ review và không phải Admin.
 
-        GET /api/reviews?resourceType=Place&resourceId=xxx — Public, phân trang → ReviewResponse[] (chỉ hiện review có status=0 Active, sắp xếp mới nhất trước)
+        GET /api/reviews?resourceType=Place&resourceId=xxx — Public, phân trang
+        → ReviewListResponse: averageRating (double, sao trung bình làm tròn 1 chữ số thập phân), totalReviews (int, tổng số review active), reviews (phân trang ReviewResponse[]: items[], totalCount, pageNumber, pageSize, totalPages, hasPreviousPage, hasNextPage). Chỉ hiện review có status=0 Active, sắp xếp mới nhất trước.
 
         GET /api/reviews/mine?resourceType=Place&resourceId=xxx — Login → ReviewResponse (review của user hiện tại cho resource đó)
         """;
@@ -290,13 +291,25 @@ public static class ApiDocSections
     public static string Discovery() => """
         ## Discovery (/api/discovery) — Public
 
+        ### Tìm kiếm nâng cao (có đầy đủ filter)
+
         GET /api/discovery/places — Public, phân trang (chỉ trả place đã Approved)
         Query: search? (string, tìm trong name và description, không phân biệt hoa thường), categoryId? (guid), administrativeUnitId? (guid), tag? (string, tìm trong mảng tags), sortBy (newest/oldest/rating/name, default: newest). rating sắp theo trung bình rating của review Active giảm dần.
-        → PlaceResponse[]
+        → PlaceResponse[] (mỗi item có averageRating)
 
         GET /api/discovery/events — Public, phân trang (chỉ trả event đã Approved)
         Query: search? (string, tìm trong title và description), categoryId? (guid), administrativeUnitId? (guid), tag? (string), sortBy (newest/oldest/rating/name/startdate, default: newest). startdate sắp theo startAt tăng dần.
-        → EventResponse[]
+        → EventResponse[] (mỗi item có averageRating)
+
+        ### Tìm kiếm đơn giản (Simple Search) — hỗ trợ lọc theo khoảng sao
+
+        GET /api/discovery/search/places — Public, phân trang (chỉ trả place đã Approved)
+        Query: search? (string, tìm trong name và description), sortBy (newest/oldest/rating/name, default: newest), averageRating? (int: 5 → chỉ lấy rating đúng 5.0, 4 → rating từ 4.0 đến 4.99, 3 → từ 3.0 đến 3.99, tương tự cho 2 và 1. Không truyền thì không lọc theo rating)
+        → PlaceResponse[] (mỗi item có averageRating)
+
+        GET /api/discovery/search/events — Public, phân trang (chỉ trả event đã Approved)
+        Query: search? (string, tìm trong title và description), sortBy (newest/oldest/rating/name/startdate, default: newest), averageRating? (int: 5 → chỉ lấy rating đúng 5.0, 4 → rating từ 4.0 đến 4.99, 3 → từ 3.0 đến 3.99, tương tự cho 2 và 1. Không truyền thì không lọc theo rating)
+        → EventResponse[] (mỗi item có averageRating)
         """;
 
     public static string Chat() => """

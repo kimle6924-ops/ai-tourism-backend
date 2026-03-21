@@ -68,7 +68,7 @@ Trạng thái các tính năng trong hệ thống.
 | Administrative + Category (Phase 3) | Done | CRUD + Seed data (63 tỉnh/thành, categories) |
 | Place/Event + Moderation (Phase 4) | Done | CRUD + workflow duyệt + scope check |
 | Media Cloudinary (Phase 5) | Done | Upload signature/finalize, set-primary, reorder, delete |
-| Review + Discovery (Phase 6) | Done | CRUD review (upsert), search/filter places+events |
+| Review + Discovery (Phase 6) | Done | CRUD review (upsert), search/filter places+events, simple search API, review stats |
 | AI Chat (Phase 7) | Done | Gemini streaming SSE + context memory (summary + key facts) |
 | Admin Stats (Phase 8) | Done | Overview + daily time-series, aggregate query tối ưu DB-side |
 | Docs + Hardening (Phase 9) | Not Started | Swagger, rate limit, logging |
@@ -151,13 +151,13 @@ Trạng thái các tính năng trong hệ thống.
 
 | Tính năng | Trạng thái | Ghi chú |
 |-----------|-----------|---------|
-| Review DTOs | Done | CreateReviewRequest, UpdateReviewRequest, ReviewResponse |
+| Review DTOs | Done | CreateReviewRequest, UpdateReviewRequest, ReviewResponse, ReviewListResponse (averageRating + totalReviews) |
 | Review Validators | Done | CreateReviewRequestValidator, UpdateReviewRequestValidator |
-| ReviewService | Done | Upsert (1 user/1 resource), update, delete (owner+Admin), get by resource, get mine |
+| ReviewService | Done | Upsert (1 user/1 resource), update, delete (owner+Admin), get by resource (kèm thống kê), get mine |
 | ReviewController | Done | POST upsert, PATCH, DELETE, GET by resource, GET mine |
-| Discovery DTO | Done | DiscoveryRequest extends PaginationRequest |
-| DiscoveryService | Done | Search places/events with filters + sort (newest/rating/name/startdate) |
-| DiscoveryController | Done | GET places, GET events (AllowAnonymous) |
+| Discovery DTO | Done | DiscoveryRequest, SimpleSearchRequest (search + sortBy + averageRating filter) |
+| DiscoveryService | Done | Search places/events with filters + sort, simple search API, fix rating sort bug (tính rating 1 lần, dùng List thay IQueryable) |
+| DiscoveryController | Done | GET places, GET events, GET search/places, GET search/events (AllowAnonymous) |
 
 ## Phase 5: Media Cloudinary
 

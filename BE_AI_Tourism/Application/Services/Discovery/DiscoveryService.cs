@@ -5,6 +5,7 @@ using BE_AI_Tourism.Domain.Enums;
 using BE_AI_Tourism.Domain.Interfaces;
 using BE_AI_Tourism.Shared.Core;
 using BE_AI_Tourism.Shared.Pagination;
+using BE_AI_Tourism.Shared.Utils;
 using MapsterMapper;
 
 namespace BE_AI_Tourism.Application.Services.Discovery;
@@ -157,10 +158,10 @@ public class DiscoveryService : IDiscoveryService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var s = search.ToLower();
+            var s = search.RemoveDiacritics();
             query = query.Where(p =>
-                p.Name.ToLower().Contains(s) ||
-                p.Description.ToLower().Contains(s));
+                p.Name.RemoveDiacritics().Contains(s) ||
+                p.Description.RemoveDiacritics().Contains(s));
         }
 
         if (categoryId.HasValue)
@@ -171,8 +172,8 @@ public class DiscoveryService : IDiscoveryService
 
         if (!string.IsNullOrWhiteSpace(tag))
         {
-            var t = tag.ToLower();
-            query = query.Where(p => p.Tags.Any(x => x.ToLower().Contains(t)));
+            var t = tag.RemoveDiacritics();
+            query = query.Where(p => p.Tags.Any(x => x.RemoveDiacritics().Contains(t)));
         }
 
         return query.ToList();
@@ -185,10 +186,10 @@ public class DiscoveryService : IDiscoveryService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var s = search.ToLower();
+            var s = search.RemoveDiacritics();
             query = query.Where(e =>
-                e.Title.ToLower().Contains(s) ||
-                e.Description.ToLower().Contains(s));
+                e.Title.RemoveDiacritics().Contains(s) ||
+                e.Description.RemoveDiacritics().Contains(s));
         }
 
         if (categoryId.HasValue)
@@ -199,8 +200,8 @@ public class DiscoveryService : IDiscoveryService
 
         if (!string.IsNullOrWhiteSpace(tag))
         {
-            var t = tag.ToLower();
-            query = query.Where(e => e.Tags.Any(x => x.ToLower().Contains(t)));
+            var t = tag.RemoveDiacritics();
+            query = query.Where(e => e.Tags.Any(x => x.RemoveDiacritics().Contains(t)));
         }
 
         return query.ToList();

@@ -8,6 +8,8 @@ public class ReviewResponse
     public ResourceType ResourceType { get; set; }
     public Guid ResourceId { get; set; }
     public Guid UserId { get; set; }
+    public string UserFullName { get; set; } = string.Empty;
+    public string UserAvatarUrl { get; set; } = string.Empty;
     public int Rating { get; set; }
     public string Comment { get; set; } = string.Empty;
     public ReviewStatus Status { get; set; }

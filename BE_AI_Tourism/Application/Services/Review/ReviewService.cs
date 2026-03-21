@@ -13,17 +13,20 @@ public class ReviewService : IReviewService
     private readonly IRepository<Domain.Entities.Review> _reviewRepository;
     private readonly IRepository<Domain.Entities.Place> _placeRepository;
     private readonly IRepository<Domain.Entities.Event> _eventRepository;
+    private readonly IRepository<Domain.Entities.User> _userRepository;
     private readonly IMapper _mapper;
 
     public ReviewService(
         IRepository<Domain.Entities.Review> reviewRepository,
         IRepository<Domain.Entities.Place> placeRepository,
         IRepository<Domain.Entities.Event> eventRepository,
+        IRepository<Domain.Entities.User> userRepository,
         IMapper mapper)
     {
         _reviewRepository = reviewRepository;
         _placeRepository = placeRepository;
         _eventRepository = eventRepository;
+        _userRepository = userRepository;
         _mapper = mapper;
     }
 
@@ -82,7 +85,7 @@ public class ReviewService : IReviewService
             r => r.ResourceType == resourceType && r.ResourceId == resourceId && r.Status == ReviewStatus.Active);
         var ordered = all.OrderByDescending(r => r.CreatedAt).ToList();
         var items = ordered.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
-        var responses = items.Select(r => _mapper.Map<ReviewResponse>(r)).ToList();
+        var responses = await MapReviewsWithUserInfo(items);
 
         var totalReviews = ordered.Count;
         var averageRating = totalReviews > 0 ? Math.Round(ordered.Average(r => r.Rating), 1) : 0;
@@ -102,10 +105,30 @@ public class ReviewService : IReviewService
             r => r.ResourceType == resourceType && r.ResourceId == resourceId && r.UserId == userId && r.Status == ReviewStatus.Active);
         var ordered = all.OrderByDescending(r => r.CreatedAt).ToList();
         var items = ordered.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
-        var responses = items.Select(r => _mapper.Map<ReviewResponse>(r)).ToList();
+        var responses = await MapReviewsWithUserInfo(items);
 
         return Result.Ok(PaginationResponse<ReviewResponse>.Create(
             responses, ordered.Count, request.PageNumber, request.PageSize));
+    }
+
+    private async Task<List<ReviewResponse>> MapReviewsWithUserInfo(List<Domain.Entities.Review> reviews)
+    {
+        var userIds = reviews.Select(r => r.UserId).Distinct().ToList();
+        var users = await _userRepository.FindAsync(u => userIds.Contains(u.Id));
+        var userDict = users.ToDictionary(u => u.Id);
+
+        var responses = new List<ReviewResponse>();
+        foreach (var review in reviews)
+        {
+            var response = _mapper.Map<ReviewResponse>(review);
+            if (userDict.TryGetValue(review.UserId, out var user))
+            {
+                response.UserFullName = user.FullName;
+                response.UserAvatarUrl = user.AvatarUrl;
+            }
+            responses.Add(response);
+        }
+        return responses;
     }
 
     private async Task<bool> IsResourceApproved(ResourceType resourceType, Guid resourceId)

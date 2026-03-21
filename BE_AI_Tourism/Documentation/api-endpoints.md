@@ -172,6 +172,9 @@ Body: giống POST + `eventStatus` (int: 0=Upcoming/1=Ongoing/2=Ended)
 
 **DELETE `/{id}`** — Admin/Contributor (Admin xóa tất cả, Contributor chỉ xóa event mình tạo trong scope) → Result
 
+**POST `/seed`** — Admin
+Tạo sẵn 16 event mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định cho mỗi event. Bỏ qua nếu event cùng title đã tồn tại (gọi nhiều lần không sao). Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu: phải seed admin (POST /api/dbtest/seed-admin) và seed categories (POST /api/categories/seed) trước khi gọi API này. Seed data gồm các lễ hội, sự kiện thể thao, ẩm thực, văn hóa, trekking với trạng thái Upcoming/Ongoing.
+
 ---
 
 ## Moderation (`/api/moderation`) — Admin/Contributor

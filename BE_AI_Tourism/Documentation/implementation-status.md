@@ -101,7 +101,7 @@ Trạng thái các tính năng trong hệ thống.
 | Event DTOs | Done | CreateEventRequest, UpdateEventRequest, EventResponse |
 | Event Validators | Done | CreateEventRequestValidator, UpdateEventRequestValidator |
 | EventService | Done | CRUD, scope check, approved/all listing, EventStatus management |
-| EventController | Done | GET public (approved), POST/PUT/DELETE (Admin/Contributor with scope) |
+| EventController | Done | GET public (approved), POST/PUT/DELETE (Admin/Contributor with scope), POST seed |
 | Moderation DTOs | Done | ModerationActionRequest, ModerationLogResponse |
 | Moderation Validator | Done | ModerationActionRequestValidator |
 | ModerationService | Done | Approve/Reject Place/Event, log actions, scope-based permission |

@@ -67,6 +67,14 @@ public class EventController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpPost("seed")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Seed()
+    {
+        var result = await _eventService.SeedAsync();
+        return StatusCode(result.StatusCode, result);
+    }
+
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirst(AppConstants.JwtClaimTypes.UserId)!.Value);
 

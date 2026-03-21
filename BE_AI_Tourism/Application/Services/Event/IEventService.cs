@@ -12,4 +12,5 @@ public interface IEventService
     Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(PaginationRequest request, string role, Guid? userAdminUnitId);
     Task<Result<EventResponse>> UpdateAsync(Guid id, UpdateEventRequest request, Guid userId, string role, Guid? userAdminUnitId);
     Task<Result> DeleteAsync(Guid id, Guid userId, string role, Guid? userAdminUnitId);
+    Task<Result<IEnumerable<EventResponse>>> SeedAsync();
 }

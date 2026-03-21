@@ -206,6 +206,9 @@ public static class ApiDocSections
 
         DELETE /api/events/{id} — Admin/Contributor
         Lỗi: 404 nếu không tìm thấy. 403 nếu không có quyền.
+
+        POST /api/events/seed — Admin
+        Tạo sẵn 16 event mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định. Bỏ qua nếu event cùng title đã tồn tại. Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu: phải seed admin và seed categories trước.
         """;
 
     public static string Moderation() => """

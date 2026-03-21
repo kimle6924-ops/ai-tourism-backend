@@ -164,7 +164,7 @@ public static class ApiDocSections
     public static string Places() => """
         ## Places (/api/places)
 
-        PlaceResponse: id, name, description, address, administrativeUnitId, latitude?, longitude?, categoryIds (guid[]), tags (string[]), moderationStatus (0=Pending/1=Approved/2=Rejected), createdBy, approvedBy?, approvedAt?, createdAt, updatedAt
+        PlaceResponse: id, title, description, address, administrativeUnitId, latitude?, longitude?, categoryIds (guid[]), tags (string[]), moderationStatus (0=Pending/1=Approved/2=Rejected), createdBy, approvedBy?, approvedAt?, createdAt, updatedAt
 
         GET /api/places — Public, phân trang → PlaceResponse[] (chỉ moderationStatus=1 Approved)
 
@@ -173,7 +173,7 @@ public static class ApiDocSections
         GET /api/places/{id} — Public → PlaceResponse
 
         POST /api/places — Admin/Contributor
-        Body: name* (string, max 200), description* (string), address* (string, max 500), administrativeUnitId* (guid), latitude? (double, -90 đến 90), longitude? (double, -180 đến 180), categoryIds (guid[]), tags (string[])
+        Body: title* (string, max 200), description* (string), address* (string, max 500), administrativeUnitId* (guid), latitude? (double, -90 đến 90), longitude? (double, -180 đến 180), categoryIds (guid[]), tags (string[])
         Điều kiện: administrativeUnitId phải tồn tại. Contributor chỉ tạo trong scope đơn vị hành chính của mình (403 nếu ngoài scope). Tự động moderationStatus=0 (Pending), cần duyệt mới hiện trên trang public.
         Lỗi: 404 nếu đơn vị hành chính không tồn tại. 403 nếu Contributor ngoài scope.
 
@@ -186,7 +186,7 @@ public static class ApiDocSections
         Lỗi: 404 nếu không tìm thấy. 403 nếu không có quyền.
 
         POST /api/places/seed — Admin
-        Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định cho mỗi place. Bỏ qua nếu place cùng tên đã tồn tại (gọi nhiều lần không sao). Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu: phải seed admin (POST /api/dbtest/seed-admin) và seed categories (POST /api/categories/seed) trước khi gọi API này.
+        Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định cho mỗi place. Bỏ qua nếu place cùng title đã tồn tại (gọi nhiều lần không sao). Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu: phải seed admin (POST /api/dbtest/seed-admin) và seed categories (POST /api/categories/seed) trước khi gọi API này.
         """;
 
     public static string Events() => """
@@ -302,7 +302,7 @@ public static class ApiDocSections
         ### Tìm kiếm nâng cao (có đầy đủ filter)
 
         GET /api/discovery/places — Public, phân trang (chỉ trả place đã Approved)
-        Query: search? (string, tìm trong name và description, không phân biệt hoa thường), categoryId? (guid), administrativeUnitId? (guid), tag? (string, tìm trong mảng tags), sortBy (newest/oldest/rating/name, default: newest). rating sắp theo trung bình rating của review Active giảm dần.
+        Query: search? (string, tìm trong title và description, không phân biệt hoa thường), categoryId? (guid), administrativeUnitId? (guid), tag? (string, tìm trong mảng tags), sortBy (newest/oldest/rating/name, default: newest). rating sắp theo trung bình rating của review Active giảm dần.
         → PlaceResponse[] (mỗi item có averageRating)
 
         GET /api/discovery/events — Public, phân trang (chỉ trả event đã Approved)
@@ -312,7 +312,7 @@ public static class ApiDocSections
         ### Tìm kiếm đơn giản (Simple Search) — hỗ trợ lọc theo khoảng sao
 
         GET /api/discovery/search/places — Public, phân trang (chỉ trả place đã Approved)
-        Query: search? (string, tìm trong name và description), sortBy (newest/oldest/rating/name, default: newest), averageRating? (int: 5 → chỉ lấy rating đúng 5.0, 4 → rating từ 4.0 đến 4.99, 3 → từ 3.0 đến 3.99, tương tự cho 2 và 1. Không truyền thì không lọc theo rating)
+        Query: search? (string, tìm trong title và description), sortBy (newest/oldest/rating/name, default: newest), averageRating? (int: 5 → chỉ lấy rating đúng 5.0, 4 → rating từ 4.0 đến 4.99, 3 → từ 3.0 đến 3.99, tương tự cho 2 và 1. Không truyền thì không lọc theo rating)
         → PlaceResponse[] (mỗi item có averageRating)
 
         GET /api/discovery/search/events — Public, phân trang (chỉ trả event đã Approved)

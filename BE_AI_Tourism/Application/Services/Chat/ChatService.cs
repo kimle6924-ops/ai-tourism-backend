@@ -271,7 +271,7 @@ public class ChatService : IChatService
                     .Select(id => categoryLookup[id]);
                 var catStr = string.Join(", ", cats);
 
-                var parts = new List<string> { $"- {p.Name}" };
+                var parts = new List<string> { $"- {p.Title}" };
                 if (!string.IsNullOrWhiteSpace(catStr)) parts.Add($"Loại: {catStr}");
                 if (!string.IsNullOrWhiteSpace(desc)) parts.Add($"Mô tả: {desc}");
                 parts.Add($"Địa chỉ: {p.Address}");

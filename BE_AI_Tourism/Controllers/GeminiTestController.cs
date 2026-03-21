@@ -260,7 +260,7 @@ public class GeminiTestController : ControllerBase
             sb.AppendLine("[ĐỊA ĐIỂM]");
             foreach (var place in request.FakePlaces)
             {
-                var parts = new List<string> { $"- {place.Name}" };
+                var parts = new List<string> { $"- {place.Title}" };
                 if (!string.IsNullOrWhiteSpace(place.Category)) parts.Add($"Loại: {place.Category}");
                 if (!string.IsNullOrWhiteSpace(place.Description)) parts.Add($"Mô tả: {place.Description}");
                 if (!string.IsNullOrWhiteSpace(place.Address)) parts.Add($"Địa chỉ: {place.Address}");
@@ -347,7 +347,7 @@ public class TestPromptRequest
 
 public class FakePlace
 {
-    public string Name { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
     public string? Category { get; set; }
     public string? Description { get; set; }
     public string? Address { get; set; }

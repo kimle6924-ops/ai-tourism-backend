@@ -160,7 +160,7 @@ public class DiscoveryService : IDiscoveryService
         {
             var s = search.RemoveDiacritics();
             query = query.Where(p =>
-                p.Name.RemoveDiacritics().Contains(s) ||
+                p.Title.RemoveDiacritics().Contains(s) ||
                 p.Description.RemoveDiacritics().Contains(s));
         }
 
@@ -230,7 +230,7 @@ public class DiscoveryService : IDiscoveryService
         return sortBy.ToLower() switch
         {
             "rating" => places.OrderByDescending(p => avgRatings.TryGetValue(p.Id, out var avg) ? avg : 0).ToList(),
-            "name" => places.OrderBy(p => p.Name).ToList(),
+            "name" => places.OrderBy(p => p.Title).ToList(),
             "oldest" => places.OrderBy(p => p.CreatedAt).ToList(),
             _ => places.OrderByDescending(p => p.CreatedAt).ToList()
         };

@@ -69,7 +69,7 @@ Mọi entity kế thừa `BaseEntity`:
 
 | Field | Type | Constraints | Mô tả |
 |-------|------|------------|-------|
-| name | string | | Tên địa điểm |
+| title | string | | Tiêu đề địa điểm |
 | description | string | | Mô tả |
 | address | string | | Địa chỉ |
 | administrative_unit_id | Guid | index | FK → administrative_units |

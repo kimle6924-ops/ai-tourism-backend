@@ -57,7 +57,7 @@ public class PlaceService : IPlaceService
 
         var entity = new Domain.Entities.Place
         {
-            Name = request.Name,
+            Title = request.Title,
             Description = request.Description,
             Address = request.Address,
             AdministrativeUnitId = request.AdministrativeUnitId,
@@ -146,7 +146,7 @@ public class PlaceService : IPlaceService
         if (adminUnit == null)
             return Result.Fail<PlaceResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-        entity.Name = request.Name;
+        entity.Title = request.Title;
         entity.Description = request.Description;
         entity.Address = request.Address;
         entity.AdministrativeUnitId = request.AdministrativeUnitId;
@@ -342,20 +342,20 @@ public class PlaceService : IPlaceService
             };
 
             var created = new List<Domain.Entities.Place>();
-            var existingNames = (await _placeRepository.GetAllAsync())
-                .Select(p => p.Name)
+            var existingTitles = (await _placeRepository.GetAllAsync())
+                .Select(p => p.Title)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
             foreach (var (name, desc, address, lat, lng, catSlugs, tags) in seedData)
             {
-                if (existingNames.Contains(name))
+                if (existingTitles.Contains(name))
                     continue;
 
                 var catIds = catSlugs.Select(s => CatId(s)).Where(id => id.HasValue).Select(id => id!.Value).ToList();
 
                 var place = new Domain.Entities.Place
                 {
-                    Name = name,
+                    Title = name,
                     Description = desc,
                     Address = address,
                     AdministrativeUnitId = saPa.Id,
@@ -391,7 +391,7 @@ public class PlaceService : IPlaceService
 
                 await _mediaRepository.AddAsync(media);
                 created.Add(place);
-                existingNames.Add(name);
+                existingTitles.Add(name);
             }
 
             var responses = created.Select(p => _mapper.Map<PlaceResponse>(p));

@@ -7,9 +7,9 @@ public class CreatePlaceRequestValidator : AbstractValidator<CreatePlaceRequest>
 {
     public CreatePlaceRequestValidator()
     {
-        RuleFor(x => x.Name)
-            .NotEmpty().WithMessage("Name is required")
-            .MaximumLength(200).WithMessage("Name must not exceed 200 characters");
+        RuleFor(x => x.Title)
+            .NotEmpty().WithMessage("Title is required")
+            .MaximumLength(200).WithMessage("Title must not exceed 200 characters");
 
         RuleFor(x => x.Description)
             .NotEmpty().WithMessage("Description is required");

@@ -5,7 +5,7 @@ namespace BE_AI_Tourism.Domain.Entities;
 
 public class Place : BaseEntity
 {
-    public string Name { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
     public Guid AdministrativeUnitId { get; set; }

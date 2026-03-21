@@ -133,7 +133,7 @@ Tạo sẵn 18 category, bỏ qua nếu slug đã tồn tại:
 
 ## Places (`/api/places`)
 
-PlaceResponse: `id`, `name`, `description`, `address`, `administrativeUnitId`, `latitude?`, `longitude?`, `categoryIds` (guid[]), `tags` (string[]), `moderationStatus` (0=Pending/1=Approved/2=Rejected), `createdBy`, `approvedBy?`, `approvedAt?`, `createdAt`, `updatedAt`
+PlaceResponse: `id`, `title`, `description`, `address`, `administrativeUnitId`, `latitude?`, `longitude?`, `categoryIds` (guid[]), `tags` (string[]), `moderationStatus` (0=Pending/1=Approved/2=Rejected), `createdBy`, `approvedBy?`, `approvedAt?`, `createdAt`, `updatedAt`
 
 **GET `/`** — Public, phân trang → PlaceResponse[] (chỉ moderationStatus=1 Approved)
 
@@ -142,7 +142,7 @@ PlaceResponse: `id`, `name`, `description`, `address`, `administrativeUnitId`, `
 **GET `/{id}`** — Public → PlaceResponse
 
 **POST `/`** — Admin/Contributor (Contributor chỉ tạo trong scope đơn vị hành chính của mình)
-Body: `name`* (string), `description`* (string), `address`* (string), `administrativeUnitId`* (guid), `latitude?` (double), `longitude?` (double), `categoryIds` (guid[]), `tags` (string[])
+Body: `title`* (string), `description`* (string), `address`* (string), `administrativeUnitId`* (guid), `latitude?` (double), `longitude?` (double), `categoryIds` (guid[]), `tags` (string[])
 → PlaceResponse (tự động moderationStatus=0 Pending, cần Admin/Contributor cấp trên duyệt)
 
 **PUT `/{id}`** — Admin/Contributor (Admin sửa tất cả, Contributor chỉ sửa place mình tạo trong scope)
@@ -152,7 +152,7 @@ Body: giống POST
 **DELETE `/{id}`** — Admin/Contributor (Admin xóa tất cả, Contributor chỉ xóa place mình tạo trong scope) → Result
 
 **POST `/seed`** — Admin
-Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định. Bỏ qua nếu place cùng tên đã tồn tại. Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu đã seed admin và seed categories trước.
+Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + tạo ảnh mặc định. Bỏ qua nếu place cùng title đã tồn tại. Tự tạo đơn vị hành chính Lào Cai/Sa Pa nếu chưa có. Yêu cầu đã seed admin và seed categories trước.
 
 ---
 
@@ -310,5 +310,5 @@ Body: `question`* (string)
 → `question`, `answer` — hỏi Gemini về các API trong dự án (dùng file này làm knowledge base)
 
 **POST `/api/geminitests/test-prompt`** — No auth
-Body: `userMessage`* (string), `userPreferences?` (string[]), `userLatitude?` (double), `userLongitude?` (double), `fakePlaces?` (object[]: name, category?, description?, address?, rating?, tags?, latitude?, longitude?), `fakeEvents?` (object[]: title, description?, address?, status?, startAt?, endAt?)
+Body: `userMessage`* (string), `userPreferences?` (string[]), `userLatitude?` (double), `userLongitude?` (double), `fakePlaces?` (object[]: title, category?, description?, address?, rating?, tags?, latitude?, longitude?), `fakeEvents?` (object[]: title, description?, address?, status?, startAt?, endAt?)
 → `systemPrompt`, `userMessage`, `aiResponse` — test base prompt AI với fake data

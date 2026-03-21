@@ -136,6 +136,7 @@ public class ChatService : IChatService
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var conversation = await _conversationRepository.GetByIdAsync(conversationId);
+        if (conversation == null) yield break;
 
         // Save user message
         await SaveMessageAsync(conversationId, userId, MessageRole.User, request.Content);
@@ -146,7 +147,7 @@ public class ChatService : IChatService
 
         // Stream from Gemini
         var fullResponse = new StringBuilder();
-        await foreach (var chunk in _geminiProvider.StreamContentAsync(systemPrompt, geminiMessages).WithCancellation(cancellationToken))
+        await foreach (var chunk in _geminiProvider.StreamContentAsync(systemPrompt, geminiMessages, cancellationToken))
         {
             fullResponse.Append(chunk);
             yield return chunk;

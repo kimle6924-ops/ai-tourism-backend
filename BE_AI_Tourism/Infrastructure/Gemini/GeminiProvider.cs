@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Net;
+using System.Threading.Channels;
 using BE_AI_Tourism.Configuration;
 using Microsoft.Extensions.Options;
 
@@ -95,108 +96,128 @@ public class GeminiProvider : IGeminiProvider
         throw new Exception($"Gemini API failed on all configured models. Attempts: {string.Join(" || ", errors)}");
     }
 
-    public async IAsyncEnumerable<string> StreamContentAsync(
+    public IAsyncEnumerable<string> StreamContentAsync(
         string systemPrompt,
         List<GeminiMessage> messages,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
-        var body = BuildRequestBody(systemPrompt, messages);
-        var client = _httpClientFactory.CreateClient();
-        var json = JsonSerializer.Serialize(body);
-        var models = GetModelPriorityOrder();
-        var errors = new List<string>();
+        var channel = Channel.CreateUnbounded<string>();
 
-        // Combine caller cancellation with stream timeout
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(StreamTimeout);
-        var token = cts.Token;
+        _ = ProduceStreamAsync(systemPrompt, messages, channel.Writer, cancellationToken);
 
-        foreach (var model in models)
+        return channel.Reader.ReadAllAsync(cancellationToken);
+    }
+
+    private async Task ProduceStreamAsync(
+        string systemPrompt,
+        List<GeminiMessage> messages,
+        ChannelWriter<string> writer,
+        CancellationToken cancellationToken)
+    {
+        try
         {
-            HttpResponseMessage? response = null;
-            try
+            var body = BuildRequestBody(systemPrompt, messages);
+            var client = _httpClientFactory.CreateClient();
+            var json = JsonSerializer.Serialize(body);
+            var models = GetModelPriorityOrder();
+            var errors = new List<string>();
+
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cts.CancelAfter(StreamTimeout);
+            var token = cts.Token;
+
+            foreach (var model in models)
             {
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={_options.ApiKey}";
-                using var request = new HttpRequestMessage(HttpMethod.Post, url)
+                HttpResponseMessage? response = null;
+                try
                 {
-                    Content = new StringContent(json, Encoding.UTF8, "application/json")
-                };
-                response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var responseBody = await response.Content.ReadAsStringAsync(token);
-                    errors.Add($"{model}: {response.StatusCode} - {responseBody}");
-                    response.Dispose();
-                    if (ShouldFallback(response.StatusCode, responseBody))
-                        continue;
-
-                    throw new Exception($"Gemini stream API error on model '{model}': {responseBody}");
-                }
-
-                using var stream = await response.Content.ReadAsStreamAsync(token);
-                using var reader = new StreamReader(stream);
-
-                var hasYielded = false;
-                while (!reader.EndOfStream && !token.IsCancellationRequested)
-                {
-                    // Reset timeout on each chunk received
-                    cts.CancelAfter(StreamTimeout);
-
-                    var line = await reader.ReadLineAsync(token);
-                    if (string.IsNullOrEmpty(line)) continue;
-
-                    if (!line.StartsWith("data: ")) continue;
-                    var data = line["data: ".Length..];
-
-                    if (data == "[DONE]") break;
-
-                    var chunk = ExtractTextFromChunk(data);
-                    if (!string.IsNullOrEmpty(chunk))
+                    var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={_options.ApiKey}";
+                    using var request = new HttpRequestMessage(HttpMethod.Post, url)
                     {
-                        hasYielded = true;
-                        yield return chunk;
+                        Content = new StringContent(json, Encoding.UTF8, "application/json")
+                    };
+                    response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var responseBody = await response.Content.ReadAsStringAsync(token);
+                        errors.Add($"{model}: {response.StatusCode} - {responseBody}");
+                        response.Dispose();
+                        if (ShouldFallback(response.StatusCode, responseBody))
+                            continue;
+
+                        throw new Exception($"Gemini stream API error on model '{model}': {responseBody}");
                     }
+
+                    using var stream = await response.Content.ReadAsStreamAsync(token);
+                    using var reader = new StreamReader(stream);
+
+                    var hasContent = false;
+                    while (!reader.EndOfStream && !token.IsCancellationRequested)
+                    {
+                        cts.CancelAfter(StreamTimeout);
+
+                        var line = await reader.ReadLineAsync(token);
+                        if (string.IsNullOrEmpty(line)) continue;
+                        if (!line.StartsWith("data: ")) continue;
+
+                        var data = line["data: ".Length..];
+                        if (data == "[DONE]") break;
+
+                        var chunk = ExtractTextFromChunk(data);
+                        if (!string.IsNullOrEmpty(chunk))
+                        {
+                            hasContent = true;
+                            await writer.WriteAsync(chunk, token);
+                        }
+                    }
+
+                    response.Dispose();
+
+                    if (!hasContent)
+                    {
+                        errors.Add($"{model}: Stream completed without any content");
+                        continue;
+                    }
+
+                    // Success — done
+                    return;
                 }
-
-                response.Dispose();
-
-                if (!hasYielded)
+                catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
                 {
-                    errors.Add($"{model}: Stream completed without any content");
+                    response?.Dispose();
+                    errors.Add($"{model}: Stream timeout after {StreamTimeout.TotalSeconds}s");
                     continue;
                 }
+                catch (OperationCanceledException)
+                {
+                    response?.Dispose();
+                    return;
+                }
+                catch (HttpRequestException ex)
+                {
+                    response?.Dispose();
+                    errors.Add($"{model}: Network error - {ex.Message}");
+                    continue;
+                }
+                catch (IOException ex)
+                {
+                    response?.Dispose();
+                    errors.Add($"{model}: Stream read error - {ex.Message}");
+                    continue;
+                }
+            }
 
-                yield break;
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                // Our timeout fired, not client disconnect — try next model
-                response?.Dispose();
-                errors.Add($"{model}: Stream timeout after {StreamTimeout.TotalSeconds}s");
-                continue;
-            }
-            catch (OperationCanceledException)
-            {
-                // Client disconnected
-                response?.Dispose();
-                yield break;
-            }
-            catch (HttpRequestException ex)
-            {
-                response?.Dispose();
-                errors.Add($"{model}: Network error - {ex.Message}");
-                continue;
-            }
-            catch (IOException ex)
-            {
-                response?.Dispose();
-                errors.Add($"{model}: Stream read error - {ex.Message}");
-                continue;
-            }
+            writer.Complete(new Exception($"Gemini stream API failed on all configured models. Attempts: {string.Join(" || ", errors)}"));
+            return;
+        }
+        catch (Exception ex)
+        {
+            writer.Complete(ex);
+            return;
         }
 
-        throw new Exception($"Gemini stream API failed on all configured models. Attempts: {string.Join(" || ", errors)}");
+        writer.Complete();
     }
 
     private List<string> GetModelPriorityOrder()

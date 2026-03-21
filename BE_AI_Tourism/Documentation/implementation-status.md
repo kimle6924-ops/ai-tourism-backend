@@ -153,7 +153,7 @@ Trạng thái các tính năng trong hệ thống.
 |-----------|-----------|---------|
 | Review DTOs | Done | CreateReviewRequest, UpdateReviewRequest, ReviewResponse, ReviewListResponse (averageRating + totalReviews) |
 | Review Validators | Done | CreateReviewRequestValidator, UpdateReviewRequestValidator |
-| ReviewService | Done | Upsert (1 user/1 resource), update, delete (owner+Admin), get by resource (kèm thống kê), get mine |
+| ReviewService | Done | Create (1 user đánh giá nhiều lần), update, delete (owner+Admin), get by resource (kèm thống kê), get mine (danh sách) |
 | ReviewController | Done | POST upsert, PATCH, DELETE, GET by resource, GET mine |
 | Discovery DTO | Done | DiscoveryRequest, SimpleSearchRequest (search + sortBy + averageRating filter) |
 | DiscoveryService | Done | Search places/events with filters + sort, simple search API, fix rating sort bug (tính rating 1 lần, dùng List thay IQueryable) |

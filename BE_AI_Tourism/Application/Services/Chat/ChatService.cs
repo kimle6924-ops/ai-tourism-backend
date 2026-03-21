@@ -116,8 +116,8 @@ public class ChatService : IChatService
         conversation.LastMessageAt = DateTime.UtcNow;
         await _conversationRepository.UpdateAsync(conversation);
 
-        // Check if summary needed
-        await TriggerSummaryIfNeeded(conversationId, userId);
+        // Check if summary needed — fire-and-forget, không block response
+        _ = TriggerSummaryIfNeeded(conversationId, userId);
 
         return Result.Ok(_mapper.Map<MessageResponse>(aiMessage));
     }
@@ -159,8 +159,8 @@ public class ChatService : IChatService
         conversation.LastMessageAt = DateTime.UtcNow;
         await _conversationRepository.UpdateAsync(conversation);
 
-        // Check if summary needed
-        await TriggerSummaryIfNeeded(conversationId, userId);
+        // Check if summary needed — fire-and-forget, không block stream
+        _ = TriggerSummaryIfNeeded(conversationId, userId);
     }
 
     private async Task<AiMessage> SaveMessageAsync(Guid conversationId, Guid userId, MessageRole role, string content)

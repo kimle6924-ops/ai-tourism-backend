@@ -223,7 +223,7 @@ Body: `orderedIds`* (guid[]) — danh sách media ID theo thứ tự mong muốn
 
 ReviewResponse: `id`, `resourceType` (0=Place/1=Event), `resourceId`, `userId`, `rating`, `comment`, `status` (0=Active/1=Hidden/2=Deleted), `createdAt`, `updatedAt`
 
-**POST `/`** — Login (upsert: 1 user chỉ có 1 review/resource, gọi lại sẽ cập nhật review cũ)
+**POST `/`** — Login (mỗi lần gọi tạo 1 review mới, 1 user có thể đánh giá nhiều lần cho cùng 1 resource)
 Body: `resourceType`* (int: 0=Place/1=Event), `resourceId`* (guid), `rating`* (int), `comment`* (string)
 → ReviewResponse
 
@@ -236,7 +236,7 @@ Body: `rating`* (int), `comment`* (string)
 **GET `/?resourceType=Place&resourceId=xxx`** — Public, phân trang
 → ReviewListResponse: `averageRating` (double, làm tròn 1 chữ số), `totalReviews` (int), `reviews` (PaginationResponse\<ReviewResponse\>)
 
-**GET `/mine?resourceType=Place&resourceId=xxx`** — Login → ReviewResponse (review của user hiện tại cho resource đó)
+**GET `/mine?resourceType=Place&resourceId=xxx`** — Login, phân trang → ReviewResponse[] (danh sách review của user hiện tại cho resource đó, mới nhất trước)
 
 ---
 

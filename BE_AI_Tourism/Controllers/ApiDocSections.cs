@@ -271,7 +271,7 @@ public static class ApiDocSections
 
         POST /api/reviews — Login
         Body: resourceType* (int: 0=Place/1=Event), resourceId* (guid), rating* (int, từ 1 đến 5), comment? (string, max 1000)
-        Điều kiện: Resource phải tồn tại VÀ đã được duyệt (moderationStatus=1 Approved). Nếu resource chưa duyệt hoặc không tồn tại → 404. Mỗi user chỉ có 1 review cho 1 resource (upsert: gọi lại sẽ cập nhật review cũ thay vì tạo mới).
+        Điều kiện: Resource phải tồn tại VÀ đã được duyệt (moderationStatus=1 Approved). Nếu resource chưa duyệt hoặc không tồn tại → 404. Mỗi lần gọi tạo 1 review mới, 1 user có thể đánh giá nhiều lần cho cùng 1 resource.
         Lỗi: 404 nếu resource không tồn tại hoặc chưa Approved.
         → ReviewResponse
 
@@ -288,7 +288,7 @@ public static class ApiDocSections
         GET /api/reviews?resourceType=Place&resourceId=xxx — Public, phân trang
         → ReviewListResponse: averageRating (double, sao trung bình làm tròn 1 chữ số thập phân), totalReviews (int, tổng số review active), reviews (phân trang ReviewResponse[]: items[], totalCount, pageNumber, pageSize, totalPages, hasPreviousPage, hasNextPage). Chỉ hiện review có status=0 Active, sắp xếp mới nhất trước.
 
-        GET /api/reviews/mine?resourceType=Place&resourceId=xxx — Login → ReviewResponse (review của user hiện tại cho resource đó)
+        GET /api/reviews/mine?resourceType=Place&resourceId=xxx — Login, phân trang → ReviewResponse[] (danh sách tất cả review của user hiện tại cho resource đó, sắp xếp mới nhất trước)
         """;
 
     public static string Discovery() => """

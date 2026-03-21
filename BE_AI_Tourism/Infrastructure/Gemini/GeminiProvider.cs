@@ -11,6 +11,8 @@ public class GeminiProvider : IGeminiProvider
 {
     private readonly GeminiOptions _options;
     private readonly IHttpClientFactory _httpClientFactory;
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan StreamTimeout = TimeSpan.FromSeconds(60);
 
     public GeminiProvider(IOptions<GeminiOptions> options, IHttpClientFactory httpClientFactory)
     {
@@ -26,29 +28,68 @@ public class GeminiProvider : IGeminiProvider
         var models = GetModelPriorityOrder();
         var errors = new List<string>();
 
+        using var cts = new CancellationTokenSource(RequestTimeout);
+
         foreach (var model in models)
         {
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_options.ApiKey}";
-            using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await client.PostAsync(url, content);
-            var responseBody = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                errors.Add($"{model}: {response.StatusCode} - {responseBody}");
-                if (ShouldFallback(response.StatusCode, responseBody))
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_options.ApiKey}";
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await client.PostAsync(url, content, cts.Token);
+                var responseBody = await response.Content.ReadAsStringAsync(cts.Token);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    errors.Add($"{model}: {response.StatusCode} - {responseBody}");
+                    if (ShouldFallback(response.StatusCode, responseBody))
+                        continue;
+
+                    throw new Exception($"Gemini API error on model '{model}': {responseBody}");
+                }
+
+                using var doc = JsonDocument.Parse(responseBody);
+                var root = doc.RootElement;
+
+                if (!root.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
+                {
+                    errors.Add($"{model}: Empty candidates in response");
                     continue;
+                }
 
-                throw new Exception($"Gemini API error on model '{model}': {responseBody}");
+                var firstCandidate = candidates[0];
+
+                // Check for blocked/filtered responses
+                if (firstCandidate.TryGetProperty("finishReason", out var finishReason))
+                {
+                    var reason = finishReason.GetString();
+                    if (reason == "SAFETY" || reason == "RECITATION" || reason == "OTHER")
+                    {
+                        errors.Add($"{model}: Blocked by finishReason={reason}");
+                        continue;
+                    }
+                }
+
+                if (!firstCandidate.TryGetProperty("content", out var contentProp) ||
+                    !contentProp.TryGetProperty("parts", out var parts) ||
+                    parts.GetArrayLength() == 0)
+                {
+                    errors.Add($"{model}: No content/parts in response");
+                    continue;
+                }
+
+                return parts[0].GetProperty("text").GetString() ?? string.Empty;
             }
-
-            using var doc = JsonDocument.Parse(responseBody);
-            return doc.RootElement
-                .GetProperty("candidates")[0]
-                .GetProperty("content")
-                .GetProperty("parts")[0]
-                .GetProperty("text")
-                .GetString() ?? string.Empty;
+            catch (OperationCanceledException)
+            {
+                errors.Add($"{model}: Timeout after {RequestTimeout.TotalSeconds}s");
+                continue;
+            }
+            catch (HttpRequestException ex)
+            {
+                errors.Add($"{model}: Network error - {ex.Message}");
+                continue;
+            }
         }
 
         throw new Exception($"Gemini API failed on all configured models. Attempts: {string.Join(" || ", errors)}");
@@ -65,44 +106,94 @@ public class GeminiProvider : IGeminiProvider
         var models = GetModelPriorityOrder();
         var errors = new List<string>();
 
+        // Combine caller cancellation with stream timeout
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cts.CancelAfter(StreamTimeout);
+        var token = cts.Token;
+
         foreach (var model in models)
         {
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={_options.ApiKey}";
-            using var request = new HttpRequestMessage(HttpMethod.Post, url)
+            HttpResponseMessage? response = null;
+            try
             {
-                Content = new StringContent(json, Encoding.UTF8, "application/json")
-            };
-            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={_options.ApiKey}";
+                using var request = new HttpRequestMessage(HttpMethod.Post, url)
+                {
+                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+                };
+                response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, token);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                errors.Add($"{model}: {response.StatusCode} - {responseBody}");
-                if (ShouldFallback(response.StatusCode, responseBody))
+                if (!response.IsSuccessStatusCode)
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync(token);
+                    errors.Add($"{model}: {response.StatusCode} - {responseBody}");
+                    response.Dispose();
+                    if (ShouldFallback(response.StatusCode, responseBody))
+                        continue;
+
+                    throw new Exception($"Gemini stream API error on model '{model}': {responseBody}");
+                }
+
+                using var stream = await response.Content.ReadAsStreamAsync(token);
+                using var reader = new StreamReader(stream);
+
+                var hasYielded = false;
+                while (!reader.EndOfStream && !token.IsCancellationRequested)
+                {
+                    // Reset timeout on each chunk received
+                    cts.CancelAfter(StreamTimeout);
+
+                    var line = await reader.ReadLineAsync(token);
+                    if (string.IsNullOrEmpty(line)) continue;
+
+                    if (!line.StartsWith("data: ")) continue;
+                    var data = line["data: ".Length..];
+
+                    if (data == "[DONE]") break;
+
+                    var chunk = ExtractTextFromChunk(data);
+                    if (!string.IsNullOrEmpty(chunk))
+                    {
+                        hasYielded = true;
+                        yield return chunk;
+                    }
+                }
+
+                response.Dispose();
+
+                if (!hasYielded)
+                {
+                    errors.Add($"{model}: Stream completed without any content");
                     continue;
+                }
 
-                throw new Exception($"Gemini stream API error on model '{model}': {responseBody}");
+                yield break;
             }
-
-            using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            using var reader = new StreamReader(stream);
-
-            while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                var line = await reader.ReadLineAsync(cancellationToken);
-                if (string.IsNullOrEmpty(line)) continue;
-
-                if (!line.StartsWith("data: ")) continue;
-                var data = line["data: ".Length..];
-
-                if (data == "[DONE]") break;
-
-                var chunk = ExtractTextFromChunk(data);
-                if (!string.IsNullOrEmpty(chunk))
-                    yield return chunk;
+                // Our timeout fired, not client disconnect — try next model
+                response?.Dispose();
+                errors.Add($"{model}: Stream timeout after {StreamTimeout.TotalSeconds}s");
+                continue;
             }
-
-            yield break;
+            catch (OperationCanceledException)
+            {
+                // Client disconnected
+                response?.Dispose();
+                yield break;
+            }
+            catch (HttpRequestException ex)
+            {
+                response?.Dispose();
+                errors.Add($"{model}: Network error - {ex.Message}");
+                continue;
+            }
+            catch (IOException ex)
+            {
+                response?.Dispose();
+                errors.Add($"{model}: Stream read error - {ex.Message}");
+                continue;
+            }
         }
 
         throw new Exception($"Gemini stream API failed on all configured models. Attempts: {string.Join(" || ", errors)}");

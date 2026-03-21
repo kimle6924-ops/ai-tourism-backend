@@ -27,26 +27,11 @@ public class ReviewService : IReviewService
         _mapper = mapper;
     }
 
-    public async Task<Result<ReviewResponse>> CreateOrUpdateAsync(CreateReviewRequest request, Guid userId)
+    public async Task<Result<ReviewResponse>> CreateAsync(CreateReviewRequest request, Guid userId)
     {
         // Verify resource exists and is approved
         if (!await IsResourceApproved(request.ResourceType, request.ResourceId))
             return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
-
-        // Check if user already reviewed this resource — upsert
-        var existing = await _reviewRepository.FindOneAsync(
-            r => r.ResourceType == request.ResourceType
-                 && r.ResourceId == request.ResourceId
-                 && r.UserId == userId);
-
-        if (existing != null)
-        {
-            existing.Rating = request.Rating;
-            existing.Comment = request.Comment;
-            existing.Status = ReviewStatus.Active;
-            await _reviewRepository.UpdateAsync(existing);
-            return Result.Ok(_mapper.Map<ReviewResponse>(existing));
-        }
 
         var entity = new Domain.Entities.Review
         {
@@ -111,14 +96,16 @@ public class ReviewService : IReviewService
         });
     }
 
-    public async Task<Result<ReviewResponse>> GetUserReviewAsync(ResourceType resourceType, Guid resourceId, Guid userId)
+    public async Task<Result<PaginationResponse<ReviewResponse>>> GetUserReviewsAsync(ResourceType resourceType, Guid resourceId, Guid userId, PaginationRequest request)
     {
-        var review = await _reviewRepository.FindOneAsync(
-            r => r.ResourceType == resourceType && r.ResourceId == resourceId && r.UserId == userId);
-        if (review == null)
-            return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+        var all = await _reviewRepository.FindAsync(
+            r => r.ResourceType == resourceType && r.ResourceId == resourceId && r.UserId == userId && r.Status == ReviewStatus.Active);
+        var ordered = all.OrderByDescending(r => r.CreatedAt).ToList();
+        var items = ordered.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
+        var responses = items.Select(r => _mapper.Map<ReviewResponse>(r)).ToList();
 
-        return Result.Ok(_mapper.Map<ReviewResponse>(review));
+        return Result.Ok(PaginationResponse<ReviewResponse>.Create(
+            responses, ordered.Count, request.PageNumber, request.PageSize));
     }
 
     private async Task<bool> IsResourceApproved(ResourceType resourceType, Guid resourceId)

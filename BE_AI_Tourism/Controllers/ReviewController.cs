@@ -22,9 +22,9 @@ public class ReviewController : ControllerBase
 
     [HttpPost]
     [Authorize]
-    public async Task<IActionResult> CreateOrUpdate([FromBody] CreateReviewRequest request)
+    public async Task<IActionResult> Create([FromBody] CreateReviewRequest request)
     {
-        var result = await _reviewService.CreateOrUpdateAsync(request, GetUserId());
+        var result = await _reviewService.CreateAsync(request, GetUserId());
         return StatusCode(result.StatusCode, result);
     }
 
@@ -57,11 +57,12 @@ public class ReviewController : ControllerBase
 
     [HttpGet("mine")]
     [Authorize]
-    public async Task<IActionResult> GetMyReview(
+    public async Task<IActionResult> GetMyReviews(
         [FromQuery] ResourceType resourceType,
-        [FromQuery] Guid resourceId)
+        [FromQuery] Guid resourceId,
+        [FromQuery] PaginationRequest request)
     {
-        var result = await _reviewService.GetUserReviewAsync(resourceType, resourceId, GetUserId());
+        var result = await _reviewService.GetUserReviewsAsync(resourceType, resourceId, GetUserId(), request);
         return StatusCode(result.StatusCode, result);
     }
 

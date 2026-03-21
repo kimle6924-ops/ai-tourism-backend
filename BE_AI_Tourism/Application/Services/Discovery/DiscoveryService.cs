@@ -211,7 +211,7 @@ public class DiscoveryService : IDiscoveryService
 
     private static List<T> FilterByRating<T>(
         List<T> items, Dictionary<Guid, double> avgRatings, int ratingValue)
-        where T : Domain.Entities.BaseEntity
+        where T : Shared.Core.BaseEntity
     {
         if (ratingValue == 5)
             return items.Where(x => avgRatings.TryGetValue(x.Id, out var avg) && avg == 5.0).ToList();

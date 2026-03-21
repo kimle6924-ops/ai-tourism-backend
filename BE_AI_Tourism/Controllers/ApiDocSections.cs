@@ -164,7 +164,7 @@ public static class ApiDocSections
     public static string Places() => """
         ## Places (/api/places)
 
-        PlaceResponse: id, title, description, address, administrativeUnitId, latitude?, longitude?, categoryIds (guid[]), tags (string[]), moderationStatus (0=Pending/1=Approved/2=Rejected), createdBy, approvedBy?, approvedAt?, createdAt, updatedAt
+        PlaceResponse: id, title, description, address, administrativeUnitId, latitude?, longitude?, categoryIds (guid[]), tags (string[]), moderationStatus (0=Pending/1=Approved/2=Rejected), createdBy, approvedBy?, approvedAt?, createdAt, updatedAt, images (List<MediaAssetResponse>: id, resourceType, resourceId, url, altText, sortOrder, createdAt — danh sách ảnh từ media_assets, được load trực tiếp trong response)
 
         GET /api/places — Public, phân trang → PlaceResponse[] (chỉ moderationStatus=1 Approved)
 
@@ -192,7 +192,7 @@ public static class ApiDocSections
     public static string Events() => """
         ## Events (/api/events)
 
-        EventResponse: id, title, description, address, administrativeUnitId, latitude?, longitude?, categoryIds (guid[]), tags (string[]), startAt, endAt, eventStatus (0=Upcoming/1=Ongoing/2=Ended), moderationStatus (0=Pending/1=Approved/2=Rejected), createdBy, approvedBy?, approvedAt?, createdAt, updatedAt
+        EventResponse: id, title, description, address, administrativeUnitId, latitude?, longitude?, categoryIds (guid[]), tags (string[]), startAt, endAt, eventStatus (0=Upcoming/1=Ongoing/2=Ended), moderationStatus (0=Pending/1=Approved/2=Rejected), createdBy, approvedBy?, approvedAt?, createdAt, updatedAt, images (List<MediaAssetResponse>: id, resourceType, resourceId, url, altText, sortOrder, createdAt — danh sách ảnh từ media_assets, được load trực tiếp trong response)
 
         GET /api/events — Public, phân trang → EventResponse[] (chỉ moderationStatus=1 Approved)
 

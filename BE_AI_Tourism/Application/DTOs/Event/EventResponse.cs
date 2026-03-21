@@ -1,3 +1,4 @@
+using BE_AI_Tourism.Application.DTOs.Media;
 using BE_AI_Tourism.Domain.Enums;
 
 namespace BE_AI_Tourism.Application.DTOs.Event;
@@ -21,6 +22,7 @@ public class EventResponse
     public Guid? ApprovedBy { get; set; }
     public DateTime? ApprovedAt { get; set; }
     public double AverageRating { get; set; }
+    public List<MediaAssetResponse> Images { get; set; } = [];
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

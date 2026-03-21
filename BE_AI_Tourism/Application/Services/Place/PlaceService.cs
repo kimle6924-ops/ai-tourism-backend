@@ -82,8 +82,7 @@ public class PlaceService : IPlaceService
             return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         var response = _mapper.Map<PlaceResponse>(entity);
-        var ratingMap = await GetAverageRatingsAsync([entity.Id]);
-        response.AverageRating = ratingMap.TryGetValue(entity.Id, out var avg) ? avg : 0;
+        await EnrichSingleResponseAsync(response, entity.Id);
         return Result.Ok(response);
     }
 
@@ -92,7 +91,7 @@ public class PlaceService : IPlaceService
         var all = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
         var items = all.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
         var responses = items.Select(p => _mapper.Map<PlaceResponse>(p)).ToList();
-        await EnrichAverageRatingsAsync(responses);
+        await EnrichResponsesAsync(responses);
 
         return Result.Ok(PaginationResponse<PlaceResponse>.Create(
             responses, all.Count(), request.PageNumber, request.PageSize));
@@ -127,7 +126,7 @@ public class PlaceService : IPlaceService
         var totalCount = all.Count();
         var items = all.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
         var responses = items.Select(p => _mapper.Map<PlaceResponse>(p)).ToList();
-        await EnrichAverageRatingsAsync(responses);
+        await EnrichResponsesAsync(responses);
 
         return Result.Ok(PaginationResponse<PlaceResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
@@ -157,8 +156,7 @@ public class PlaceService : IPlaceService
 
         await _placeRepository.UpdateAsync(entity);
         var response = _mapper.Map<PlaceResponse>(entity);
-        var ratingMap = await GetAverageRatingsAsync([entity.Id]);
-        response.AverageRating = ratingMap.TryGetValue(entity.Id, out var avg) ? avg : 0;
+        await EnrichSingleResponseAsync(response, entity.Id);
         return Result.Ok(response);
     }
 
@@ -207,7 +205,7 @@ public class PlaceService : IPlaceService
 
             Guid? CatId(string slug) => catBySlug.TryGetValue(slug, out var id) ? id : null;
 
-            var defaultImage = "https://res.cloudinary.com/dhwljelir/image/upload/v1773759088/samples/chair.png";
+            var defaultImage = "https://res.cloudinary.com/dhwljelir/image/upload/v1773759092/main-sample.png";
 
             var seedData = new List<(string Name, string Desc, string Address, double Lat, double Lng, string[] CatSlugs, List<string> Tags)>
             {
@@ -422,14 +420,42 @@ public class PlaceService : IPlaceService
         return false;
     }
 
-    private async Task EnrichAverageRatingsAsync(List<PlaceResponse> responses)
+    private async Task EnrichResponsesAsync(List<PlaceResponse> responses)
     {
         if (responses.Count == 0)
             return;
 
-        var ratingMap = await GetAverageRatingsAsync(responses.Select(x => x.Id));
+        var ids = responses.Select(x => x.Id).ToList();
+
+        var ratingMap = await GetAverageRatingsAsync(ids);
         foreach (var response in responses)
             response.AverageRating = ratingMap.TryGetValue(response.Id, out var avg) ? avg : 0;
+
+        var allMedia = await _mediaRepository.FindAsync(
+            m => m.ResourceType == ResourceType.Place && ids.Contains(m.ResourceId));
+        var mediaByResource = allMedia
+            .OrderBy(m => m.SortOrder)
+            .GroupBy(m => m.ResourceId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        foreach (var response in responses)
+        {
+            if (mediaByResource.TryGetValue(response.Id, out var media))
+                response.Images = media.Select(m => _mapper.Map<DTOs.Media.MediaAssetResponse>(m)).ToList();
+        }
+    }
+
+    private async Task EnrichSingleResponseAsync(PlaceResponse response, Guid placeId)
+    {
+        var ratingMap = await GetAverageRatingsAsync([placeId]);
+        response.AverageRating = ratingMap.TryGetValue(placeId, out var avg) ? avg : 0;
+
+        var media = await _mediaRepository.FindAsync(
+            m => m.ResourceType == ResourceType.Place && m.ResourceId == placeId);
+        response.Images = media
+            .OrderBy(m => m.SortOrder)
+            .Select(m => _mapper.Map<DTOs.Media.MediaAssetResponse>(m))
+            .ToList();
     }
 
     private async Task<Dictionary<Guid, double>> GetAverageRatingsAsync(IEnumerable<Guid> placeIds)

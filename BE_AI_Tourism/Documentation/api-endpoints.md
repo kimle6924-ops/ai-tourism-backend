@@ -133,7 +133,7 @@ Tạo sẵn 18 category, bỏ qua nếu slug đã tồn tại:
 
 ## Places (`/api/places`)
 
-PlaceResponse: `id`, `title`, `description`, `address`, `administrativeUnitId`, `latitude?`, `longitude?`, `categoryIds` (guid[]), `tags` (string[]), `moderationStatus` (0=Pending/1=Approved/2=Rejected), `createdBy`, `approvedBy?`, `approvedAt?`, `createdAt`, `updatedAt`
+PlaceResponse: `id`, `title`, `description`, `address`, `administrativeUnitId`, `latitude?`, `longitude?`, `categoryIds` (guid[]), `tags` (string[]), `moderationStatus` (0=Pending/1=Approved/2=Rejected), `createdBy`, `approvedBy?`, `approvedAt?`, `createdAt`, `updatedAt`, `images` (MediaAssetResponse[]: `id`, `resourceType`, `resourceId`, `url`, `altText`, `sortOrder`, `createdAt` — load trực tiếp từ bảng media_assets)
 
 **GET `/`** — Public, phân trang → PlaceResponse[] (chỉ moderationStatus=1 Approved)
 
@@ -158,7 +158,7 @@ Tạo sẵn 16 place mẫu (khu vực Sa Pa, Lào Cai), tự động Approved + 
 
 ## Events (`/api/events`)
 
-EventResponse: `id`, `title`, `description`, `address`, `administrativeUnitId`, `latitude?`, `longitude?`, `categoryIds` (guid[]), `tags` (string[]), `startAt`, `endAt`, `eventStatus` (0=Upcoming/1=Ongoing/2=Ended), `moderationStatus` (0=Pending/1=Approved/2=Rejected), `createdBy`, `approvedBy?`, `approvedAt?`, `createdAt`, `updatedAt`
+EventResponse: `id`, `title`, `description`, `address`, `administrativeUnitId`, `latitude?`, `longitude?`, `categoryIds` (guid[]), `tags` (string[]), `startAt`, `endAt`, `eventStatus` (0=Upcoming/1=Ongoing/2=Ended), `moderationStatus` (0=Pending/1=Approved/2=Rejected), `createdBy`, `approvedBy?`, `approvedAt?`, `createdAt`, `updatedAt`, `images` (MediaAssetResponse[]: `id`, `resourceType`, `resourceId`, `url`, `altText`, `sortOrder`, `createdAt` — load trực tiếp từ bảng media_assets)
 
 **GET `/`** — Public, phân trang → EventResponse[] (chỉ moderationStatus=1 Approved)
 

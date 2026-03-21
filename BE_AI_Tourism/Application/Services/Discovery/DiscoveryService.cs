@@ -15,17 +15,20 @@ public class DiscoveryService : IDiscoveryService
     private readonly IRepository<Domain.Entities.Place> _placeRepository;
     private readonly IRepository<Domain.Entities.Event> _eventRepository;
     private readonly IRepository<Domain.Entities.Review> _reviewRepository;
+    private readonly IRepository<Domain.Entities.MediaAsset> _mediaRepository;
     private readonly IMapper _mapper;
 
     public DiscoveryService(
         IRepository<Domain.Entities.Place> placeRepository,
         IRepository<Domain.Entities.Event> eventRepository,
         IRepository<Domain.Entities.Review> reviewRepository,
+        IRepository<Domain.Entities.MediaAsset> mediaRepository,
         IMapper mapper)
     {
         _placeRepository = placeRepository;
         _eventRepository = eventRepository;
         _reviewRepository = reviewRepository;
+        _mediaRepository = mediaRepository;
         _mapper = mapper;
     }
 
@@ -53,6 +56,7 @@ public class DiscoveryService : IDiscoveryService
             r.AverageRating = avgRatings.TryGetValue(p.Id, out var avg) ? avg : 0;
             return r;
         }).ToList();
+        await EnrichPlaceImagesAsync(responses);
 
         return Result.Ok(PaginationResponse<PlaceResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
@@ -80,6 +84,7 @@ public class DiscoveryService : IDiscoveryService
             r.AverageRating = avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0;
             return r;
         }).ToList();
+        await EnrichEventImagesAsync(responses);
 
         return Result.Ok(PaginationResponse<EventResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
@@ -113,6 +118,7 @@ public class DiscoveryService : IDiscoveryService
             r.AverageRating = avgRatings.TryGetValue(p.Id, out var avg) ? avg : 0;
             return r;
         }).ToList();
+        await EnrichPlaceImagesAsync(responses);
 
         return Result.Ok(PaginationResponse<PlaceResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
@@ -144,6 +150,7 @@ public class DiscoveryService : IDiscoveryService
             r.AverageRating = avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0;
             return r;
         }).ToList();
+        await EnrichEventImagesAsync(responses);
 
         return Result.Ok(PaginationResponse<EventResponse>.Create(
             responses, totalCount, request.PageNumber, request.PageSize));
@@ -265,5 +272,33 @@ public class DiscoveryService : IDiscoveryService
         return reviews
             .GroupBy(r => r.ResourceId)
             .ToDictionary(g => g.Key, g => Math.Round(g.Average(r => r.Rating), 1));
+    }
+
+    // ───────────── IMAGE HELPERS ─────────────
+
+    private async Task EnrichPlaceImagesAsync(List<PlaceResponse> responses)
+    {
+        if (responses.Count == 0) return;
+        var ids = responses.Select(x => x.Id).ToList();
+        var allMedia = await _mediaRepository.FindAsync(
+            m => m.ResourceType == ResourceType.Place && ids.Contains(m.ResourceId));
+        var mediaByResource = allMedia.OrderBy(m => m.SortOrder).GroupBy(m => m.ResourceId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        foreach (var r in responses)
+            if (mediaByResource.TryGetValue(r.Id, out var media))
+                r.Images = media.Select(m => _mapper.Map<DTOs.Media.MediaAssetResponse>(m)).ToList();
+    }
+
+    private async Task EnrichEventImagesAsync(List<EventResponse> responses)
+    {
+        if (responses.Count == 0) return;
+        var ids = responses.Select(x => x.Id).ToList();
+        var allMedia = await _mediaRepository.FindAsync(
+            m => m.ResourceType == ResourceType.Event && ids.Contains(m.ResourceId));
+        var mediaByResource = allMedia.OrderBy(m => m.SortOrder).GroupBy(m => m.ResourceId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+        foreach (var r in responses)
+            if (mediaByResource.TryGetValue(r.Id, out var media))
+                r.Images = media.Select(m => _mapper.Map<DTOs.Media.MediaAssetResponse>(m)).ToList();
     }
 }

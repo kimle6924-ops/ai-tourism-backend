@@ -47,7 +47,14 @@ public class ReviewService : IReviewService
         };
 
         await _reviewRepository.AddAsync(entity);
-        return Result.Ok(_mapper.Map<ReviewResponse>(entity), StatusCodes.Status201Created);
+        var response = _mapper.Map<ReviewResponse>(entity);
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user != null)
+        {
+            response.UserFullName = user.FullName;
+            response.UserAvatarUrl = user.AvatarUrl;
+        }
+        return Result.Ok(response, StatusCodes.Status201Created);
     }
 
     public async Task<Result<ReviewResponse>> UpdateAsync(Guid id, UpdateReviewRequest request, Guid userId)
@@ -62,7 +69,14 @@ public class ReviewService : IReviewService
         review.Rating = request.Rating;
         review.Comment = request.Comment;
         await _reviewRepository.UpdateAsync(review);
-        return Result.Ok(_mapper.Map<ReviewResponse>(review));
+        var response = _mapper.Map<ReviewResponse>(review);
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user != null)
+        {
+            response.UserFullName = user.FullName;
+            response.UserAvatarUrl = user.AvatarUrl;
+        }
+        return Result.Ok(response);
     }
 
     public async Task<Result> DeleteAsync(Guid id, Guid userId, string role)

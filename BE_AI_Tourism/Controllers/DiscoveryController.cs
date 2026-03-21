@@ -1,6 +1,6 @@
-using System.Security.Claims;
 using BE_AI_Tourism.Application.DTOs.Discovery;
 using BE_AI_Tourism.Application.Services.Discovery;
+using BE_AI_Tourism.Shared.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -63,5 +63,5 @@ public class DiscoveryController : ControllerBase
     }
 
     private Guid GetCurrentUserId()
-        => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        => Guid.Parse(User.FindFirst(AppConstants.JwtClaimTypes.UserId)!.Value);
 }

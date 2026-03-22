@@ -1,11 +1,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY BE_AI_Tourism/*.csproj ./BE_AI_Tourism/
-RUN dotnet restore BE_AI_Tourism/BE_AI_Tourism.csproj
+COPY *.csproj .
+RUN dotnet restore
 
-COPY BE_AI_Tourism/ ./BE_AI_Tourism/
-RUN dotnet publish BE_AI_Tourism/BE_AI_Tourism.csproj -c Release -o /app
+COPY . .
+RUN dotnet publish -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app

@@ -13,7 +13,7 @@ services:
 
   api:
     build:
-      context: ./BE_AI_Tourism
+      context: .
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:

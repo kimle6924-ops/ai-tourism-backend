@@ -1,11 +1,14 @@
-using BE_AI_Tourism.Domain.Entities;
+﻿using BE_AI_Tourism.Domain.Entities;
 using BE_AI_Tourism.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http.Json;
 
 namespace BE_AI_Tourism.Infrastructure.Database;
 
 public static class SeedData
 {
+    private const string DefaultProvincesApiBaseUrl = "https://provinces.open-api.vn/api/v2/p";
+
     public static async Task SeedAsync(AppDbContext context)
     {
         await SeedAdministrativeUnitsAsync(context);
@@ -17,9 +20,106 @@ public static class SeedData
         if (await context.AdministrativeUnits.AnyAsync())
             return;
 
-        // 34 Tỉnh/Thành phố (theo API v2 post-2025 merger)
-        var provinces = new List<AdministrativeUnit>
+        var (provinces, wards) = await TryFetchAdministrativeUnitsFromApiAsync();
+
+        // Fallback để luồng seed không bị fail nếu API ngoài tạm thời lỗi
+        if (provinces.Count == 0)
         {
+            provinces = GetFallbackProvinces();
+            wards = GetFallbackWards(provinces);
+        }
+
+        await context.AdministrativeUnits.AddRangeAsync(provinces);
+        await context.AdministrativeUnits.AddRangeAsync(wards);
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task<(List<AdministrativeUnit> Provinces, List<AdministrativeUnit> Wards)> TryFetchAdministrativeUnitsFromApiAsync()
+    {
+        var provinces = new List<AdministrativeUnit>();
+        var wards = new List<AdministrativeUnit>();
+        var provinceCodeToId = new Dictionary<string, Guid>();
+        var provincesApiBaseUrl = GetProvincesApiBaseUrl();
+
+        try
+        {
+            using var httpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(60)
+            };
+
+            var provinceItems = await httpClient.GetFromJsonAsync<List<ProvinceApiItem>>(provincesApiBaseUrl);
+            if (provinceItems == null || provinceItems.Count == 0)
+                return (provinces, wards);
+
+            foreach (var provinceItem in provinceItems)
+            {
+                if (provinceItem is null || provinceItem.Code <= 0 || string.IsNullOrWhiteSpace(provinceItem.Name))
+                    continue;
+
+                var provinceCode = provinceItem.Code.ToString();
+                if (provinceCodeToId.ContainsKey(provinceCode))
+                    continue;
+
+                var province = CreateProvince(provinceItem.Name.Trim(), provinceCode);
+                provinces.Add(province);
+                provinceCodeToId[provinceCode] = province.Id;
+            }
+
+            var addedWardCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var provinceCode in provinceCodeToId.Keys)
+            {
+                try
+                {
+                    var detailUrl = $"{provincesApiBaseUrl}/{provinceCode}?depth=2";
+                    var provinceDetail = await httpClient.GetFromJsonAsync<ProvinceDetailApiItem>(detailUrl);
+                    if (provinceDetail == null)
+                        continue;
+
+                    var wardItems = (provinceDetail.Wards ?? Enumerable.Empty<WardApiItem>())
+                        .Concat((provinceDetail.Districts ?? Enumerable.Empty<DistrictApiItem>())
+                            .SelectMany(d => d.Wards ?? Enumerable.Empty<WardApiItem>()));
+
+                    foreach (var wardItem in wardItems)
+                    {
+                        if (wardItem is null || wardItem.Code <= 0 || string.IsNullOrWhiteSpace(wardItem.Name))
+                            continue;
+
+                        var wardCode = wardItem.Code.ToString();
+                        if (!addedWardCodes.Add(wardCode))
+                            continue;
+
+                        wards.Add(CreateWard(wardItem.Name.Trim(), wardCode, provinceCodeToId[provinceCode]));
+                    }
+                }
+                catch
+                {
+                    // Bỏ qua tỉnh bị lỗi, tiếp tục seed các tỉnh khác
+                }
+            }
+        }
+        catch
+        {
+            return (new List<AdministrativeUnit>(), new List<AdministrativeUnit>());
+        }
+
+        return (provinces, wards);
+    }
+
+    private static string GetProvincesApiBaseUrl()
+    {
+        var configuredUrl = Environment.GetEnvironmentVariable("PROVINCES_API_BASE_URL");
+        if (!string.IsNullOrWhiteSpace(configuredUrl))
+            return configuredUrl.Trim().TrimEnd('/');
+
+        return DefaultProvincesApiBaseUrl;
+    }
+
+    private static List<AdministrativeUnit> GetFallbackProvinces()
+    {
+        // 34 Tỉnh/Thành phố (theo API v2 post-2025 merger)
+        return
+        [
             CreateProvince("Thành phố Hà Nội", "1"),
             CreateProvince("Tỉnh Cao Bằng", "4"),
             CreateProvince("Tỉnh Tuyên Quang", "8"),
@@ -54,12 +154,15 @@ public static class SeedData
             CreateProvince("Tỉnh An Giang", "89"),
             CreateProvince("Thành phố Cần Thơ", "92"),
             CreateProvince("Tỉnh Kiên Giang", "91"),
-        };
+        ];
+    }
 
+    private static List<AdministrativeUnit> GetFallbackWards(List<AdministrativeUnit> provinces)
+    {
         // Seed một số Ward mẫu cho Đà Nẵng
         var daNang = provinces.First(p => p.Code == "48");
-        var wards = new List<AdministrativeUnit>
-        {
+        return
+        [
             CreateWard("Quận Hải Châu", "490", daNang.Id),
             CreateWard("Quận Thanh Khê", "491", daNang.Id),
             CreateWard("Quận Sơn Trà", "492", daNang.Id),
@@ -68,11 +171,7 @@ public static class SeedData
             CreateWard("Quận Cẩm Lệ", "495", daNang.Id),
             CreateWard("Huyện Hòa Vang", "497", daNang.Id),
             CreateWard("Huyện Hoàng Sa", "498", daNang.Id),
-        };
-
-        await context.AdministrativeUnits.AddRangeAsync(provinces);
-        await context.AdministrativeUnits.AddRangeAsync(wards);
-        await context.SaveChangesAsync();
+        ];
     }
 
     private static async Task SeedCategoriesAsync(AppDbContext context)
@@ -167,5 +266,32 @@ public static class SeedData
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+    }
+
+    private sealed class ProvinceApiItem
+    {
+        public int Code { get; set; }
+        public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class ProvinceDetailApiItem
+    {
+        public int Code { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public List<WardApiItem>? Wards { get; set; }
+        public List<DistrictApiItem>? Districts { get; set; }
+    }
+
+    private sealed class DistrictApiItem
+    {
+        public int Code { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public List<WardApiItem>? Wards { get; set; }
+    }
+
+    private sealed class WardApiItem
+    {
+        public int Code { get; set; }
+        public string Name { get; set; } = string.Empty;
     }
 }

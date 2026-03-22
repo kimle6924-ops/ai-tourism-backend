@@ -191,13 +191,15 @@ public class ChatService : IChatService
         sb.AppendLine();
         sb.AppendLine("=== QUY TẮC ===");
         sb.AppendLine("- Trả lời bằng tiếng Việt, thân thiện, ngắn gọn.");
-        sb.AppendLine("- CHỈ đề xuất địa điểm và sự kiện có trong phần [DỮ LIỆU HỆ THỐNG] bên dưới. KHÔNG bịa thông tin.");
+        sb.AppendLine("- QUAN TRỌNG: Bạn là trợ lý AI đa năng, có thể trò chuyện bình thường với người dùng.");
+        sb.AppendLine("- Nếu người dùng chào hỏi, hỏi thăm, nói chuyện phiếm → trả lời tự nhiên, ngắn gọn như một người bạn. KHÔNG tự động đề xuất địa điểm hay sự kiện khi không được hỏi.");
+        sb.AppendLine("- CHỈ đề xuất địa điểm và sự kiện khi người dùng HỎI hoặc YÊU CẦU liên quan đến du lịch, địa điểm, sự kiện, gợi ý đi chơi, v.v.");
+        sb.AppendLine("- Khi đề xuất, CHỈ dùng dữ liệu trong phần [DỮ LIỆU HỆ THỐNG] bên dưới. KHÔNG bịa thông tin.");
         sb.AppendLine("- Khi đề xuất, luôn kèm tên địa điểm, địa chỉ, và lý do phù hợp.");
-        sb.AppendLine("- Nếu thiếu bất kỳ dữ liệu nào (địa điểm, sự kiện, sở thích người dùng), BẮT BUỘC phải:");
-        sb.AppendLine("  1. Thông báo rõ ràng đang thiếu thông tin gì (VD: \"Hiện tại hệ thống chưa có dữ liệu sự kiện\").");
-        sb.AppendLine("  2. Vẫn cố gắng đưa ra gợi ý hữu ích từ những dữ liệu còn lại (VD: thiếu sự kiện thì gợi ý địa điểm, thiếu sở thích thì gợi ý những nơi phổ biến).");
-        sb.AppendLine("  3. Đề xuất người dùng cung cấp thêm thông tin hoặc cập nhật sở thích để được hỗ trợ tốt hơn.");
-        sb.AppendLine("- KHÔNG BAO GIỜ trả lời trống hoặc chỉ nói \"không có dữ liệu\" rồi dừng. Luôn cung cấp giá trị cho người dùng.");
+        sb.AppendLine("- Nếu người dùng hỏi về du lịch nhưng thiếu dữ liệu, hãy:");
+        sb.AppendLine("  1. Thông báo rõ ràng đang thiếu thông tin gì.");
+        sb.AppendLine("  2. Vẫn cố gắng đưa ra gợi ý từ dữ liệu còn lại.");
+        sb.AppendLine("  3. Đề xuất người dùng cung cấp thêm thông tin.");
         sb.AppendLine("- Ưu tiên đề xuất địa điểm phù hợp sở thích người dùng.");
 
         // === SCENARIOS ===
@@ -309,9 +311,9 @@ public class ChatService : IChatService
         sb.AppendLine();
         sb.AppendLine("=== RÀNG BUỘC ===");
         sb.AppendLine("- KHÔNG được bịa địa điểm hoặc sự kiện không có trong dữ liệu hệ thống.");
-        sb.AppendLine("- Nếu người dùng hỏi ngoài phạm vi du lịch, lịch sự từ chối và hướng về chủ đề du lịch.");
-        sb.AppendLine("- Trả lời ngắn gọn, có cấu trúc, dễ đọc.");
-        sb.AppendLine("- QUAN TRỌNG: Dù thiếu dữ liệu, LUÔN phải trả lời có nội dung. Nói rõ thiếu gì + gợi ý từ dữ liệu còn lại hoặc lời khuyên chung về du lịch địa phương.");
+        sb.AppendLine("- Trả lời ngắn gọn, có cấu trúc, dễ đọc. Độ dài phản hồi phải TƯƠNG XỨNG với câu hỏi (chào hỏi → trả lời ngắn, hỏi chi tiết → trả lời chi tiết).");
+        sb.AppendLine("- Với câu hỏi thông thường (chào hỏi, hỏi thăm, trò chuyện): trả lời tự nhiên, thân thiện, KHÔNG kèm gợi ý địa điểm/sự kiện.");
+        sb.AppendLine("- Với câu hỏi ngoài phạm vi du lịch (toán, khoa học, v.v.): trả lời bình thường như một AI trợ lý thông minh.");
 
         return sb.ToString();
     }

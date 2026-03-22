@@ -7,7 +7,7 @@ namespace BE_AI_Tourism.Infrastructure.Database;
 
 public static class SeedData
 {
-    private const string DefaultProvincesApiBaseUrl = "https://provinces.open-api.vn/api/v2/p";
+    private const string DefaultProvincesApiBaseUrl = "https://provinces.open-api.vn/api/v2";
 
     public static async Task SeedAsync(AppDbContext context)
     {
@@ -39,6 +39,7 @@ public static class SeedData
         var provinces = new List<AdministrativeUnit>();
         var wards = new List<AdministrativeUnit>();
         var provinceCodeToId = new Dictionary<string, Guid>();
+        var usedCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var provincesApiBaseUrl = GetProvincesApiBaseUrl();
 
         try
@@ -48,7 +49,7 @@ public static class SeedData
                 Timeout = TimeSpan.FromSeconds(60)
             };
 
-            var provinceItems = await httpClient.GetFromJsonAsync<List<ProvinceApiItem>>(provincesApiBaseUrl);
+            var provinceItems = await httpClient.GetFromJsonAsync<List<ProvinceApiItem>>(BuildProvinceListUrl(provincesApiBaseUrl));
             if (provinceItems == null || provinceItems.Count == 0)
                 return (provinces, wards);
 
@@ -58,7 +59,7 @@ public static class SeedData
                     continue;
 
                 var provinceCode = provinceItem.Code.ToString();
-                if (provinceCodeToId.ContainsKey(provinceCode))
+                if (provinceCodeToId.ContainsKey(provinceCode) || !usedCodes.Add(provinceCode))
                     continue;
 
                 var province = CreateProvince(provinceItem.Name.Trim(), provinceCode);
@@ -66,12 +67,11 @@ public static class SeedData
                 provinceCodeToId[provinceCode] = province.Id;
             }
 
-            var addedWardCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var provinceCode in provinceCodeToId.Keys)
             {
                 try
                 {
-                    var detailUrl = $"{provincesApiBaseUrl}/{provinceCode}?depth=2";
+                    var detailUrl = BuildProvinceDetailUrl(provincesApiBaseUrl, provinceCode);
                     var provinceDetail = await httpClient.GetFromJsonAsync<ProvinceDetailApiItem>(detailUrl);
                     if (provinceDetail == null)
                         continue;
@@ -86,7 +86,7 @@ public static class SeedData
                             continue;
 
                         var wardCode = wardItem.Code.ToString();
-                        if (!addedWardCodes.Add(wardCode))
+                        if (!usedCodes.Add(wardCode))
                             continue;
 
                         wards.Add(CreateWard(wardItem.Name.Trim(), wardCode, provinceCodeToId[provinceCode]));
@@ -113,6 +113,19 @@ public static class SeedData
             return configuredUrl.Trim().TrimEnd('/');
 
         return DefaultProvincesApiBaseUrl;
+    }
+
+    private static string BuildProvinceListUrl(string baseUrl)
+    {
+        return baseUrl.EndsWith("/p", StringComparison.OrdinalIgnoreCase)
+            ? baseUrl
+            : $"{baseUrl}/p";
+    }
+
+    private static string BuildProvinceDetailUrl(string baseUrl, string provinceCode)
+    {
+        var listUrl = BuildProvinceListUrl(baseUrl);
+        return $"{listUrl}/{provinceCode}?depth=2";
     }
 
     private static List<AdministrativeUnit> GetFallbackProvinces()

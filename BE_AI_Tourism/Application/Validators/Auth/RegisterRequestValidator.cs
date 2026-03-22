@@ -35,8 +35,9 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
             .NotEqual(Guid.Empty).WithMessage("AdministrativeUnitId must not be empty")
             .When(x => x.Role == UserRole.Contributor);
 
-        // Sở thích bắt buộc ít nhất 1
+        // Sở thích bắt buộc ít nhất 1 chỉ với User (role=User hoặc không truyền role -> mặc định User)
         RuleFor(x => x.CategoryIds)
-            .NotEmpty().WithMessage("At least one category preference is required");
+            .NotEmpty().WithMessage("At least one category preference is required")
+            .When(x => !x.Role.HasValue || x.Role == UserRole.User);
     }
 }

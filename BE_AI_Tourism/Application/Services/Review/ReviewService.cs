@@ -32,7 +32,6 @@ public class ReviewService : IReviewService
 
     public async Task<Result<ReviewResponse>> CreateAsync(CreateReviewRequest request, Guid userId)
     {
-        // Verify resource exists and is approved
         if (!await IsResourceApproved(request.ResourceType, request.ResourceId))
             return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
@@ -43,7 +42,7 @@ public class ReviewService : IReviewService
             UserId = userId,
             Rating = request.Rating,
             Comment = request.Comment,
-            Status = ReviewStatus.Active
+            Status = ReviewStatus.Pending
         };
 
         await _reviewRepository.AddAsync(entity);
@@ -68,6 +67,8 @@ public class ReviewService : IReviewService
 
         review.Rating = request.Rating;
         review.Comment = request.Comment;
+        // Sửa review → reset Pending, cần duyệt lại
+        review.Status = ReviewStatus.Pending;
         await _reviewRepository.UpdateAsync(review);
         var response = _mapper.Map<ReviewResponse>(review);
         var user = await _userRepository.GetByIdAsync(userId);
@@ -85,7 +86,6 @@ public class ReviewService : IReviewService
         if (review == null)
             return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-        // Owner or Admin can delete
         if (review.UserId != userId && role != UserRole.Admin.ToString())
             return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
@@ -95,6 +95,7 @@ public class ReviewService : IReviewService
 
     public async Task<Result<ReviewListResponse>> GetByResourceAsync(ResourceType resourceType, Guid resourceId, PaginationRequest request)
     {
+        // Public chỉ thấy Active reviews
         var all = await _reviewRepository.FindAsync(
             r => r.ResourceType == resourceType && r.ResourceId == resourceId && r.Status == ReviewStatus.Active);
         var ordered = all.OrderByDescending(r => r.CreatedAt).ToList();
@@ -115,14 +116,56 @@ public class ReviewService : IReviewService
 
     public async Task<Result<PaginationResponse<ReviewResponse>>> GetUserReviewsAsync(ResourceType resourceType, Guid resourceId, Guid userId, PaginationRequest request)
     {
+        // User thấy cả Pending và Active reviews của mình
         var all = await _reviewRepository.FindAsync(
-            r => r.ResourceType == resourceType && r.ResourceId == resourceId && r.UserId == userId && r.Status == ReviewStatus.Active);
+            r => r.ResourceType == resourceType && r.ResourceId == resourceId && r.UserId == userId
+                 && (r.Status == ReviewStatus.Active || r.Status == ReviewStatus.Pending));
         var ordered = all.OrderByDescending(r => r.CreatedAt).ToList();
         var items = ordered.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
         var responses = await MapReviewsWithUserInfo(items);
 
         return Result.Ok(PaginationResponse<ReviewResponse>.Create(
             responses, ordered.Count, request.PageNumber, request.PageSize));
+    }
+
+    // Admin: lấy tất cả reviews với filter theo status
+    public async Task<Result<PaginationResponse<ReviewResponse>>> GetAllReviewsAsync(PaginationRequest request, ReviewStatus? statusFilter)
+    {
+        IEnumerable<Domain.Entities.Review> all;
+        if (statusFilter.HasValue)
+            all = await _reviewRepository.FindAsync(r => r.Status == statusFilter.Value);
+        else
+            all = await _reviewRepository.FindAsync(r => r.Status != ReviewStatus.Deleted);
+
+        var ordered = all.OrderByDescending(r => r.CreatedAt).ToList();
+        var totalCount = ordered.Count;
+        var items = ordered.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
+        var responses = await MapReviewsWithUserInfo(items);
+
+        return Result.Ok(PaginationResponse<ReviewResponse>.Create(
+            responses, totalCount, request.PageNumber, request.PageSize));
+    }
+
+    public async Task<Result> ApproveReviewAsync(Guid id)
+    {
+        var review = await _reviewRepository.GetByIdAsync(id);
+        if (review == null)
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+
+        review.Status = ReviewStatus.Active;
+        await _reviewRepository.UpdateAsync(review);
+        return Result.Ok("Review approved successfully");
+    }
+
+    public async Task<Result> HideReviewAsync(Guid id)
+    {
+        var review = await _reviewRepository.GetByIdAsync(id);
+        if (review == null)
+            return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+
+        review.Status = ReviewStatus.Hidden;
+        await _reviewRepository.UpdateAsync(review);
+        return Result.Ok("Review hidden successfully");
     }
 
     private async Task<List<ReviewResponse>> MapReviewsWithUserInfo(List<Domain.Entities.Review> reviews)

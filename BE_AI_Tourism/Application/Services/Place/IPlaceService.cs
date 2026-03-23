@@ -10,7 +10,7 @@ public interface IPlaceService
     Task<Result<PlaceResponse>> CreateAsync(CreatePlaceRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId);
     Task<Result<PlaceResponse>> GetByIdAsync(Guid id);
     Task<Result<PaginationResponse<PlaceResponse>>> GetApprovedPagedAsync(PaginationRequest request);
-    Task<Result<PaginationResponse<PlaceResponse>>> GetAllPagedAsync(PaginationRequest request, string role, ContributorType? contributorType, Guid? userAdminUnitId);
+    Task<Result<PaginationResponse<PlaceResponse>>> GetAllPagedAsync(PaginationRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId);
     Task<Result<PlaceResponse>> UpdateAsync(Guid id, UpdatePlaceRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId);
     Task<Result> DeleteAsync(Guid id, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId);
     Task<Result<IEnumerable<PlaceResponse>>> SeedAsync();

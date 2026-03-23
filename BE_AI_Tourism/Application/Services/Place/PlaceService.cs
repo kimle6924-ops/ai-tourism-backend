@@ -131,7 +131,7 @@ public class PlaceService : IPlaceService
             responses, all.Count(), request.PageNumber, request.PageSize));
     }
 
-    public async Task<Result<PaginationResponse<PlaceResponse>>> GetAllPagedAsync(PaginationRequest request, string role, ContributorType? contributorType, Guid? userAdminUnitId)
+    public async Task<Result<PaginationResponse<PlaceResponse>>> GetAllPagedAsync(PaginationRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         IEnumerable<Domain.Entities.Place> all;
 
@@ -145,7 +145,6 @@ public class PlaceService : IPlaceService
             if (contributorType == ContributorType.Collaborator)
             {
                 // CTV chỉ thấy bài mình tạo
-                var userId = (await _userRepository.FindOneAsync(u => u.AdministrativeUnitId == userAdminUnitId))?.Id;
                 all = await _placeRepository.FindAsync(p => p.CreatedBy == userId);
             }
             else

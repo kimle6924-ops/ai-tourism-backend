@@ -1,4 +1,4 @@
-﻿using BE_AI_Tourism.Domain.Entities;
+using BE_AI_Tourism.Domain.Entities;
 using BE_AI_Tourism.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Json;
@@ -8,11 +8,136 @@ namespace BE_AI_Tourism.Infrastructure.Database;
 public static class SeedData
 {
     private const string DefaultProvincesApiBaseUrl = "https://provinces.open-api.vn/api/v2";
+    private const string SeedPassword = "Abc@12345";
 
     public static async Task SeedAsync(AppDbContext context)
     {
         await SeedAdministrativeUnitsAsync(context);
         await SeedCategoriesAsync(context);
+        await SeedUsersAsync(context);
+    }
+
+    private static async Task SeedUsersAsync(AppDbContext context)
+    {
+        if (await context.Users.AnyAsync())
+            return;
+
+        // Tìm Lào Cai (code=15) và Sa Pa (code=152) cho seed accounts
+        var laoCai = await context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "15");
+        var saPa = await context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "152");
+
+        // Hash password hoặc plaintext tùy config (seed dùng plaintext cho đơn giản)
+        var password = SeedPassword;
+
+        var users = new List<User>();
+
+        // 1. Admin - quản trị hệ thống
+        users.Add(new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "admin@tourism.vn",
+            Password = password,
+            FullName = "Quản trị viên hệ thống",
+            Phone = "0900000001",
+            Role = UserRole.Admin,
+            ContributorType = null,
+            AdministrativeUnitId = null,
+            Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        // 2. Trung ương - quản lý toàn quốc
+        users.Add(new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "trungduong@tourism.vn",
+            Password = password,
+            FullName = "Quản lý Trung ương",
+            Phone = "0900000002",
+            Role = UserRole.Contributor,
+            ContributorType = ContributorType.Central,
+            AdministrativeUnitId = null,
+            Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        // 3. Cấp tỉnh - quản lý Lào Cai
+        if (laoCai != null)
+        {
+            users.Add(new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "laocai@tourism.vn",
+                Password = password,
+                FullName = "Quản lý tỉnh Lào Cai",
+                Phone = "0900000003",
+                Role = UserRole.Contributor,
+                ContributorType = ContributorType.Province,
+                AdministrativeUnitId = laoCai.Id,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        // 4. Cấp xã - quản lý Sa Pa
+        if (saPa != null)
+        {
+            users.Add(new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "sapa@tourism.vn",
+                Password = password,
+                FullName = "Quản lý thị xã Sa Pa",
+                Phone = "0900000004",
+                Role = UserRole.Contributor,
+                ContributorType = ContributorType.Ward,
+                AdministrativeUnitId = saPa.Id,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        // 5. Cộng tác viên - Sa Pa
+        if (saPa != null)
+        {
+            users.Add(new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "ctv.sapa@tourism.vn",
+                Password = password,
+                FullName = "Cộng tác viên Sa Pa",
+                Phone = "0900000005",
+                Role = UserRole.Contributor,
+                ContributorType = ContributorType.Collaborator,
+                AdministrativeUnitId = saPa.Id,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        // 6. User thường
+        users.Add(new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "user@tourism.vn",
+            Password = password,
+            FullName = "Người dùng Sa Pa",
+            Phone = "0900000006",
+            Role = UserRole.User,
+            ContributorType = null,
+            AdministrativeUnitId = null,
+            Status = UserStatus.Active,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        await context.Users.AddRangeAsync(users);
+        await context.SaveChangesAsync();
     }
 
     private static async Task SeedAdministrativeUnitsAsync(AppDbContext context)
@@ -130,7 +255,6 @@ public static class SeedData
 
     private static List<AdministrativeUnit> GetFallbackProvinces()
     {
-        // 34 Tỉnh/Thành phố (theo API v2 post-2025 merger)
         return
         [
             CreateProvince("Thành phố Hà Nội", "1"),
@@ -172,10 +296,11 @@ public static class SeedData
 
     private static List<AdministrativeUnit> GetFallbackWards(List<AdministrativeUnit> provinces)
     {
-        // Seed một số Ward mẫu cho Đà Nẵng
         var daNang = provinces.First(p => p.Code == "48");
+        var laoCai = provinces.First(p => p.Code == "15");
         return
         [
+            // Đà Nẵng
             CreateWard("Quận Hải Châu", "490", daNang.Id),
             CreateWard("Quận Thanh Khê", "491", daNang.Id),
             CreateWard("Quận Sơn Trà", "492", daNang.Id),
@@ -184,6 +309,8 @@ public static class SeedData
             CreateWard("Quận Cẩm Lệ", "495", daNang.Id),
             CreateWard("Huyện Hòa Vang", "497", daNang.Id),
             CreateWard("Huyện Hoàng Sa", "498", daNang.Id),
+            // Lào Cai - Sa Pa (cho seed accounts và places)
+            CreateWard("Thị xã Sa Pa", "152", laoCai.Id),
         ];
     }
 

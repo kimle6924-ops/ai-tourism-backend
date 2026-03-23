@@ -10,7 +10,7 @@ public interface IEventService
     Task<Result<EventResponse>> CreateAsync(CreateEventRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId);
     Task<Result<EventResponse>> GetByIdAsync(Guid id);
     Task<Result<PaginationResponse<EventResponse>>> GetApprovedPagedAsync(PaginationRequest request);
-    Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(PaginationRequest request, string role, ContributorType? contributorType, Guid? userAdminUnitId);
+    Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(PaginationRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId);
     Task<Result<EventResponse>> UpdateAsync(Guid id, UpdateEventRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId);
     Task<Result> DeleteAsync(Guid id, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId);
     Task<Result<IEnumerable<EventResponse>>> SeedAsync();

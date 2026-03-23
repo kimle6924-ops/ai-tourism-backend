@@ -129,7 +129,7 @@ public class EventService : IEventService
             responses, all.Count(), request.PageNumber, request.PageSize));
     }
 
-    public async Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(PaginationRequest request, string role, ContributorType? contributorType, Guid? userAdminUnitId)
+    public async Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(PaginationRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         IEnumerable<Domain.Entities.Event> all;
 
@@ -141,7 +141,7 @@ public class EventService : IEventService
         {
             if (contributorType == ContributorType.Collaborator)
             {
-                var userId = (await _userRepository.FindOneAsync(u => u.AdministrativeUnitId == userAdminUnitId))?.Id;
+                // CTV chỉ thấy bài mình tạo
                 all = await _eventRepository.FindAsync(e => e.CreatedBy == userId);
             }
             else

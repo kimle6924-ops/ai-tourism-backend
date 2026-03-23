@@ -66,6 +66,35 @@ public class ReviewController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    // Admin: lấy tất cả reviews (có filter status)
+    [HttpGet("all")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAllReviews(
+        [FromQuery] PaginationRequest request,
+        [FromQuery] ReviewStatus? status)
+    {
+        var result = await _reviewService.GetAllReviewsAsync(request, status);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    // Admin: duyệt review
+    [HttpPatch("{id:guid}/approve")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> ApproveReview(Guid id)
+    {
+        var result = await _reviewService.ApproveReviewAsync(id);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    // Admin: ẩn review
+    [HttpPatch("{id:guid}/hide")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> HideReview(Guid id)
+    {
+        var result = await _reviewService.HideReviewAsync(id);
+        return StatusCode(result.StatusCode, result);
+    }
+
     private Guid GetUserId() =>
         Guid.Parse(User.FindFirst(AppConstants.JwtClaimTypes.UserId)!.Value);
 

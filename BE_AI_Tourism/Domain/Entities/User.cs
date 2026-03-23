@@ -11,6 +11,7 @@ public class User : BaseEntity
     public string Phone { get; set; } = string.Empty;
     public string AvatarUrl { get; set; } = string.Empty;
     public UserRole Role { get; set; } = UserRole.User;
+    public ContributorType? ContributorType { get; set; }
     public Guid? AdministrativeUnitId { get; set; }
     public UserStatus Status { get; set; } = UserStatus.Active;
     public double? Latitude { get; set; }

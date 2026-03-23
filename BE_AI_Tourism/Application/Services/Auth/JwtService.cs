@@ -30,6 +30,8 @@ public class JwtService : IJwtService
             new Claim(ClaimTypes.Email, user.Email),
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim(AppConstants.JwtClaimTypes.ContributorType,
+                user.ContributorType?.ToString() ?? string.Empty),
             new Claim(AppConstants.JwtClaimTypes.AdministrativeUnitId,
                 user.AdministrativeUnitId?.ToString() ?? string.Empty)
         };

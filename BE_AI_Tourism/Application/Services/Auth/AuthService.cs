@@ -53,19 +53,43 @@ public class AuthService : IAuthService
         if (existingUser != null)
             return Result.Fail<AuthResponse>(AppConstants.Auth.EmailAlreadyExists, StatusCodes.Status409Conflict, AppConstants.ErrorCodes.EmailAlreadyExists);
 
-        // Nếu không phải Contributor thì bỏ qua AdministrativeUnitId
+        // Nếu không phải Contributor thì bỏ qua AdministrativeUnitId và ContributorType
         if (role != UserRole.Contributor)
+        {
             request.AdministrativeUnitId = null;
+            request.ContributorType = null;
+        }
 
-        // Kiểm tra AdministrativeUnitId tồn tại nếu là Contributor
+        // Kiểm tra logic Contributor theo ContributorType
         if (role == UserRole.Contributor)
         {
-            if (!request.AdministrativeUnitId.HasValue)
-                return Result.Fail<AuthResponse>(AppConstants.Auth.ContributorRequiresAdminUnit, StatusCodes.Status400BadRequest, AppConstants.ErrorCodes.ContributorRequiresAdminUnit);
+            if (!request.ContributorType.HasValue)
+                return Result.Fail<AuthResponse>("ContributorType is required for Contributor", StatusCodes.Status400BadRequest, "CONTRIBUTOR_TYPE_REQUIRED");
 
-            var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId.Value);
-            if (adminUnit == null)
-                return Result.Fail<AuthResponse>(AppConstants.Auth.AdminUnitNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.AdminUnitNotFound);
+            var contributorType = request.ContributorType.Value;
+
+            // Central không cần AdministrativeUnitId
+            if (contributorType == ContributorType.Central)
+            {
+                request.AdministrativeUnitId = null;
+            }
+            else
+            {
+                // Province, Ward, Collaborator cần AdministrativeUnitId
+                if (!request.AdministrativeUnitId.HasValue)
+                    return Result.Fail<AuthResponse>(AppConstants.Auth.ContributorRequiresAdminUnit, StatusCodes.Status400BadRequest, AppConstants.ErrorCodes.ContributorRequiresAdminUnit);
+
+                var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId.Value);
+                if (adminUnit == null)
+                    return Result.Fail<AuthResponse>(AppConstants.Auth.AdminUnitNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.AdminUnitNotFound);
+
+                // Validate level phù hợp với ContributorType
+                if (contributorType == ContributorType.Province && adminUnit.Level != AdministrativeLevel.Province)
+                    return Result.Fail<AuthResponse>("Province contributor must select a Province-level unit", StatusCodes.Status400BadRequest, "INVALID_ADMIN_UNIT_LEVEL");
+
+                if ((contributorType == ContributorType.Ward || contributorType == ContributorType.Collaborator) && adminUnit.Level != AdministrativeLevel.Ward)
+                    return Result.Fail<AuthResponse>("Ward/Collaborator contributor must select a Ward-level unit", StatusCodes.Status400BadRequest, "INVALID_ADMIN_UNIT_LEVEL");
+            }
         }
 
         var user = new Domain.Entities.User
@@ -75,6 +99,7 @@ public class AuthService : IAuthService
             FullName = request.FullName.Trim(),
             Phone = request.Phone?.Trim() ?? string.Empty,
             Role = role,
+            ContributorType = request.ContributorType,
             AdministrativeUnitId = request.AdministrativeUnitId,
             Status = role == UserRole.Contributor ? UserStatus.PendingApproval : UserStatus.Active
         };

@@ -23,14 +23,14 @@ public class ModerationController : ControllerBase
     [HttpPatch("{resourceType}/{id:guid}/approve")]
     public async Task<IActionResult> Approve(ResourceType resourceType, Guid id, [FromBody] ModerationActionRequest request)
     {
-        var result = await _moderationService.ApproveAsync(resourceType, id, request, GetUserId(), GetRole(), GetAdminUnitId());
+        var result = await _moderationService.ApproveAsync(resourceType, id, request, GetUserId(), GetRole(), GetContributorType(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);
     }
 
     [HttpPatch("{resourceType}/{id:guid}/reject")]
     public async Task<IActionResult> Reject(ResourceType resourceType, Guid id, [FromBody] ModerationActionRequest request)
     {
-        var result = await _moderationService.RejectAsync(resourceType, id, request, GetUserId(), GetRole(), GetAdminUnitId());
+        var result = await _moderationService.RejectAsync(resourceType, id, request, GetUserId(), GetRole(), GetContributorType(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);
     }
 
@@ -46,6 +46,12 @@ public class ModerationController : ControllerBase
 
     private string GetRole() =>
         User.FindFirst(ClaimTypes.Role)!.Value;
+
+    private ContributorType? GetContributorType()
+    {
+        var claim = User.FindFirst(AppConstants.JwtClaimTypes.ContributorType)?.Value;
+        return Enum.TryParse<ContributorType>(claim, out var ct) ? ct : null;
+    }
 
     private Guid? GetAdminUnitId()
     {

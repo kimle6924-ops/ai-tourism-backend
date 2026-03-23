@@ -31,14 +31,14 @@ public class ModerationService : IModerationService
         _mapper = mapper;
     }
 
-    public async Task<Result> ApproveAsync(ResourceType resourceType, Guid resourceId, ModerationActionRequest request, Guid actorId, string role, Guid? actorAdminUnitId)
+    public async Task<Result> ApproveAsync(ResourceType resourceType, Guid resourceId, ModerationActionRequest request, Guid actorId, string role, ContributorType? contributorType, Guid? actorAdminUnitId)
     {
-        return await ModerateAsync(resourceType, resourceId, ModerationStatus.Approved, "approve", request.Note, actorId, role, actorAdminUnitId);
+        return await ModerateAsync(resourceType, resourceId, ModerationStatus.Approved, "approve", request.Note, actorId, role, contributorType, actorAdminUnitId);
     }
 
-    public async Task<Result> RejectAsync(ResourceType resourceType, Guid resourceId, ModerationActionRequest request, Guid actorId, string role, Guid? actorAdminUnitId)
+    public async Task<Result> RejectAsync(ResourceType resourceType, Guid resourceId, ModerationActionRequest request, Guid actorId, string role, ContributorType? contributorType, Guid? actorAdminUnitId)
     {
-        return await ModerateAsync(resourceType, resourceId, ModerationStatus.Rejected, "reject", request.Note, actorId, role, actorAdminUnitId);
+        return await ModerateAsync(resourceType, resourceId, ModerationStatus.Rejected, "reject", request.Note, actorId, role, contributorType, actorAdminUnitId);
     }
 
     public async Task<Result<IEnumerable<ModerationLogResponse>>> GetLogsAsync(ResourceType resourceType, Guid resourceId)
@@ -49,7 +49,7 @@ public class ModerationService : IModerationService
         return Result.Ok(responses);
     }
 
-    private async Task<Result> ModerateAsync(ResourceType resourceType, Guid resourceId, ModerationStatus newStatus, string action, string note, Guid actorId, string role, Guid? actorAdminUnitId)
+    private async Task<Result> ModerateAsync(ResourceType resourceType, Guid resourceId, ModerationStatus newStatus, string action, string note, Guid actorId, string role, ContributorType? contributorType, Guid? actorAdminUnitId)
     {
         Guid adminUnitId;
 
@@ -59,7 +59,7 @@ public class ModerationService : IModerationService
             if (place == null)
                 return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-            if (!await HasModerationPermission(role, actorAdminUnitId, place.AdministrativeUnitId))
+            if (!await HasModerationPermission(role, contributorType, actorAdminUnitId, place.AdministrativeUnitId))
                 return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
             place.ModerationStatus = newStatus;
@@ -74,7 +74,7 @@ public class ModerationService : IModerationService
             if (evt == null)
                 return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-            if (!await HasModerationPermission(role, actorAdminUnitId, evt.AdministrativeUnitId))
+            if (!await HasModerationPermission(role, contributorType, actorAdminUnitId, evt.AdministrativeUnitId))
                 return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
             evt.ModerationStatus = newStatus;
@@ -98,13 +98,24 @@ public class ModerationService : IModerationService
         return Result.Ok($"Resource {action}d successfully");
     }
 
-    private async Task<bool> HasModerationPermission(string role, Guid? actorAdminUnitId, Guid resourceAdminUnitId)
+    private async Task<bool> HasModerationPermission(string role, ContributorType? contributorType, Guid? actorAdminUnitId, Guid resourceAdminUnitId)
     {
+        // Admin: moderate tất cả
         if (role == UserRole.Admin.ToString())
             return true;
 
-        if (role == UserRole.Contributor.ToString() && actorAdminUnitId.HasValue)
-            return await _scopeService.IsInScopeAsync(actorAdminUnitId.Value, resourceAdminUnitId);
+        if (role == UserRole.Contributor.ToString())
+        {
+            // Central: moderate tất cả
+            if (contributorType == ContributorType.Central)
+                return true;
+
+            // Province/Ward: moderate trong scope
+            if ((contributorType == ContributorType.Province || contributorType == ContributorType.Ward) && actorAdminUnitId.HasValue)
+                return await _scopeService.IsInScopeAsync(actorAdminUnitId.Value, resourceAdminUnitId);
+
+            // Collaborator: không có quyền moderate
+        }
 
         return false;
     }

@@ -55,6 +55,7 @@ public class AppDbContext : DbContext, IDatabaseContext
             entity.HasIndex(e => e.Status);
 
             entity.Property(e => e.Role).HasConversion<string>();
+            entity.Property(e => e.ContributorType).HasConversion<string>();
             entity.Property(e => e.Status).HasConversion<string>();
         });
     }

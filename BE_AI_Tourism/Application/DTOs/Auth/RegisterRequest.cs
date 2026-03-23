@@ -9,6 +9,7 @@ public class RegisterRequest
     public string FullName { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public UserRole? Role { get; set; }
+    public ContributorType? ContributorType { get; set; }
     public Guid? AdministrativeUnitId { get; set; }
     public List<Guid> CategoryIds { get; set; } = [];
 }

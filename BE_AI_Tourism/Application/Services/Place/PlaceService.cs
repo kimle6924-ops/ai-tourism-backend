@@ -42,17 +42,49 @@ public class PlaceService : IPlaceService
         _mapper = mapper;
     }
 
-    public async Task<Result<PlaceResponse>> CreateAsync(CreatePlaceRequest request, Guid userId, string role, Guid? userAdminUnitId)
+    public async Task<Result<PlaceResponse>> CreateAsync(CreatePlaceRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId);
         if (adminUnit == null)
             return Result.Fail<PlaceResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-        // Contributor chỉ được tạo Place trong scope của mình
+        // Kiểm tra quyền tạo place
         if (role == UserRole.Contributor.ToString())
         {
-            if (!userAdminUnitId.HasValue || !await _scopeService.IsInScopeAsync(userAdminUnitId.Value, request.AdministrativeUnitId))
-                return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+            // CTV: chỉ được tạo trong scope đăng ký (tỉnh + xã)
+            if (contributorType == ContributorType.Collaborator)
+            {
+                if (!userAdminUnitId.HasValue || request.AdministrativeUnitId != userAdminUnitId.Value)
+                    return Result.Fail<PlaceResponse>("Cộng tác viên chỉ được tạo địa điểm trong khu vực đăng ký", StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+            }
+            // Central: tạo ở bất kỳ đâu
+            else if (contributorType == ContributorType.Central)
+            {
+                // OK - không giới hạn
+            }
+            // Province/Ward: tạo trong scope
+            else if (contributorType == ContributorType.Province || contributorType == ContributorType.Ward)
+            {
+                if (!userAdminUnitId.HasValue || !await _scopeService.IsInScopeAsync(userAdminUnitId.Value, request.AdministrativeUnitId))
+                    return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+            }
+        }
+
+        // Quyết định ModerationStatus:
+        // - Admin, Central, Province, Ward: Auto Approved
+        // - Collaborator: Pending
+        var moderationStatus = ModerationStatus.Pending;
+        Guid? approvedBy = null;
+        DateTime? approvedAt = null;
+
+        if (role == UserRole.Admin.ToString()
+            || contributorType == ContributorType.Central
+            || contributorType == ContributorType.Province
+            || contributorType == ContributorType.Ward)
+        {
+            moderationStatus = ModerationStatus.Approved;
+            approvedBy = userId;
+            approvedAt = DateTime.UtcNow;
         }
 
         var entity = new Domain.Entities.Place
@@ -65,8 +97,10 @@ public class PlaceService : IPlaceService
             Longitude = request.Longitude,
             CategoryIds = request.CategoryIds,
             Tags = request.Tags,
-            ModerationStatus = ModerationStatus.Pending,
-            CreatedBy = userId
+            ModerationStatus = moderationStatus,
+            CreatedBy = userId,
+            ApprovedBy = approvedBy,
+            ApprovedAt = approvedAt
         };
 
         await _placeRepository.AddAsync(entity);
@@ -97,26 +131,35 @@ public class PlaceService : IPlaceService
             responses, all.Count(), request.PageNumber, request.PageSize));
     }
 
-    public async Task<Result<PaginationResponse<PlaceResponse>>> GetAllPagedAsync(PaginationRequest request, string role, Guid? userAdminUnitId)
+    public async Task<Result<PaginationResponse<PlaceResponse>>> GetAllPagedAsync(PaginationRequest request, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         IEnumerable<Domain.Entities.Place> all;
 
-        if (role == UserRole.Admin.ToString())
+        if (role == UserRole.Admin.ToString() || contributorType == ContributorType.Central)
         {
-            // Admin thấy tất cả
+            // Admin và Central thấy tất cả
             all = await _placeRepository.GetAllAsync();
         }
         else if (role == UserRole.Contributor.ToString() && userAdminUnitId.HasValue)
         {
-            // Contributor chỉ thấy Places trong scope
-            var allPlaces = await _placeRepository.GetAllAsync();
-            var filtered = new List<Domain.Entities.Place>();
-            foreach (var p in allPlaces)
+            if (contributorType == ContributorType.Collaborator)
             {
-                if (await _scopeService.IsInScopeAsync(userAdminUnitId.Value, p.AdministrativeUnitId))
-                    filtered.Add(p);
+                // CTV chỉ thấy bài mình tạo
+                var userId = (await _userRepository.FindOneAsync(u => u.AdministrativeUnitId == userAdminUnitId))?.Id;
+                all = await _placeRepository.FindAsync(p => p.CreatedBy == userId);
             }
-            all = filtered;
+            else
+            {
+                // Province/Ward: thấy Places trong scope
+                var allPlaces = await _placeRepository.GetAllAsync();
+                var filtered = new List<Domain.Entities.Place>();
+                foreach (var p in allPlaces)
+                {
+                    if (await _scopeService.IsInScopeAsync(userAdminUnitId.Value, p.AdministrativeUnitId))
+                        filtered.Add(p);
+                }
+                all = filtered;
+            }
         }
         else
         {
@@ -132,18 +175,32 @@ public class PlaceService : IPlaceService
             responses, totalCount, request.PageNumber, request.PageSize));
     }
 
-    public async Task<Result<PlaceResponse>> UpdateAsync(Guid id, UpdatePlaceRequest request, Guid userId, string role, Guid? userAdminUnitId)
+    public async Task<Result<PlaceResponse>> UpdateAsync(Guid id, UpdatePlaceRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         var entity = await _placeRepository.GetByIdAsync(id);
         if (entity == null)
             return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-        if (!await HasPermission(entity, userId, role, userAdminUnitId))
+        if (!await HasPermission(entity, userId, role, contributorType, userAdminUnitId))
             return Result.Fail<PlaceResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId);
         if (adminUnit == null)
             return Result.Fail<PlaceResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+
+        // Kiểm tra quyền đổi AdministrativeUnitId
+        if (request.AdministrativeUnitId != entity.AdministrativeUnitId)
+        {
+            if (!CanChangeAdminUnit(role, contributorType))
+                return Result.Fail<PlaceResponse>("Bạn không có quyền thay đổi khu vực của địa điểm", StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+
+            // Province chỉ đổi xã trong tỉnh
+            if (contributorType == ContributorType.Province && userAdminUnitId.HasValue)
+            {
+                if (!await _scopeService.IsInScopeAsync(userAdminUnitId.Value, request.AdministrativeUnitId))
+                    return Result.Fail<PlaceResponse>("Chỉ được đổi sang khu vực trong phạm vi tỉnh quản lý", StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+            }
+        }
 
         entity.Title = request.Title;
         entity.Description = request.Description;
@@ -154,19 +211,27 @@ public class PlaceService : IPlaceService
         entity.CategoryIds = request.CategoryIds;
         entity.Tags = request.Tags;
 
+        // CTV sửa bài → reset Pending, cần duyệt lại
+        if (contributorType == ContributorType.Collaborator && entity.CreatedBy == userId)
+        {
+            entity.ModerationStatus = ModerationStatus.Pending;
+            entity.ApprovedBy = null;
+            entity.ApprovedAt = null;
+        }
+
         await _placeRepository.UpdateAsync(entity);
         var response = _mapper.Map<PlaceResponse>(entity);
         await EnrichSingleResponseAsync(response, entity.Id);
         return Result.Ok(response);
     }
 
-    public async Task<Result> DeleteAsync(Guid id, Guid userId, string role, Guid? userAdminUnitId)
+    public async Task<Result> DeleteAsync(Guid id, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         var entity = await _placeRepository.GetByIdAsync(id);
         if (entity == null)
             return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-        if (!await HasPermission(entity, userId, role, userAdminUnitId))
+        if (!await HasPermission(entity, userId, role, contributorType, userAdminUnitId))
             return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         await _placeRepository.DeleteAsync(id);
@@ -409,14 +474,37 @@ public class PlaceService : IPlaceService
         }
     }
 
-    private async Task<bool> HasPermission(Domain.Entities.Place place, Guid userId, string role, Guid? userAdminUnitId)
+    private async Task<bool> HasPermission(Domain.Entities.Place place, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         if (role == UserRole.Admin.ToString())
             return true;
 
-        if (role == UserRole.Contributor.ToString() && userAdminUnitId.HasValue)
-            return await _scopeService.IsInScopeAsync(userAdminUnitId.Value, place.AdministrativeUnitId);
+        if (role == UserRole.Contributor.ToString())
+        {
+            // Central: quyền tất cả
+            if (contributorType == ContributorType.Central)
+                return true;
 
+            // CTV: chỉ sửa/xóa bài mình
+            if (contributorType == ContributorType.Collaborator)
+                return place.CreatedBy == userId;
+
+            // Province/Ward: trong scope
+            if (userAdminUnitId.HasValue)
+                return await _scopeService.IsInScopeAsync(userAdminUnitId.Value, place.AdministrativeUnitId);
+        }
+
+        return false;
+    }
+
+    private static bool CanChangeAdminUnit(string role, ContributorType? contributorType)
+    {
+        // Admin, Central: đổi tỉnh + xã
+        if (role == UserRole.Admin.ToString()) return true;
+        if (contributorType == ContributorType.Central) return true;
+        // Province: đổi xã trong tỉnh
+        if (contributorType == ContributorType.Province) return true;
+        // Ward, Collaborator: không đổi
         return false;
     }
 

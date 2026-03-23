@@ -10,6 +10,7 @@ public class UserResponse
     public string Phone { get; set; } = string.Empty;
     public string AvatarUrl { get; set; } = string.Empty;
     public UserRole Role { get; set; }
+    public ContributorType? ContributorType { get; set; }
     public UserStatus Status { get; set; }
     public Guid? AdministrativeUnitId { get; set; }
     public double? Latitude { get; set; }

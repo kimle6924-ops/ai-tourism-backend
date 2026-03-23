@@ -29,11 +29,18 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
             .When(x => x.Role.HasValue)
             .WithMessage("Cannot register as Admin");
 
-        // Contributor bắt buộc có AdministrativeUnitId
-        RuleFor(x => x.AdministrativeUnitId)
-            .NotNull().WithMessage("AdministrativeUnitId is required for Contributor")
-            .NotEqual(Guid.Empty).WithMessage("AdministrativeUnitId must not be empty")
+        // Contributor bắt buộc có ContributorType
+        RuleFor(x => x.ContributorType)
+            .NotNull().WithMessage("ContributorType is required for Contributor")
             .When(x => x.Role == UserRole.Contributor);
+
+        // Contributor Province/Ward/Collaborator bắt buộc có AdministrativeUnitId
+        RuleFor(x => x.AdministrativeUnitId)
+            .NotNull().WithMessage("AdministrativeUnitId is required")
+            .NotEqual(Guid.Empty).WithMessage("AdministrativeUnitId must not be empty")
+            .When(x => x.Role == UserRole.Contributor
+                && x.ContributorType.HasValue
+                && x.ContributorType.Value != ContributorType.Central);
 
         // Sở thích bắt buộc ít nhất 1 chỉ với User (role=User hoặc không truyền role -> mặc định User)
         RuleFor(x => x.CategoryIds)

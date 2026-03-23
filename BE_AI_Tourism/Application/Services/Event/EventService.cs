@@ -42,17 +42,44 @@ public class EventService : IEventService
         _mapper = mapper;
     }
 
-    public async Task<Result<EventResponse>> CreateAsync(CreateEventRequest request, Guid userId, string role, Guid? userAdminUnitId)
+    public async Task<Result<EventResponse>> CreateAsync(CreateEventRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId);
         if (adminUnit == null)
             return Result.Fail<EventResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-        // Contributor chỉ được tạo Event trong scope của mình
+        // Kiểm tra quyền tạo event
         if (role == UserRole.Contributor.ToString())
         {
-            if (!userAdminUnitId.HasValue || !await _scopeService.IsInScopeAsync(userAdminUnitId.Value, request.AdministrativeUnitId))
-                return Result.Fail<EventResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+            if (contributorType == ContributorType.Collaborator)
+            {
+                if (!userAdminUnitId.HasValue || request.AdministrativeUnitId != userAdminUnitId.Value)
+                    return Result.Fail<EventResponse>("Cộng tác viên chỉ được tạo sự kiện trong khu vực đăng ký", StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+            }
+            else if (contributorType == ContributorType.Central)
+            {
+                // OK - không giới hạn
+            }
+            else if (contributorType == ContributorType.Province || contributorType == ContributorType.Ward)
+            {
+                if (!userAdminUnitId.HasValue || !await _scopeService.IsInScopeAsync(userAdminUnitId.Value, request.AdministrativeUnitId))
+                    return Result.Fail<EventResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+            }
+        }
+
+        // Auto-approve cho Admin, Central, Province, Ward
+        var moderationStatus = ModerationStatus.Pending;
+        Guid? approvedBy = null;
+        DateTime? approvedAt = null;
+
+        if (role == UserRole.Admin.ToString()
+            || contributorType == ContributorType.Central
+            || contributorType == ContributorType.Province
+            || contributorType == ContributorType.Ward)
+        {
+            moderationStatus = ModerationStatus.Approved;
+            approvedBy = userId;
+            approvedAt = DateTime.UtcNow;
         }
 
         var entity = new Domain.Entities.Event
@@ -68,8 +95,10 @@ public class EventService : IEventService
             StartAt = request.StartAt,
             EndAt = request.EndAt,
             EventStatus = EventStatus.Upcoming,
-            ModerationStatus = ModerationStatus.Pending,
-            CreatedBy = userId
+            ModerationStatus = moderationStatus,
+            CreatedBy = userId,
+            ApprovedBy = approvedBy,
+            ApprovedAt = approvedAt
         };
 
         await _eventRepository.AddAsync(entity);
@@ -100,24 +129,32 @@ public class EventService : IEventService
             responses, all.Count(), request.PageNumber, request.PageSize));
     }
 
-    public async Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(PaginationRequest request, string role, Guid? userAdminUnitId)
+    public async Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(PaginationRequest request, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         IEnumerable<Domain.Entities.Event> all;
 
-        if (role == UserRole.Admin.ToString())
+        if (role == UserRole.Admin.ToString() || contributorType == ContributorType.Central)
         {
             all = await _eventRepository.GetAllAsync();
         }
         else if (role == UserRole.Contributor.ToString() && userAdminUnitId.HasValue)
         {
-            var allEvents = await _eventRepository.GetAllAsync();
-            var filtered = new List<Domain.Entities.Event>();
-            foreach (var e in allEvents)
+            if (contributorType == ContributorType.Collaborator)
             {
-                if (await _scopeService.IsInScopeAsync(userAdminUnitId.Value, e.AdministrativeUnitId))
-                    filtered.Add(e);
+                var userId = (await _userRepository.FindOneAsync(u => u.AdministrativeUnitId == userAdminUnitId))?.Id;
+                all = await _eventRepository.FindAsync(e => e.CreatedBy == userId);
             }
-            all = filtered;
+            else
+            {
+                var allEvents = await _eventRepository.GetAllAsync();
+                var filtered = new List<Domain.Entities.Event>();
+                foreach (var e in allEvents)
+                {
+                    if (await _scopeService.IsInScopeAsync(userAdminUnitId.Value, e.AdministrativeUnitId))
+                        filtered.Add(e);
+                }
+                all = filtered;
+            }
         }
         else
         {
@@ -133,18 +170,31 @@ public class EventService : IEventService
             responses, totalCount, request.PageNumber, request.PageSize));
     }
 
-    public async Task<Result<EventResponse>> UpdateAsync(Guid id, UpdateEventRequest request, Guid userId, string role, Guid? userAdminUnitId)
+    public async Task<Result<EventResponse>> UpdateAsync(Guid id, UpdateEventRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         var entity = await _eventRepository.GetByIdAsync(id);
         if (entity == null)
             return Result.Fail<EventResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-        if (!await HasPermission(entity, userId, role, userAdminUnitId))
+        if (!await HasPermission(entity, userId, role, contributorType, userAdminUnitId))
             return Result.Fail<EventResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         var adminUnit = await _adminUnitRepository.GetByIdAsync(request.AdministrativeUnitId);
         if (adminUnit == null)
             return Result.Fail<EventResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+
+        // Kiểm tra quyền đổi AdministrativeUnitId
+        if (request.AdministrativeUnitId != entity.AdministrativeUnitId)
+        {
+            if (!CanChangeAdminUnit(role, contributorType))
+                return Result.Fail<EventResponse>("Bạn không có quyền thay đổi khu vực của sự kiện", StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+
+            if (contributorType == ContributorType.Province && userAdminUnitId.HasValue)
+            {
+                if (!await _scopeService.IsInScopeAsync(userAdminUnitId.Value, request.AdministrativeUnitId))
+                    return Result.Fail<EventResponse>("Chỉ được đổi sang khu vực trong phạm vi tỉnh quản lý", StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+            }
+        }
 
         entity.Title = request.Title;
         entity.Description = request.Description;
@@ -158,19 +208,27 @@ public class EventService : IEventService
         entity.EndAt = request.EndAt;
         entity.EventStatus = request.EventStatus;
 
+        // CTV sửa bài → reset Pending
+        if (contributorType == ContributorType.Collaborator && entity.CreatedBy == userId)
+        {
+            entity.ModerationStatus = ModerationStatus.Pending;
+            entity.ApprovedBy = null;
+            entity.ApprovedAt = null;
+        }
+
         await _eventRepository.UpdateAsync(entity);
         var response = _mapper.Map<EventResponse>(entity);
         await EnrichSingleResponseAsync(response, entity.Id);
         return Result.Ok(response);
     }
 
-    public async Task<Result> DeleteAsync(Guid id, Guid userId, string role, Guid? userAdminUnitId)
+    public async Task<Result> DeleteAsync(Guid id, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         var entity = await _eventRepository.GetByIdAsync(id);
         if (entity == null)
             return Result.Fail(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
-        if (!await HasPermission(entity, userId, role, userAdminUnitId))
+        if (!await HasPermission(entity, userId, role, contributorType, userAdminUnitId))
             return Result.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         await _eventRepository.DeleteAsync(id);
@@ -181,13 +239,11 @@ public class EventService : IEventService
     {
         try
         {
-            // Tìm admin user làm creator
             var allUsers = await _userRepository.GetAllAsync();
             var admin = allUsers.FirstOrDefault(u => u.Role == UserRole.Admin);
             if (admin == null)
                 return Result.Fail<IEnumerable<EventResponse>>("Chưa có tài khoản Admin. Hãy seed admin trước.", StatusCodes.Status400BadRequest, "NO_ADMIN");
 
-            // Tìm hoặc tạo đơn vị hành chính: Lào Cai (code=15), Sa Pa (code=152)
             var allUnits = await _adminUnitRepository.GetAllAsync();
             var laoCai = allUnits.FirstOrDefault(u => u.Code == "15");
             if (laoCai == null)
@@ -203,7 +259,6 @@ public class EventService : IEventService
                 await _adminUnitRepository.AddAsync(saPa);
             }
 
-            // Tìm category IDs theo slug
             var allCategories = await _categoryRepository.GetAllAsync();
             var catBySlug = allCategories.ToDictionary(c => c.Slug, c => c.Id);
 
@@ -409,7 +464,6 @@ public class EventService : IEventService
 
                 await _eventRepository.AddAsync(evt);
 
-                // Tạo ảnh mặc định
                 var media = new MediaAsset
                 {
                     ResourceType = ResourceType.Event,
@@ -449,14 +503,31 @@ public class EventService : IEventService
         }
     }
 
-    private async Task<bool> HasPermission(Domain.Entities.Event evt, Guid userId, string role, Guid? userAdminUnitId)
+    private async Task<bool> HasPermission(Domain.Entities.Event evt, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         if (role == UserRole.Admin.ToString())
             return true;
 
-        if (role == UserRole.Contributor.ToString() && userAdminUnitId.HasValue)
-            return await _scopeService.IsInScopeAsync(userAdminUnitId.Value, evt.AdministrativeUnitId);
+        if (role == UserRole.Contributor.ToString())
+        {
+            if (contributorType == ContributorType.Central)
+                return true;
 
+            if (contributorType == ContributorType.Collaborator)
+                return evt.CreatedBy == userId;
+
+            if (userAdminUnitId.HasValue)
+                return await _scopeService.IsInScopeAsync(userAdminUnitId.Value, evt.AdministrativeUnitId);
+        }
+
+        return false;
+    }
+
+    private static bool CanChangeAdminUnit(string role, ContributorType? contributorType)
+    {
+        if (role == UserRole.Admin.ToString()) return true;
+        if (contributorType == ContributorType.Central) return true;
+        if (contributorType == ContributorType.Province) return true;
         return false;
     }
 

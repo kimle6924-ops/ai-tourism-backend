@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using BE_AI_Tourism.Application.DTOs.Event;
 using BE_AI_Tourism.Application.Services.Event;
+using BE_AI_Tourism.Domain.Enums;
 using BE_AI_Tourism.Shared.Constants;
 using BE_AI_Tourism.Shared.Pagination;
 using Microsoft.AspNetCore.Authorization;
@@ -31,7 +32,7 @@ public class EventController : ControllerBase
     [Authorize(Roles = "Admin,Contributor")]
     public async Task<IActionResult> GetAll([FromQuery] PaginationRequest request)
     {
-        var result = await _eventService.GetAllPagedAsync(request, GetRole(), GetAdminUnitId());
+        var result = await _eventService.GetAllPagedAsync(request, GetRole(), GetContributorType(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);
     }
 
@@ -47,7 +48,7 @@ public class EventController : ControllerBase
     [Authorize(Roles = "Admin,Contributor")]
     public async Task<IActionResult> Create([FromBody] CreateEventRequest request)
     {
-        var result = await _eventService.CreateAsync(request, GetUserId(), GetRole(), GetAdminUnitId());
+        var result = await _eventService.CreateAsync(request, GetUserId(), GetRole(), GetContributorType(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);
     }
 
@@ -55,7 +56,7 @@ public class EventController : ControllerBase
     [Authorize(Roles = "Admin,Contributor")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateEventRequest request)
     {
-        var result = await _eventService.UpdateAsync(id, request, GetUserId(), GetRole(), GetAdminUnitId());
+        var result = await _eventService.UpdateAsync(id, request, GetUserId(), GetRole(), GetContributorType(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);
     }
 
@@ -63,7 +64,7 @@ public class EventController : ControllerBase
     [Authorize(Roles = "Admin,Contributor")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var result = await _eventService.DeleteAsync(id, GetUserId(), GetRole(), GetAdminUnitId());
+        var result = await _eventService.DeleteAsync(id, GetUserId(), GetRole(), GetContributorType(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);
     }
 
@@ -80,6 +81,12 @@ public class EventController : ControllerBase
 
     private string GetRole() =>
         User.FindFirst(ClaimTypes.Role)!.Value;
+
+    private ContributorType? GetContributorType()
+    {
+        var claim = User.FindFirst(AppConstants.JwtClaimTypes.ContributorType)?.Value;
+        return Enum.TryParse<ContributorType>(claim, out var ct) ? ct : null;
+    }
 
     private Guid? GetAdminUnitId()
     {

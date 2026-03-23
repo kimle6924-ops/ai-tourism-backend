@@ -82,6 +82,7 @@ public static class AppConstants
     public static class JwtClaimTypes
     {
         public const string UserId = "userId";
+        public const string ContributorType = "contributorType";
         public const string AdministrativeUnitId = "administrativeUnitId";
     }
 

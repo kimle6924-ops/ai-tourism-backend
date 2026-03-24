@@ -24,7 +24,7 @@ public static class SeedData
 
         // Tìm Lào Cai (code=15) và Sa Pa (code=152) cho seed accounts
         var laoCai = await context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "15");
-        var saPa = await context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "152");
+        var saPa = await context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "3006");
 
         // Hash password hoặc plaintext tùy config (seed dùng plaintext cho đơn giản)
         var password = SeedPassword;

@@ -1,11 +1,16 @@
 using BE_AI_Tourism.Domain.Entities;
 using BE_AI_Tourism.Infrastructure.Database.Interfaces;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.EntityFrameworkCore;
 
 namespace BE_AI_Tourism.Infrastructure.Database;
 
 public class AppDbContext : DbContext, IDatabaseContext
 {
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<User> Users => Set<User>();
@@ -97,6 +102,9 @@ public class AppDbContext : DbContext, IDatabaseContext
         modelBuilder.Entity<UserPreference>(entity =>
         {
             entity.HasIndex(e => e.UserId).IsUnique();
+            entity.Property(e => e.CategoryIds)
+                .HasConversion(CreateJsonListConverter<Guid>())
+                .Metadata.SetValueComparer(CreateListComparer<Guid>());
 
             entity.HasOne<User>()
                 .WithOne()
@@ -113,6 +121,12 @@ public class AppDbContext : DbContext, IDatabaseContext
             entity.HasIndex(e => e.ModerationStatus);
 
             entity.Property(e => e.ModerationStatus).HasConversion<string>();
+            entity.Property(e => e.CategoryIds)
+                .HasConversion(CreateJsonListConverter<Guid>())
+                .Metadata.SetValueComparer(CreateListComparer<Guid>());
+            entity.Property(e => e.Tags)
+                .HasConversion(CreateJsonListConverter<string>())
+                .Metadata.SetValueComparer(CreateListComparer<string>());
 
             entity.HasOne<AdministrativeUnit>()
                 .WithMany()
@@ -143,6 +157,12 @@ public class AppDbContext : DbContext, IDatabaseContext
 
             entity.Property(e => e.EventStatus).HasConversion<string>();
             entity.Property(e => e.ModerationStatus).HasConversion<string>();
+            entity.Property(e => e.CategoryIds)
+                .HasConversion(CreateJsonListConverter<Guid>())
+                .Metadata.SetValueComparer(CreateListComparer<Guid>());
+            entity.Property(e => e.Tags)
+                .HasConversion(CreateJsonListConverter<string>())
+                .Metadata.SetValueComparer(CreateListComparer<string>());
 
             entity.HasOne<AdministrativeUnit>()
                 .WithMany()
@@ -237,6 +257,9 @@ public class AppDbContext : DbContext, IDatabaseContext
             entity.HasIndex(e => new { e.UserId, e.CreatedAt });
 
             entity.Property(e => e.Role).HasConversion<string>();
+            entity.Property(e => e.Citations)
+                .HasConversion(CreateJsonListConverter<string>())
+                .Metadata.SetValueComparer(CreateListComparer<string>());
 
             entity.HasOne<AiConversation>()
                 .WithMany()
@@ -257,7 +280,12 @@ public class AppDbContext : DbContext, IDatabaseContext
             entity.HasIndex(e => new { e.UserId, e.UpdatedAt });
             entity.HasIndex(e => new { e.ConversationId, e.UpdatedAt });
 
-            entity.Property(e => e.PreferenceSnapshot).HasColumnType("jsonb");
+            entity.Property(e => e.KeyFacts)
+                .HasConversion(CreateJsonListConverter<string>())
+                .Metadata.SetValueComparer(CreateListComparer<string>());
+            entity.Property(e => e.PreferenceSnapshot)
+                .HasConversion(CreateJsonDictionaryConverter())
+                .Metadata.SetValueComparer(CreateDictionaryComparer());
 
             entity.HasOne<User>()
                 .WithMany()
@@ -276,5 +304,42 @@ public class AppDbContext : DbContext, IDatabaseContext
         return string.Concat(name.Select((c, i) =>
             i > 0 && char.IsUpper(c) ? "_" + c : c.ToString()
         )).ToLowerInvariant();
+    }
+
+    private static ValueConverter<List<T>, string> CreateJsonListConverter<T>()
+    {
+        return new ValueConverter<List<T>, string>(
+            v => JsonSerializer.Serialize(v ?? new List<T>(), JsonOptions),
+            v => string.IsNullOrWhiteSpace(v)
+                ? new List<T>()
+                : JsonSerializer.Deserialize<List<T>>(v, JsonOptions) ?? new List<T>());
+    }
+
+    private static ValueComparer<List<T>> CreateListComparer<T>()
+    {
+        return new ValueComparer<List<T>>(
+            (a, b) => (a ?? new List<T>()).SequenceEqual(b ?? new List<T>()),
+            c => c == null || c.Count == 0
+                ? 0
+                : c.Aggregate(0, (hash, item) => HashCode.Combine(hash, item)),
+            c => c == null ? new List<T>() : c.ToList());
+    }
+
+    private static ValueConverter<Dictionary<string, object>, string> CreateJsonDictionaryConverter()
+    {
+        return new ValueConverter<Dictionary<string, object>, string>(
+            v => JsonSerializer.Serialize(v ?? new Dictionary<string, object>(), JsonOptions),
+            v => string.IsNullOrWhiteSpace(v)
+                ? new Dictionary<string, object>()
+                : JsonSerializer.Deserialize<Dictionary<string, object>>(v, JsonOptions) ?? new Dictionary<string, object>());
+    }
+
+    private static ValueComparer<Dictionary<string, object>> CreateDictionaryComparer()
+    {
+        return new ValueComparer<Dictionary<string, object>>(
+            (a, b) => JsonSerializer.Serialize(a ?? new Dictionary<string, object>(), JsonOptions) == JsonSerializer.Serialize(b ?? new Dictionary<string, object>(), JsonOptions),
+            c => JsonSerializer.Serialize(c ?? new Dictionary<string, object>(), JsonOptions).GetHashCode(),
+            c => JsonSerializer.Deserialize<Dictionary<string, object>>(
+                     JsonSerializer.Serialize(c ?? new Dictionary<string, object>(), JsonOptions), JsonOptions) ?? new Dictionary<string, object>());
     }
 }

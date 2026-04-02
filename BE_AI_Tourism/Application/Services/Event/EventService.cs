@@ -7,7 +7,7 @@ using BE_AI_Tourism.Shared.Constants;
 using BE_AI_Tourism.Shared.Core;
 using BE_AI_Tourism.Shared.Pagination;
 using MapsterMapper;
-using Npgsql;
+using Microsoft.EntityFrameworkCore;
 
 namespace BE_AI_Tourism.Application.Services.Event;
 
@@ -491,10 +491,10 @@ public class EventService : IEventService
         }
         catch (Exception ex)
         {
-            if (ex is PostgresException pg && pg.SqlState == "42703")
+            if (ex is DbUpdateException dbEx && dbEx.GetBaseException().Message.Contains("Unknown column", StringComparison.OrdinalIgnoreCase))
             {
                 return Result.Fail<IEnumerable<EventResponse>>(
-                    $"Seed lỗi: {pg.MessageText}. Schema DB đang lệch naming cột. Hãy gọi POST /api/dbtest/create-tables?reset=true rồi seed lại.",
+                    "Seed lỗi: Schema DB đang lệch naming cột. Hãy gọi POST /api/dbtest/create-tables?reset=true rồi seed lại.",
                     StatusCodes.Status500InternalServerError,
                     "SEED_SCHEMA_MISMATCH");
             }

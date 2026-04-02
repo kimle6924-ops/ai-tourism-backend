@@ -39,13 +39,13 @@ public static class DependencyInjection
         services.Configure<SecurityOptions>(configuration.GetSection("Security"));
         services.Configure<CorsOptions>(configuration.GetSection("Cors"));
 
-        // PostgreSQL + EF Core
+        // MySQL + EF Core
         // Ưu tiên đọc từ env var DATABASE_URL, fallback sang appsettings
         var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
                                ?? configuration.GetSection("Database:ConnectionString").Value
                                ?? string.Empty;
         services.AddDbContext<AppDbContext>(options =>
-            options.UseNpgsql(connectionString));
+            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
         services.AddScoped<IDatabaseContext>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
 

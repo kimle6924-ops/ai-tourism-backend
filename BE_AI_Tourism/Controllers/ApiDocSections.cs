@@ -370,6 +370,7 @@ public static class ApiDocSections
           Contributor (Province - Đà Nẵng): contributor.province@aitourism.vn / contributor123
           Contributor (Ward - Hải Châu): contributor.ward@aitourism.vn / contributor123
           User: user@aitourism.vn / user123
+        POST /api/dbtest/seed-all — seed toàn bộ dữ liệu mà KHÔNG reset database: đảm bảo table tồn tại → seed đơn vị hành chính + categories → seed accounts (bỏ qua email trùng) → seed places → seed events. Chạy nhiều lần không lỗi do trùng account/place/event.
 
         POST /api/dbtest/reset-and-seed-all — reset toàn bộ database và seed lại tất cả dữ liệu: tạo bảng → seed đơn vị hành chính + categories → seed accounts (admin, 2 contributors, user) → seed places → seed events. Trả về danh sách từng bước thực hiện và trạng thái.
 

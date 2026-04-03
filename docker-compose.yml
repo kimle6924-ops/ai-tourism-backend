@@ -39,7 +39,7 @@ services:
       - CLOUDINARY__APISECRET=${CLOUDINARY__APISECRET}
       - CLOUDINARY__FOLDER=ai-tourism
       - GEMINI__APIKEY=${GEMINI__APIKEY}
-      - GEMINI__MODEL=${GEMINI__MODEL:-gemini-3-flash-preview}
+      - GEMINI__MODEL=${GEMINI__MODEL:-gemini-2.5-flash}
       - SECURITY__ALLOWPLAINTEXTPASSWORD=true
       - SECURITY__ENVIRONMENTMODE=Development
       - CORS__ALLOWEDORIGINS=${CORS__ALLOWEDORIGINS:-http://localhost:3000}

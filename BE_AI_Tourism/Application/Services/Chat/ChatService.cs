@@ -102,12 +102,23 @@ public class ChatService : IChatService
             return Result.Fail<MessageResponse>(AppConstants.Chat.ConversationNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.ConversationNotFound);
 
         // Save user message
-        var userMessage = await SaveMessageAsync(conversationId, userId, MessageRole.User, request.Content);
+        await SaveMessageAsync(conversationId, userId, MessageRole.User, request.Content);
 
-        // Build context and call Gemini
-        var systemPrompt = await BuildSystemPromptAsync(userId);
-        var geminiMessages = await BuildGeminiMessagesAsync(conversationId);
-        var aiResponse = await _geminiProvider.GenerateContentAsync(systemPrompt, geminiMessages);
+        string aiResponse;
+        try
+        {
+            // Build context and call Gemini
+            var systemPrompt = await BuildSystemPromptAsync(userId);
+            var geminiMessages = await BuildGeminiMessagesAsync(conversationId);
+            aiResponse = await _geminiProvider.GenerateContentAsync(systemPrompt, geminiMessages);
+        }
+        catch
+        {
+            return Result.Fail<MessageResponse>(
+                AppConstants.Chat.AiServiceUnavailable,
+                StatusCodes.Status503ServiceUnavailable,
+                AppConstants.ErrorCodes.AiServiceUnavailable);
+        }
 
         // Save AI response
         var aiMessage = await SaveMessageAsync(conversationId, userId, MessageRole.Assistant, aiResponse);
@@ -267,7 +278,8 @@ public class ChatService : IChatService
             sb.AppendLine("[ĐỊA ĐIỂM]");
             foreach (var p in placeSample)
             {
-                var desc = p.Description.Length > 100 ? p.Description[..100] + "..." : p.Description;
+                var description = p.Description ?? string.Empty;
+                var desc = description.Length > 100 ? description[..100] + "..." : description;
                 var cats = p.CategoryIds
                     .Where(id => categoryLookup.ContainsKey(id))
                     .Select(id => categoryLookup[id]);

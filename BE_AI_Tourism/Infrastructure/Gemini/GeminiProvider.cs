@@ -29,12 +29,11 @@ public class GeminiProvider : IGeminiProvider
         var models = GetModelPriorityOrder();
         var errors = new List<string>();
 
-        using var cts = new CancellationTokenSource(RequestTimeout);
-
         foreach (var model in models)
         {
             try
             {
+                using var cts = new CancellationTokenSource(RequestTimeout);
                 var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_options.ApiKey}";
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
                 var response = await client.PostAsync(url, content, cts.Token);
@@ -122,15 +121,15 @@ public class GeminiProvider : IGeminiProvider
             var models = GetModelPriorityOrder();
             var errors = new List<string>();
 
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(StreamTimeout);
-            var token = cts.Token;
-
             foreach (var model in models)
             {
                 HttpResponseMessage? response = null;
                 try
                 {
+                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    cts.CancelAfter(StreamTimeout);
+                    var token = cts.Token;
+
                     var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key={_options.ApiKey}";
                     using var request = new HttpRequestMessage(HttpMethod.Post, url)
                     {
@@ -241,7 +240,14 @@ public class GeminiProvider : IGeminiProvider
             return true;
 
         var body = responseBody.ToLowerInvariant();
-        return body.Contains("rate limit") || body.Contains("quota") || body.Contains("resource_exhausted");
+        return body.Contains("rate limit")
+               || body.Contains("quota")
+               || body.Contains("resource_exhausted")
+               || body.Contains("model not found")
+               || body.Contains("is not found")
+               || body.Contains("unsupported model")
+               || body.Contains("deprecated")
+               || body.Contains("has been shut down");
     }
 
     private static object BuildRequestBody(string systemPrompt, List<GeminiMessage> messages)

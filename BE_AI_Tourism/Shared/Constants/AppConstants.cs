@@ -74,6 +74,7 @@ public static class AppConstants
         // Chat
         public const string ConversationNotFound = "CONVERSATION_NOT_FOUND";
         public const string InvalidConversationId = "INVALID_CONVERSATION_ID";
+        public const string AiServiceUnavailable = "AI_SERVICE_UNAVAILABLE";
 
         // Admin User
         public const string UserNotPendingApproval = "USER_NOT_PENDING_APPROVAL";
@@ -108,5 +109,6 @@ public static class AppConstants
     {
         public const string ConversationNotFound = "Cuộc trò chuyện không tồn tại hoặc không thuộc về bạn";
         public const string InvalidConversationId = "ID cuộc trò chuyện không hợp lệ. Vui lòng truyền đúng định dạng UUID";
+        public const string AiServiceUnavailable = "Dịch vụ AI đang tạm thời quá tải hoặc không khả dụng. Vui lòng thử lại sau ít phút.";
     }
 }

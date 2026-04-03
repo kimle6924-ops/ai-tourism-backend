@@ -30,19 +30,19 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - DATABASE_URL=Server=db;Port=3306;Database=ai_tourism;User=app;Password=${DB_PASSWORD};CharSet=utf8mb4
-      - JWT__SECRET=${JWT_SECRET}
+      - JWT__SECRET=${JWT__SECRET}
       - JWT__ISSUER=AITourism
       - JWT__AUDIENCE=AITourism
       - JWT__EXPIRATIONINMINUTES=60
-      - CLOUDINARY__CLOUDNAME=${CLOUDINARY_CLOUDNAME}
-      - CLOUDINARY__APIKEY=${CLOUDINARY_APIKEY}
-      - CLOUDINARY__APISECRET=${CLOUDINARY_APISECRET}
+      - CLOUDINARY__CLOUDNAME=${CLOUDINARY__CLOUDNAME}
+      - CLOUDINARY__APIKEY=${CLOUDINARY__APIKEY}
+      - CLOUDINARY__APISECRET=${CLOUDINARY__APISECRET}
       - CLOUDINARY__FOLDER=ai-tourism
-      - GEMINI__APIKEY=${GEMINI_APIKEY}
-      - GEMINI__MODEL=gemini-3-flash-preview
+      - GEMINI__APIKEY=${GEMINI__APIKEY}
+      - GEMINI__MODEL=${GEMINI__MODEL:-gemini-3-flash-preview}
       - SECURITY__ALLOWPLAINTEXTPASSWORD=true
       - SECURITY__ENVIRONMENTMODE=Development
-      - CORS__ALLOWEDORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - CORS__ALLOWEDORIGINS=${CORS__ALLOWEDORIGINS:-http://localhost:3000}
 
 volumes:
   mysqldata:

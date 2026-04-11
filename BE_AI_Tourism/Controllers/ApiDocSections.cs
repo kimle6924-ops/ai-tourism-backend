@@ -28,7 +28,7 @@ public static class ApiDocSections
         - AdministrativeLevel: 0=Province, 1=Ward
         - ModerationStatus: 0=Pending, 1=Approved, 2=Rejected
         - EventStatus: 0=Upcoming, 1=Ongoing, 2=Ended
-        - ReviewStatus: 0=Active, 1=Hidden, 2=Deleted
+        - ReviewStatus: 0=Pending, 1=Active, 2=Hidden, 3=Deleted
         - ResourceType: 0=Place, 1=Event
         - ConversationStatus: 0=Active, 1=Archived
         - MessageRole: 0=User, 1=Assistant, 2=System
@@ -64,9 +64,22 @@ public static class ApiDocSections
 
         GET /api/user/me — Login → UserResponse: id, email, fullName, phone, avatarUrl, role (0=Admin/1=Contributor/2=User), status (0=Active/1=Locked/2=PendingApproval), latitude? (double), longitude? (double)
 
+        PUT /api/user/me/account — Login
+        Body: email? (string), fullName? (string), phone? (string)
+        Điều kiện: Nếu đổi email thì server chuẩn hóa trim + lowercase và check trùng. Nếu email đã tồn tại thì trả 409.
+        → UserResponse
+
         PUT /api/user/me — Login
         Body: fullName? (string, max 100), phone? (string, max 20), avatarUrl? (string, max 500)
         Chỉ cập nhật field được gửi, field null thì giữ nguyên.
+        → UserResponse
+
+        POST /api/user/me/avatar/upload-signature — Login
+        → AvatarUploadSignatureResponse: signature, timestamp, apiKey, cloudName, folder
+
+        POST /api/user/me/avatar/finalize — Login
+        Body: publicId* (string), url* (string), secureUrl* (string)
+        Cập nhật avatarUrl và avatarPublicId của user hiện tại.
         → UserResponse
 
         GET /api/user/me/preferences — Login → PreferencesResponse: categoryIds (guid[])
@@ -272,17 +285,19 @@ public static class ApiDocSections
     public static string Reviews() => """
         ## Reviews (/api/reviews)
 
-        ReviewResponse: id, resourceType (0=Place/1=Event), resourceId, userId, userFullName (string, tên user), userAvatarUrl (string, ảnh đại diện user), rating, comment, status (0=Active/1=Hidden/2=Deleted), createdAt, updatedAt
+        ReviewResponse: id, resourceType (0=Place/1=Event), resourceId, userId, userFullName (string, tên user), userAvatarUrl (string, ảnh đại diện user), rating?, comment?, imageUrl?, status (0=Pending/1=Active/2=Hidden/3=Deleted), createdAt, updatedAt
 
         POST /api/reviews — Login
-        Body: resourceType* (int: 0=Place/1=Event), resourceId* (guid), rating* (int, từ 1 đến 5), comment? (string, max 1000)
+        Body: resourceType* (int: 0=Place/1=Event), resourceId* (guid), rating? (int, từ 1 đến 5), comment? (string, max 1000), imageUrl? (string)
         Điều kiện: Resource phải tồn tại VÀ đã được duyệt (moderationStatus=1 Approved). Nếu resource chưa duyệt hoặc không tồn tại → 404. Mỗi lần gọi tạo 1 review mới, 1 user có thể đánh giá nhiều lần cho cùng 1 resource.
+        Validation: BẮT BUỘC có ít nhất 1 trong 3 trường rating/comment/imageUrl.
         Lỗi: 404 nếu resource không tồn tại hoặc chưa Approved.
         → ReviewResponse
 
         PATCH /api/reviews/{id} — Login
-        Body: rating* (int, 1-5), comment? (string, max 1000)
+        Body: rating? (int, 1-5), comment? (string, max 1000), imageUrl? (string)
         Điều kiện: Chỉ chủ review (userId trùng) mới sửa được.
+        Validation: BẮT BUỘC có ít nhất 1 trong 3 trường rating/comment/imageUrl.
         Lỗi: 404 nếu review không tồn tại. 403 nếu không phải chủ review.
         → ReviewResponse
 
@@ -294,6 +309,24 @@ public static class ApiDocSections
         → ReviewListResponse: averageRating (double, sao trung bình làm tròn 1 chữ số thập phân), totalReviews (int, tổng số review active), reviews (phân trang ReviewResponse[]: items[], totalCount, pageNumber, pageSize, totalPages, hasPreviousPage, hasNextPage). Chỉ hiện review có status=0 Active, sắp xếp mới nhất trước.
 
         GET /api/reviews/mine?resourceType=Place&resourceId=xxx — Login, phân trang → ReviewResponse[] (danh sách tất cả review của user hiện tại cho resource đó, sắp xếp mới nhất trước)
+
+        GET /api/reviews/me/history — Login, phân trang
+        Query: resourceType? (0=Place/1=Event)
+        Trả lịch sử review tổng của user hiện tại, mỗi item có thêm resourceTitle/resourceAddress/resourceImageUrl.
+        """;
+
+    public static string Leaderboard() => """
+        ## Leaderboard (/api/leaderboard) — Public
+
+        GET /api/leaderboard/users — Public, phân trang
+        → UserLeaderboardItemResponse[]: rank, userId, email, fullName, avatarUrl, totalScore, totalReviews, avgScorePerReview
+
+        Quy tắc tính điểm:
+        - Chỉ tính review có status=Active.
+        - rating có giá trị: +1
+        - comment có nội dung: +1
+        - imageUrl có giá trị: +1
+        - Mỗi review tối đa 3 điểm
         """;
 
     public static string Discovery() => """

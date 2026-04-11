@@ -10,8 +10,9 @@ public class ReviewHistoryItemResponse
     public Guid UserId { get; set; }
     public string UserFullName { get; set; } = string.Empty;
     public string UserAvatarUrl { get; set; } = string.Empty;
-    public int Rating { get; set; }
-    public string Comment { get; set; } = string.Empty;
+    public int? Rating { get; set; }
+    public string? Comment { get; set; }
+    public string? ImageUrl { get; set; }
     public ReviewStatus Status { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

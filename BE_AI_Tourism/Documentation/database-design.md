@@ -128,9 +128,10 @@ Mọi entity kế thừa `BaseEntity`:
 | resource_type | string (enum) | compound index | Place / Event |
 | resource_id | Guid | compound index | FK → places/events |
 | user_id | Guid | index | FK → users |
-| rating | int | | Điểm đánh giá |
-| comment | string | | Nội dung đánh giá |
-| status | string (enum) | index | Active / Hidden / Deleted |
+| rating | int? | | Điểm đánh giá (nullable) |
+| comment | string? | | Nội dung đánh giá (nullable) |
+| image_url | string? | | Ảnh review (nullable) |
+| status | string (enum) | index | Pending / Active / Hidden / Deleted |
 
 ### moderation_logs
 

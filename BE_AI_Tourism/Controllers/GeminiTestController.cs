@@ -187,6 +187,8 @@ public class GeminiTestController : ControllerBase
 
             {ApiDocSections.Reviews()}
 
+            {ApiDocSections.Leaderboard()}
+
             {ApiDocSections.Discovery()}
 
             {ApiDocSections.Chat()}

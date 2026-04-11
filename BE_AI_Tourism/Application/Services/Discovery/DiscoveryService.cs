@@ -378,7 +378,13 @@ public class DiscoveryService : IDiscoveryService
 
         return reviews
             .GroupBy(r => r.ResourceId)
-            .ToDictionary(g => g.Key, g => Math.Round(g.Average(r => r.Rating), 1));
+            .ToDictionary(
+                g => g.Key,
+                g =>
+                {
+                    var rated = g.Where(x => x.Rating.HasValue).Select(x => x.Rating!.Value).ToList();
+                    return rated.Count > 0 ? Math.Round(rated.Average(), 1) : 0d;
+                });
     }
 
     // ───────────── IMAGE HELPERS ─────────────

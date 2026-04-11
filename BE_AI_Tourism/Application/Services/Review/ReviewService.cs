@@ -13,6 +13,7 @@ public class ReviewService : IReviewService
     private readonly IRepository<Domain.Entities.Review> _reviewRepository;
     private readonly IRepository<Domain.Entities.Place> _placeRepository;
     private readonly IRepository<Domain.Entities.Event> _eventRepository;
+    private readonly IRepository<Domain.Entities.MediaAsset> _mediaRepository;
     private readonly IRepository<Domain.Entities.User> _userRepository;
     private readonly IMapper _mapper;
 
@@ -20,12 +21,14 @@ public class ReviewService : IReviewService
         IRepository<Domain.Entities.Review> reviewRepository,
         IRepository<Domain.Entities.Place> placeRepository,
         IRepository<Domain.Entities.Event> eventRepository,
+        IRepository<Domain.Entities.MediaAsset> mediaRepository,
         IRepository<Domain.Entities.User> userRepository,
         IMapper mapper)
     {
         _reviewRepository = reviewRepository;
         _placeRepository = placeRepository;
         _eventRepository = eventRepository;
+        _mediaRepository = mediaRepository;
         _userRepository = userRepository;
         _mapper = mapper;
     }
@@ -41,7 +44,8 @@ public class ReviewService : IReviewService
             ResourceId = request.ResourceId,
             UserId = userId,
             Rating = request.Rating,
-            Comment = request.Comment,
+            Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(),
+            ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim(),
             Status = ReviewStatus.Pending
         };
 
@@ -66,7 +70,8 @@ public class ReviewService : IReviewService
             return Result.Fail<ReviewResponse>(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
 
         review.Rating = request.Rating;
-        review.Comment = request.Comment;
+        review.Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim();
+        review.ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim();
         // Sửa review → reset Pending, cần duyệt lại
         review.Status = ReviewStatus.Pending;
         await _reviewRepository.UpdateAsync(review);
@@ -103,7 +108,8 @@ public class ReviewService : IReviewService
         var responses = await MapReviewsWithUserInfo(items);
 
         var totalReviews = ordered.Count;
-        var averageRating = totalReviews > 0 ? Math.Round(ordered.Average(r => r.Rating), 1) : 0;
+        var rated = ordered.Where(r => r.Rating.HasValue).Select(r => r.Rating!.Value).ToList();
+        var averageRating = rated.Count > 0 ? Math.Round(rated.Average(), 1) : 0;
 
         return Result.Ok(new ReviewListResponse
         {
@@ -175,6 +181,7 @@ public class ReviewService : IReviewService
                 UserAvatarUrl = user?.AvatarUrl ?? string.Empty,
                 Rating = review.Rating,
                 Comment = review.Comment,
+                ImageUrl = review.ImageUrl,
                 Status = review.Status,
                 CreatedAt = review.CreatedAt,
                 UpdatedAt = review.UpdatedAt

@@ -6,6 +6,7 @@ using BE_AI_Tourism.Application.Services.Category;
 using BE_AI_Tourism.Application.Services.Chat;
 using BE_AI_Tourism.Application.Services.Discovery;
 using BE_AI_Tourism.Application.Services.Event;
+using BE_AI_Tourism.Application.Services.Leaderboard;
 using BE_AI_Tourism.Application.Services.Media;
 using BE_AI_Tourism.Application.Services.Moderation;
 using BE_AI_Tourism.Application.Services.Place;
@@ -109,6 +110,9 @@ public static class DependencyInjection
 
         // Discovery services
         services.AddScoped<IDiscoveryService, DiscoveryService>();
+
+        // Leaderboard services
+        services.AddScoped<ILeaderboardService, LeaderboardService>();
 
         // Chat services
         services.AddScoped<IChatService, ChatService>();

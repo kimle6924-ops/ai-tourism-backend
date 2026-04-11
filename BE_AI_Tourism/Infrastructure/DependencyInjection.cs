@@ -4,6 +4,7 @@ using BE_AI_Tourism.Application.Services.Administrative;
 using BE_AI_Tourism.Application.Services.Auth;
 using BE_AI_Tourism.Application.Services.Category;
 using BE_AI_Tourism.Application.Services.Chat;
+using BE_AI_Tourism.Application.Services.Community;
 using BE_AI_Tourism.Application.Services.Discovery;
 using BE_AI_Tourism.Application.Services.Event;
 using BE_AI_Tourism.Application.Services.Leaderboard;
@@ -116,6 +117,9 @@ public static class DependencyInjection
 
         // Chat services
         services.AddScoped<IChatService, ChatService>();
+
+        // Community services
+        services.AddScoped<ICommunityService, CommunityService>();
 
         return services;
     }

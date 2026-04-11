@@ -25,6 +25,11 @@ public class AppDbContext : DbContext, IDatabaseContext
     public DbSet<AiConversation> AiConversations => Set<AiConversation>();
     public DbSet<AiMessage> AiMessages => Set<AiMessage>();
     public DbSet<AiContextMemory> AiContextMemories => Set<AiContextMemory>();
+    public DbSet<CommunityGroup> CommunityGroups => Set<CommunityGroup>();
+    public DbSet<CommunityPost> CommunityPosts => Set<CommunityPost>();
+    public DbSet<CommunityPostMedia> CommunityPostMedias => Set<CommunityPostMedia>();
+    public DbSet<CommunityComment> CommunityComments => Set<CommunityComment>();
+    public DbSet<CommunityReaction> CommunityReactions => Set<CommunityReaction>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -48,6 +53,11 @@ public class AppDbContext : DbContext, IDatabaseContext
         ConfigureAiConversation(modelBuilder);
         ConfigureAiMessage(modelBuilder);
         ConfigureAiContextMemory(modelBuilder);
+        ConfigureCommunityGroup(modelBuilder);
+        ConfigureCommunityPost(modelBuilder);
+        ConfigureCommunityPostMedia(modelBuilder);
+        ConfigureCommunityComment(modelBuilder);
+        ConfigureCommunityReaction(modelBuilder);
     }
 
     private static void ConfigureUser(ModelBuilder modelBuilder)
@@ -298,6 +308,87 @@ public class AppDbContext : DbContext, IDatabaseContext
                 .WithMany()
                 .HasForeignKey(e => e.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private static void ConfigureCommunityGroup(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CommunityGroup>(entity =>
+        {
+            entity.HasIndex(e => e.Slug).IsUnique();
+            entity.HasIndex(e => e.IsPublic);
+            entity.HasIndex(e => e.IsActive);
+        });
+    }
+
+    private static void ConfigureCommunityPost(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CommunityPost>(entity =>
+        {
+            entity.HasIndex(e => new { e.GroupId, e.CreatedAt });
+            entity.HasIndex(e => e.UserId);
+
+            entity.HasOne<CommunityGroup>()
+                .WithMany()
+                .HasForeignKey(e => e.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    private static void ConfigureCommunityPostMedia(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CommunityPostMedia>(entity =>
+        {
+            entity.ToTable("community_post_media");
+            entity.HasIndex(e => new { e.PostId, e.SortOrder });
+
+            entity.HasOne<CommunityPost>()
+                .WithMany()
+                .HasForeignKey(e => e.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+    }
+
+    private static void ConfigureCommunityComment(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CommunityComment>(entity =>
+        {
+            entity.HasIndex(e => new { e.PostId, e.CreatedAt });
+            entity.HasIndex(e => e.UserId);
+
+            entity.HasOne<CommunityPost>()
+                .WithMany()
+                .HasForeignKey(e => e.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    private static void ConfigureCommunityReaction(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CommunityReaction>(entity =>
+        {
+            entity.HasIndex(e => e.PostId);
+            entity.HasIndex(e => new { e.PostId, e.UserId }).IsUnique();
+
+            entity.HasOne<CommunityPost>()
+                .WithMany()
+                .HasForeignKey(e => e.PostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 

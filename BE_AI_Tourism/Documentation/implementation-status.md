@@ -31,7 +31,7 @@ Trạng thái các tính năng trong hệ thống.
 | Tính năng | Trạng thái | Ghi chú |
 |-----------|-----------|---------|
 | Domain Enums | Done | 10 enums: UserRole, AdministrativeLevel, ModerationStatus, EventStatus, ScheduleType, ReviewStatus, ResourceType, ConversationStatus, MessageRole, UserStatus (Active/Locked/PendingApproval) |
-| Domain Entities | Done | 12 entities, User có RefreshToken/RefreshTokenExpiryTime |
+| Domain Entities | Done | 17 entities (bao gồm CommunityGroup/Post/PostMedia/Comment/Reaction), User có RefreshToken/RefreshTokenExpiryTime |
 | PostgreSQL + EF Core | Done | AppDbContext với Npgsql, snake_case tables, enum→string, array/jsonb support |
 | EfRepository\<T\> | Done | Infrastructure/Database/EfRepository.cs (FindOneAsync, FindAsync) |
 | Database Indexes | Done | Cấu hình trong AppDbContext.OnModelCreating() |
@@ -69,6 +69,7 @@ Trạng thái các tính năng trong hệ thống.
 | Place/Event + Moderation (Phase 4) | Done | CRUD + workflow duyệt + scope check |
 | Media Cloudinary (Phase 5) | Done | Upload signature/finalize, set-primary, reorder, delete |
 | Review + Discovery (Phase 6) | Done | CRUD review (hỗ trợ rating/comment/image linh hoạt), search/filter places+events, simple search API, review stats |
+| Community (Phase 5 AddDesign) | Done | 1 public group, post + media + comment + reaction |
 | Leaderboard (Phase 2 mở rộng) | Done | Xếp hạng user theo điểm review Active |
 | AI Chat (Phase 7) | Done | Gemini streaming SSE + context memory (summary + key facts) |
 | Admin Stats (Phase 8) | Done | Overview + daily time-series, aggregate query tối ưu DB-side |
@@ -119,6 +120,7 @@ Trạng thái các tính năng trong hệ thống.
 - Phase 3 Administrative + Category: hoàn thành.
 - Phase 4 Place/Event + Moderation: hoàn thành.
 - Phase 5 Media Cloudinary: hoàn thành.
+- Phase 5 (AddDesign) Community: hoàn thành.
 - Phase 6 Review + Discovery: hoàn thành.
 - Phase 7 AI Chat: hoàn thành.
 - Phase 8 Admin Stats: đã hoàn thiện overview + time-series và tối ưu truy vấn aggregate.
@@ -162,6 +164,17 @@ Trạng thái các tính năng trong hệ thống.
 | Discovery DTO | Done | DiscoveryRequest, SimpleSearchRequest, RecommendRequest, RecommendMixRequest, PlaceByLocationTagRequest, EventTimelineRequest, DiscoveryMixItemResponse |
 | DiscoveryService | Done | Search places/events, simple search, recommend places/events, recommend mix, by-location-tag, events timeline; chuẩn hóa lỗi `NO_LOCATION` cho API cần vị trí |
 | DiscoveryController | Done | GET places, events, search/*, recommend/places, recommend/events, recommend/mix, places/by-location-tag, events/timeline |
+
+## Phase 5 (AddDesign): Community
+
+| Tính năng | Trạng thái | Ghi chú |
+|-----------|-----------|---------|
+| Community Entities | Done | CommunityGroup, CommunityPost, CommunityPostMedia, CommunityComment, CommunityReaction |
+| Community DTOs | Done | Group/Post/Comment/Media responses + create/comment/react/upload/finalize requests |
+| Community Validators | Done | Validate create post, comment, reaction, upload signature, finalize media |
+| CommunityService | Done | Public group/posts, create post, get post, comment, reaction toggle, upload signature, finalize media |
+| CommunityController | Done | `/api/community/group/public`, `/posts/*` đầy đủ theo AddDesign phase 5 |
+| Seed public group | Done | Seed/init 1 group slug `public` idempotent trong SeedData |
 
 ## Phase 5: Media Cloudinary
 

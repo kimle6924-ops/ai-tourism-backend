@@ -391,6 +391,43 @@ public static class ApiDocSections
         → EventResponse[] (mỗi item có averageRating, distanceKm)
         """;
 
+    public static string Community() => """
+        ## Community (/api/community)
+
+        Community phase đầu chỉ có 1 group public chung.
+
+        GET /api/community/group/public — Public
+        → CommunityGroupResponse: id, name, slug, description, isPublic, isActive, createdAt, updatedAt
+
+        GET /api/community/group/public/posts — Public, phân trang
+        → CommunityPostResponse[] (id, groupId, userId, userFullName, userAvatarUrl, content, reactionCount, commentCount, media[], createdAt, updatedAt)
+
+        POST /api/community/group/public/posts — Login
+        Body: content* (string, max 5000)
+        → CommunityPostResponse
+
+        GET /api/community/posts/{postId} — Public
+        → CommunityPostResponse (bao gồm comments[])
+
+        POST /api/community/posts/{postId}/comments — Login
+        Body: content* (string, max 1000)
+        → CommunityCommentResponse
+
+        POST /api/community/posts/{postId}/reactions — Login
+        Body: reactionType* (string, mặc định like)
+        Quy tắc: nếu user đã reaction cùng type thì gọi lại sẽ bỏ reaction (toggle off).
+        → CommunityPostResponse (đã cập nhật reactionCount)
+
+        POST /api/community/posts/upload-signature — Login
+        Body: postId* (guid, chỉ chủ post mới upload)
+        → CommunityPostUploadSignatureResponse: signature, timestamp, apiKey, cloudName, folder
+
+        POST /api/community/posts/finalize-media — Login
+        Body: postId* (guid), publicId* (string), url* (string), secureUrl* (string), format* (string), mimeType* (string), bytes* (long), width* (int), height* (int)
+        Điều kiện: chỉ chủ post mới finalize media.
+        → CommunityPostMediaResponse
+        """;
+
     public static string Chat() => """
         ## Chat AI (/api/chat) — Login (mọi role)
 

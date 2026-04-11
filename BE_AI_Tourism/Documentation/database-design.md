@@ -149,6 +149,55 @@ Mọi entity kế thừa `BaseEntity`:
 | acted_by | Guid | index | FK → users |
 | acted_at | DateTime | index | Thời điểm thực hiện |
 
+### community_groups
+
+| Field | Type | Constraints | Mô tả |
+|-------|------|------------|-------|
+| name | string | | Tên nhóm |
+| slug | string | unique index | Slug nhóm (phase đầu: `public`) |
+| description | string | | Mô tả nhóm |
+| is_public | bool | index | Nhóm public/private |
+| is_active | bool | index | Trạng thái hoạt động |
+
+### community_posts
+
+| Field | Type | Constraints | Mô tả |
+|-------|------|------------|-------|
+| group_id | Guid | compound index | FK → community_groups |
+| user_id | Guid | index | FK → users |
+| content | string | | Nội dung bài viết/trải nghiệm |
+
+### community_post_media
+
+| Field | Type | Constraints | Mô tả |
+|-------|------|------------|-------|
+| post_id | Guid | compound index | FK → community_posts |
+| url | string | | URL media |
+| secure_url | string | | HTTPS URL media |
+| public_id | string | | Cloudinary public ID |
+| format | string | | jpg, png, ... |
+| mime_type | string | | MIME type |
+| bytes | long | | Kích thước file |
+| width | int | | Chiều rộng |
+| height | int | | Chiều cao |
+| sort_order | int | compound index | Thứ tự media trong post |
+
+### community_comments
+
+| Field | Type | Constraints | Mô tả |
+|-------|------|------------|-------|
+| post_id | Guid | compound index | FK → community_posts |
+| user_id | Guid | index | FK → users |
+| content | string | | Nội dung bình luận |
+
+### community_reactions
+
+| Field | Type | Constraints | Mô tả |
+|-------|------|------------|-------|
+| post_id | Guid | index + unique(post_id,user_id) | FK → community_posts |
+| user_id | Guid | unique(post_id,user_id) | FK → users |
+| reaction_type | string | | Loại reaction (ví dụ: like) |
+
 ### ai_conversations
 
 | Field | Type | Constraints | Mô tả |

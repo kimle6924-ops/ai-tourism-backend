@@ -15,6 +15,7 @@ public static class SeedData
         await SeedAdministrativeUnitsAsync(context);
         await SeedCategoriesAsync(context);
         await SeedUsersAsync(context);
+        await SeedCommunityPublicGroupAsync(context);
     }
 
     private static async Task SeedUsersAsync(AppDbContext context)
@@ -406,6 +407,27 @@ public static class SeedData
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+    }
+
+    private static async Task SeedCommunityPublicGroupAsync(AppDbContext context)
+    {
+        var exists = await context.CommunityGroups.AnyAsync(g => g.Slug == "public");
+        if (exists)
+            return;
+
+        await context.CommunityGroups.AddAsync(new CommunityGroup
+        {
+            Id = Guid.NewGuid(),
+            Name = "Cộng đồng du lịch địa phương",
+            Slug = "public",
+            Description = "Nhóm chia sẻ trải nghiệm, ảnh đẹp và review địa điểm/sự kiện.",
+            IsPublic = true,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
     }
 
     private sealed class ProvinceApiItem

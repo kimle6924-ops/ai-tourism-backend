@@ -343,6 +343,43 @@ Lấy vị trí từ profile user, lọc event `Approved` theo timeline + bán k
 
 ---
 
+## Community (`/api/community`)
+
+Community phase đầu chỉ có 1 group public chung.
+
+**GET `/group/public`** — Public  
+→ CommunityGroupResponse: `id`, `name`, `slug`, `description`, `isPublic`, `isActive`, `createdAt`, `updatedAt`
+
+**GET `/group/public/posts`** — Public, phân trang  
+→ CommunityPostResponse[]: `id`, `groupId`, `userId`, `userFullName`, `userAvatarUrl`, `content`, `reactionCount`, `commentCount`, `media` (CommunityPostMediaResponse[]), `createdAt`, `updatedAt`
+
+**POST `/group/public/posts`** — Login  
+Body: `content`* (string, max 5000)  
+→ CommunityPostResponse
+
+**GET `/posts/{postId}`** — Public  
+→ CommunityPostResponse (bao gồm `comments` (CommunityCommentResponse[]))
+
+**POST `/posts/{postId}/comments`** — Login  
+Body: `content`* (string, max 1000)  
+→ CommunityCommentResponse
+
+**POST `/posts/{postId}/reactions`** — Login  
+Body: `reactionType`* (string, mặc định `like`)  
+Rule: nếu user đã có cùng `reactionType` trên post thì gọi lại sẽ bỏ reaction (toggle off).  
+→ CommunityPostResponse (đã cập nhật `reactionCount`)
+
+**POST `/posts/upload-signature`** — Login  
+Body: `postId`* (guid, chỉ chủ post mới upload)  
+→ CommunityPostUploadSignatureResponse: `signature`, `timestamp`, `apiKey`, `cloudName`, `folder`
+
+**POST `/posts/finalize-media`** — Login  
+Body: `postId`* (guid), `publicId`* (string), `url`* (string), `secureUrl`* (string), `format`* (string), `mimeType`* (string), `bytes`* (long), `width`* (int), `height`* (int)  
+Rule: chỉ chủ post mới finalize media.  
+→ CommunityPostMediaResponse
+
+---
+
 ## Chat AI (`/api/chat`) — Login (mọi role)
 
 ConversationResponse: `id`, `title`, `model`, `status` (0=Active/1=Archived), `lastMessageAt`, `createdAt`

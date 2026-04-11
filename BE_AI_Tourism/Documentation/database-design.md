@@ -34,6 +34,7 @@ Mọi entity kế thừa `BaseEntity`:
 | full_name | string | required | Họ tên |
 | phone | string | | Số điện thoại |
 | avatar_url | string | | URL ảnh đại diện |
+| avatar_public_id | string? | | Cloudinary public ID của avatar hiện tại |
 | role | string (enum) | index | Admin / Contributor / User |
 | administrative_unit_id | Guid? | index | Đơn vị hành chính (cho Contributor) |
 | status | string (enum) | index | Active / Locked / PendingApproval |

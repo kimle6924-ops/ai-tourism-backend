@@ -7,7 +7,10 @@ public interface IUserService
 {
     Task<Result<UserResponse>> GetCurrentUserAsync(Guid userId);
     Task<Result<UserResponse>> UpdateProfileAsync(Guid userId, UpdateUserRequest request);
+    Task<Result<UserResponse>> UpdateAccountAsync(Guid userId, UpdateAccountRequest request);
     Task<Result<PreferencesResponse>> GetPreferencesAsync(Guid userId);
     Task<Result<PreferencesResponse>> UpdatePreferencesAsync(Guid userId, UpdatePreferencesRequest request);
     Task<Result<UserResponse>> UpdateLocationAsync(Guid userId, UpdateLocationRequest request);
+    Task<Result<AvatarUploadSignatureResponse>> GenerateAvatarUploadSignatureAsync(Guid userId);
+    Task<Result<UserResponse>> FinalizeAvatarUploadAsync(Guid userId, FinalizeAvatarUploadRequest request);
 }

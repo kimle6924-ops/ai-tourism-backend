@@ -42,18 +42,18 @@ Trạng thái các tính năng trong hệ thống.
 | Tính năng | Trạng thái | Ghi chú |
 |-----------|-----------|---------|
 | Auth DTOs | Done | RegisterRequest, LoginRequest, RefreshTokenRequest, AuthResponse |
-| User DTOs | Done | UserResponse, UpdateUserRequest, UpdatePreferencesRequest, PreferencesResponse |
+| User DTOs | Done | UserResponse, UpdateUserRequest, UpdateAccountRequest, FinalizeAvatarUploadRequest, AvatarUploadSignatureResponse, UpdatePreferencesRequest, PreferencesResponse |
 | Auth Validators | Done | RegisterRequestValidator, LoginRequestValidator, RefreshTokenRequestValidator |
-| User Validators | Done | UpdateUserRequestValidator, UpdatePreferencesRequestValidator |
+| User Validators | Done | UpdateUserRequestValidator, UpdateAccountRequestValidator, FinalizeAvatarUploadRequestValidator, UpdatePreferencesRequestValidator |
 | PasswordService | Done | BCrypt hash/verify, AllowPlaintextPassword support |
 | JwtService | Done | GenerateAccessToken, GenerateRefreshToken, GetPrincipalFromExpiredToken |
 | AuthService | Done | Register, Login, RefreshToken |
-| UserService | Done | GetCurrentUser, UpdateProfile, GetPreferences, UpdatePreferences |
+| UserService | Done | GetCurrentUser, UpdateProfile, UpdateAccount (email duplicate check), Avatar upload signature/finalize, GetPreferences, UpdatePreferences |
 | AdminUserService | Done | GetUsers (paged), LockUser, UnlockUser |
 | JWT Authentication | Done | Program.cs — AddAuthentication().AddJwtBearer() |
 | Authorization pipeline | Done | UseAuthentication + UseAuthorization |
 | AuthController | Done | POST register/login/refresh — AllowAnonymous |
-| UserController | Done | GET/PUT /me, GET/PUT /me/preferences — Authorize |
+| UserController | Done | GET/PUT /me, PUT /me/account, POST /me/avatar/upload-signature, POST /me/avatar/finalize, GET/PUT /me/preferences — Authorize |
 | AdminController | Done | GET users, PATCH lock/unlock — Authorize(Roles=Admin) |
 | ScopeAuthorization | Done | ScopeRequirement + ScopeAuthorizationHandler |
 | AppConstants Auth | Done | Auth error messages, JWT claim types |
@@ -153,8 +153,8 @@ Trạng thái các tính năng trong hệ thống.
 |-----------|-----------|---------|
 | Review DTOs | Done | CreateReviewRequest, UpdateReviewRequest, ReviewResponse, ReviewListResponse (averageRating + totalReviews) |
 | Review Validators | Done | CreateReviewRequestValidator, UpdateReviewRequestValidator |
-| ReviewService | Done | Create (1 user đánh giá nhiều lần), update, delete (owner+Admin), get by resource (kèm thống kê), get mine (danh sách) |
-| ReviewController | Done | POST upsert, PATCH, DELETE, GET by resource, GET mine |
+| ReviewService | Done | Create (1 user đánh giá nhiều lần), update, delete (owner+Admin), get by resource (kèm thống kê), get mine (danh sách), get my history (tổng hợp) |
+| ReviewController | Done | POST upsert, PATCH, DELETE, GET by resource, GET mine, GET me/history |
 | Discovery DTO | Done | DiscoveryRequest, SimpleSearchRequest (search + sortBy + averageRating filter) |
 | DiscoveryService | Done | Search places/events with filters + sort, simple search API, fix rating sort bug (tính rating 1 lần, dùng List thay IQueryable) |
 | DiscoveryController | Done | GET places, GET events, GET search/places, GET search/events (AllowAnonymous) |

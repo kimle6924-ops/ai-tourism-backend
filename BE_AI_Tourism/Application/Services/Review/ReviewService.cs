@@ -128,6 +128,79 @@ public class ReviewService : IReviewService
             responses, ordered.Count, request.PageNumber, request.PageSize));
     }
 
+    public async Task<Result<PaginationResponse<ReviewHistoryItemResponse>>> GetMyHistoryAsync(Guid userId, PaginationRequest request, ResourceType? resourceType)
+    {
+        var all = await _reviewRepository.FindAsync(r =>
+            r.UserId == userId
+            && r.Status != ReviewStatus.Deleted
+            && (!resourceType.HasValue || r.ResourceType == resourceType.Value));
+
+        var ordered = all.OrderByDescending(r => r.CreatedAt).ToList();
+        var totalCount = ordered.Count;
+        var items = ordered
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+
+        var user = await _userRepository.GetByIdAsync(userId);
+        var placeIds = items.Where(r => r.ResourceType == ResourceType.Place).Select(r => r.ResourceId).Distinct().ToList();
+        var eventIds = items.Where(r => r.ResourceType == ResourceType.Event).Select(r => r.ResourceId).Distinct().ToList();
+
+        var places = placeIds.Count > 0
+            ? (await _placeRepository.FindAsync(p => placeIds.Contains(p.Id))).ToDictionary(p => p.Id)
+            : new Dictionary<Guid, Domain.Entities.Place>();
+
+        var events = eventIds.Count > 0
+            ? (await _eventRepository.FindAsync(e => eventIds.Contains(e.Id))).ToDictionary(e => e.Id)
+            : new Dictionary<Guid, Domain.Entities.Event>();
+
+        var resourceIds = placeIds.Concat(eventIds).Distinct().ToList();
+        var media = resourceIds.Count > 0
+            ? await _mediaRepository.FindAsync(m => resourceIds.Contains(m.ResourceId) && m.IsPrimary)
+            : [];
+        var mediaByResource = media
+            .GroupBy(m => m.ResourceId)
+            .ToDictionary(g => g.Key, g => g.FirstOrDefault());
+
+        var responses = new List<ReviewHistoryItemResponse>();
+        foreach (var review in items)
+        {
+            var response = new ReviewHistoryItemResponse
+            {
+                Id = review.Id,
+                ResourceType = review.ResourceType,
+                ResourceId = review.ResourceId,
+                UserId = review.UserId,
+                UserFullName = user?.FullName ?? string.Empty,
+                UserAvatarUrl = user?.AvatarUrl ?? string.Empty,
+                Rating = review.Rating,
+                Comment = review.Comment,
+                Status = review.Status,
+                CreatedAt = review.CreatedAt,
+                UpdatedAt = review.UpdatedAt
+            };
+
+            if (review.ResourceType == ResourceType.Place && places.TryGetValue(review.ResourceId, out var place))
+            {
+                response.ResourceTitle = place.Title;
+                response.ResourceAddress = place.Address;
+            }
+            else if (review.ResourceType == ResourceType.Event && events.TryGetValue(review.ResourceId, out var evt))
+            {
+                response.ResourceTitle = evt.Title;
+                response.ResourceAddress = evt.Address;
+            }
+
+            if (mediaByResource.TryGetValue(review.ResourceId, out var resourceMedia) && resourceMedia != null)
+                response.ResourceImageUrl = string.IsNullOrWhiteSpace(resourceMedia.SecureUrl) ? resourceMedia.Url : resourceMedia.SecureUrl;
+
+            responses.Add(response);
+        }
+
+        return Result.Ok(PaginationResponse<ReviewHistoryItemResponse>.Create(
+            responses, totalCount, request.PageNumber, request.PageSize));
+    }
+
     // Admin: lấy tất cả reviews với filter theo status
     public async Task<Result<PaginationResponse<ReviewResponse>>> GetAllReviewsAsync(PaginationRequest request, ReviewStatus? statusFilter)
     {

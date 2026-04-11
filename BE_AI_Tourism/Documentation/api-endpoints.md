@@ -46,9 +46,23 @@ Body: `refreshToken`* (string)
 
 **GET `/me`** — Login → UserResponse: `id`, `email`, `fullName`, `phone`, `avatarUrl`, `role` (0=Admin/1=Contributor/2=User), `status` (0=Active/1=Locked/2=PendingApproval), `latitude?` (double), `longitude?` (double)
 
+**PUT `/me/account`** — Login
+Body: `email?` (string), `fullName?` (string), `phone?` (string)
+→ UserResponse
+- Nếu đổi `email` sang email đã tồn tại → `409 EMAIL_ALREADY_EXISTS`
+- `email` được normalize `trim + lowercase` trước khi lưu
+
 **PUT `/me`** — Login
 Body: `fullName?` (string), `phone?` (string), `avatarUrl?` (string)
 → UserResponse
+
+**POST `/me/avatar/upload-signature`** — Login
+→ AvatarUploadSignatureResponse: `signature`, `timestamp`, `apiKey`, `cloudName`, `folder`
+(Frontend dùng signature này để upload avatar trực tiếp lên Cloudinary)
+
+**POST `/me/avatar/finalize`** — Login
+Body: `publicId`* (string), `url`* (string), `secureUrl`* (string)
+→ UserResponse (cập nhật `avatarUrl` + `avatarPublicId` cho user hiện tại)
 
 **GET `/me/preferences`** — Login → PreferencesResponse: `categoryIds` (guid[])
 
@@ -241,6 +255,10 @@ Body: `rating`* (int), `comment`* (string)
 → ReviewListResponse: `averageRating` (double, làm tròn 1 chữ số), `totalReviews` (int), `reviews` (PaginationResponse\<ReviewResponse\>)
 
 **GET `/mine?resourceType=Place&resourceId=xxx`** — Login, phân trang → ReviewResponse[] (danh sách review của user hiện tại cho resource đó, mới nhất trước)
+
+**GET `/me/history`** — Login, phân trang
+Query: `resourceType?` (int: 0=Place/1=Event)
+→ ReviewHistoryItemResponse[] (lịch sử review tổng của user hiện tại, mới nhất trước, mỗi item có thêm `resourceTitle`, `resourceAddress`, `resourceImageUrl`)
 
 ---
 

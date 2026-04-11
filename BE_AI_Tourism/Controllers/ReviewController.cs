@@ -66,6 +66,16 @@ public class ReviewController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpGet("me/history")]
+    [Authorize]
+    public async Task<IActionResult> GetMyHistory(
+        [FromQuery] PaginationRequest request,
+        [FromQuery] ResourceType? resourceType)
+    {
+        var result = await _reviewService.GetMyHistoryAsync(GetUserId(), request, resourceType);
+        return StatusCode(result.StatusCode, result);
+    }
+
     // Admin: lấy tất cả reviews (có filter status)
     [HttpGet("all")]
     [Authorize(Roles = "Admin")]

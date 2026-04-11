@@ -2,6 +2,14 @@
 
 Mục tiêu: đây là tài liệu triển khai chuẩn để AI/coder đọc vào và thực hiện đúng yêu cầu. Bao gồm hiện trạng, gap, thiết kế API/DB, lộ trình làm dần và ràng buộc đã chốt.
 
+## Trạng thái thực thi
+- Phase 1: **Done** (hoàn thành ngày 2026-04-12)
+- Phase 2: Not Started
+- Phase 3: Not Started
+- Phase 4: Not Started
+- Phase 5: Not Started
+- Phase 6: Not Started
+
 ---
 
 ## A. 10 quyết định đã chốt (ưu tiên cao nhất)

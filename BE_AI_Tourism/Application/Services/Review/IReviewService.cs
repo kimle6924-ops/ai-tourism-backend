@@ -12,6 +12,7 @@ public interface IReviewService
     Task<Result> DeleteAsync(Guid id, Guid userId, string role);
     Task<Result<ReviewListResponse>> GetByResourceAsync(ResourceType resourceType, Guid resourceId, PaginationRequest request);
     Task<Result<PaginationResponse<ReviewResponse>>> GetUserReviewsAsync(ResourceType resourceType, Guid resourceId, Guid userId, PaginationRequest request);
+    Task<Result<PaginationResponse<ReviewHistoryItemResponse>>> GetMyHistoryAsync(Guid userId, PaginationRequest request, ResourceType? resourceType);
     // Admin review moderation
     Task<Result<PaginationResponse<ReviewResponse>>> GetAllReviewsAsync(PaginationRequest request, ReviewStatus? statusFilter);
     Task<Result> ApproveReviewAsync(Guid id);

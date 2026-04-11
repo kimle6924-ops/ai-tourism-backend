@@ -13,6 +13,7 @@ namespace BE_AI_Tourism.Application.Services.Discovery;
 
 public class DiscoveryService : IDiscoveryService
 {
+    private const string NoLocationErrorMessage = "Chưa cập nhật vị trí. Hãy gọi PUT /api/user/me/location trước.";
     private readonly IRepository<Domain.Entities.Place> _placeRepository;
     private readonly IRepository<Domain.Entities.Event> _eventRepository;
     private readonly IRepository<Domain.Entities.Review> _reviewRepository;
@@ -167,12 +168,11 @@ public class DiscoveryService : IDiscoveryService
 
     public async Task<Result<PaginationResponse<PlaceResponse>>> RecommendPlacesAsync(Guid userId, RecommendRequest request)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-            return Result.Fail<PaginationResponse<PlaceResponse>>("User not found", StatusCodes.Status404NotFound, "NOT_FOUND");
+        var userCheck = await TryGetUserLocationAsync<PlaceResponse>(userId);
+        if (!userCheck.Success)
+            return userCheck.Result!;
 
-        if (!user.Latitude.HasValue || !user.Longitude.HasValue)
-            return Result.Fail<PaginationResponse<PlaceResponse>>("Chưa cập nhật vị trí. Hãy gọi PUT /api/users/me/location trước.", StatusCodes.Status400BadRequest, "NO_LOCATION");
+        var user = userCheck.User!;
 
         var preference = await _preferenceRepository.FindOneAsync(p => p.UserId == userId);
         var preferredCategoryIds = preference?.CategoryIds ?? [];
@@ -217,12 +217,11 @@ public class DiscoveryService : IDiscoveryService
 
     public async Task<Result<PaginationResponse<EventResponse>>> RecommendEventsAsync(Guid userId, RecommendRequest request)
     {
-        var user = await _userRepository.GetByIdAsync(userId);
-        if (user == null)
-            return Result.Fail<PaginationResponse<EventResponse>>("User not found", StatusCodes.Status404NotFound, "NOT_FOUND");
+        var userCheck = await TryGetUserLocationAsync<EventResponse>(userId);
+        if (!userCheck.Success)
+            return userCheck.Result!;
 
-        if (!user.Latitude.HasValue || !user.Longitude.HasValue)
-            return Result.Fail<PaginationResponse<EventResponse>>("Chưa cập nhật vị trí. Hãy gọi PUT /api/users/me/location trước.", StatusCodes.Status400BadRequest, "NO_LOCATION");
+        var user = userCheck.User!;
 
         var preference = await _preferenceRepository.FindOneAsync(p => p.UserId == userId);
         var preferredCategoryIds = preference?.CategoryIds ?? [];
@@ -251,6 +250,216 @@ public class DiscoveryService : IDiscoveryService
             .ToList();
 
         var responses = items.Select(e =>
+        {
+            var r = _mapper.Map<EventResponse>(e);
+            r.AverageRating = avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0;
+            r.DistanceKm = Math.Round(eventDistances[e.Id], 2);
+            return r;
+        }).ToList();
+        await EnrichEventImagesAsync(responses);
+
+        return Result.Ok(PaginationResponse<EventResponse>.Create(
+            responses, totalCount, request.PageNumber, request.PageSize));
+    }
+
+    public async Task<Result<PaginationResponse<DiscoveryMixItemResponse>>> RecommendMixAsync(Guid userId, RecommendMixRequest request)
+    {
+        var userCheck = await TryGetUserLocationAsync<DiscoveryMixItemResponse>(userId);
+        if (!userCheck.Success)
+            return userCheck.Result!;
+
+        var user = userCheck.User!;
+        var preference = await _preferenceRepository.FindOneAsync(p => p.UserId == userId);
+        var preferredCategoryIds = preference?.CategoryIds ?? [];
+
+        var allPlaces = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
+        var places = allPlaces.Where(p => p.Latitude.HasValue && p.Longitude.HasValue).ToList();
+
+        var allEvents = await _eventRepository.FindAsync(e =>
+            e.ModerationStatus == ModerationStatus.Approved && e.EventStatus != EventStatus.Ended);
+        var events = allEvents.Where(e => e.Latitude.HasValue && e.Longitude.HasValue).ToList();
+
+        var placeRatings = await GetAverageRatings(ResourceType.Place, places.Select(p => p.Id));
+        var eventRatings = await GetAverageRatings(ResourceType.Event, events.Select(e => e.Id));
+
+        var placeMediaByResource = await GetMediaByResourceAsync(ResourceType.Place, places.Select(p => p.Id));
+        var eventMediaByResource = await GetMediaByResourceAsync(ResourceType.Event, events.Select(e => e.Id));
+
+        var items = new List<DiscoveryMixItemResponse>(places.Count + events.Count);
+
+        foreach (var place in places)
+        {
+            var distance = HaversineKm(user.Latitude!.Value, user.Longitude!.Value, place.Latitude!.Value, place.Longitude!.Value);
+            if (request.MaxDistanceKm.HasValue && distance > request.MaxDistanceKm.Value)
+                continue;
+
+            var avgRating = placeRatings.TryGetValue(place.Id, out var rating) ? rating : 0;
+            var preferenceMatched = preferredCategoryIds.Count > 0 && place.CategoryIds.Any(c => preferredCategoryIds.Contains(c));
+            var score = BuildDiscoveryScore(preferenceMatched, distance, avgRating);
+
+            items.Add(new DiscoveryMixItemResponse
+            {
+                ResourceType = ResourceType.Place,
+                ResourceId = place.Id,
+                Title = place.Title,
+                Address = place.Address,
+                AdministrativeUnitId = place.AdministrativeUnitId,
+                Latitude = place.Latitude,
+                Longitude = place.Longitude,
+                AverageRating = avgRating,
+                DistanceKm = Math.Round(distance, 2),
+                PrimaryImageUrl = GetPrimaryImageUrl(placeMediaByResource, place.Id),
+                PreferenceMatched = preferenceMatched,
+                PreferenceMatchScore = score.PreferenceMatchScore,
+                DistanceScore = score.DistanceScore,
+                RatingScore = score.RatingScore,
+                TotalScore = score.TotalScore
+            });
+        }
+
+        foreach (var evt in events)
+        {
+            var distance = HaversineKm(user.Latitude!.Value, user.Longitude!.Value, evt.Latitude!.Value, evt.Longitude!.Value);
+            if (request.MaxDistanceKm.HasValue && distance > request.MaxDistanceKm.Value)
+                continue;
+
+            var avgRating = eventRatings.TryGetValue(evt.Id, out var rating) ? rating : 0;
+            var preferenceMatched = preferredCategoryIds.Count > 0 && evt.CategoryIds.Any(c => preferredCategoryIds.Contains(c));
+            var score = BuildDiscoveryScore(preferenceMatched, distance, avgRating);
+
+            items.Add(new DiscoveryMixItemResponse
+            {
+                ResourceType = ResourceType.Event,
+                ResourceId = evt.Id,
+                Title = evt.Title,
+                Address = evt.Address,
+                AdministrativeUnitId = evt.AdministrativeUnitId,
+                Latitude = evt.Latitude,
+                Longitude = evt.Longitude,
+                AverageRating = avgRating,
+                DistanceKm = Math.Round(distance, 2),
+                PrimaryImageUrl = GetPrimaryImageUrl(eventMediaByResource, evt.Id),
+                PreferenceMatched = preferenceMatched,
+                PreferenceMatchScore = score.PreferenceMatchScore,
+                DistanceScore = score.DistanceScore,
+                RatingScore = score.RatingScore,
+                TotalScore = score.TotalScore
+            });
+        }
+
+        var sorted = items
+            .OrderByDescending(x => x.TotalScore)
+            .ThenBy(x => x.DistanceKm)
+            .ToList();
+
+        var totalCount = sorted.Count;
+        var pagedItems = sorted
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+
+        return Result.Ok(PaginationResponse<DiscoveryMixItemResponse>.Create(
+            pagedItems, totalCount, request.PageNumber, request.PageSize));
+    }
+
+    public async Task<Result<PaginationResponse<PlaceResponse>>> GetPlacesByLocationTagAsync(Guid userId, PlaceByLocationTagRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Tag))
+            return Result.Fail<PaginationResponse<PlaceResponse>>("Tag is required", StatusCodes.Status400BadRequest, "VALIDATION_FAILED");
+
+        var userCheck = await TryGetUserLocationAsync<PlaceResponse>(userId);
+        if (!userCheck.Success)
+            return userCheck.Result!;
+
+        var user = userCheck.User!;
+        var normalizedTag = request.Tag.RemoveDiacritics();
+
+        var all = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
+        var places = all
+            .Where(p => p.Latitude.HasValue
+                        && p.Longitude.HasValue
+                        && p.Tags.Any(t => t.RemoveDiacritics().Contains(normalizedTag)))
+            .ToList();
+
+        var placeDistances = places.ToDictionary(
+            p => p.Id,
+            p => HaversineKm(user.Latitude!.Value, user.Longitude!.Value, p.Latitude!.Value, p.Longitude!.Value));
+
+        if (request.RadiusKm.HasValue)
+            places = places.Where(p => placeDistances[p.Id] <= request.RadiusKm.Value).ToList();
+
+        var sorted = places
+            .OrderBy(p => placeDistances[p.Id])
+            .ThenByDescending(p => p.CreatedAt)
+            .ToList();
+
+        var avgRatings = await GetAverageRatings(ResourceType.Place, sorted.Select(p => p.Id));
+
+        var totalCount = sorted.Count;
+        var pagedItems = sorted
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+
+        var responses = pagedItems.Select(p =>
+        {
+            var r = _mapper.Map<PlaceResponse>(p);
+            r.AverageRating = avgRatings.TryGetValue(p.Id, out var avg) ? avg : 0;
+            r.DistanceKm = Math.Round(placeDistances[p.Id], 2);
+            return r;
+        }).ToList();
+        await EnrichPlaceImagesAsync(responses);
+
+        return Result.Ok(PaginationResponse<PlaceResponse>.Create(
+            responses, totalCount, request.PageNumber, request.PageSize));
+    }
+
+    public async Task<Result<PaginationResponse<EventResponse>>> GetEventsTimelineAsync(Guid userId, EventTimelineRequest request)
+    {
+        var timeline = string.IsNullOrWhiteSpace(request.Timeline)
+            ? "both"
+            : request.Timeline.Trim().ToLowerInvariant();
+        if (timeline is not ("ongoing" or "upcoming" or "both"))
+            return Result.Fail<PaginationResponse<EventResponse>>(
+                "Timeline must be one of: ongoing, upcoming, both", StatusCodes.Status400BadRequest, "VALIDATION_FAILED");
+
+        var userCheck = await TryGetUserLocationAsync<EventResponse>(userId);
+        if (!userCheck.Success)
+            return userCheck.Result!;
+
+        var user = userCheck.User!;
+        var all = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
+        var events = all.Where(e => e.Latitude.HasValue && e.Longitude.HasValue).ToList();
+
+        events = timeline switch
+        {
+            "ongoing" => events.Where(e => e.EventStatus == EventStatus.Ongoing).ToList(),
+            "upcoming" => events.Where(e => e.EventStatus == EventStatus.Upcoming).ToList(),
+            _ => events.Where(e => e.EventStatus is EventStatus.Ongoing or EventStatus.Upcoming).ToList()
+        };
+
+        var eventDistances = events.ToDictionary(
+            e => e.Id,
+            e => HaversineKm(user.Latitude!.Value, user.Longitude!.Value, e.Latitude!.Value, e.Longitude!.Value));
+
+        if (request.RadiusKm.HasValue)
+            events = events.Where(e => eventDistances[e.Id] <= request.RadiusKm.Value).ToList();
+
+        var sorted = events
+            .OrderBy(e => e.EventStatus == EventStatus.Ongoing ? 0 : 1)
+            .ThenBy(e => eventDistances[e.Id])
+            .ThenBy(e => e.StartAt)
+            .ToList();
+
+        var avgRatings = await GetAverageRatings(ResourceType.Event, sorted.Select(e => e.Id));
+
+        var totalCount = sorted.Count;
+        var pagedItems = sorted
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+
+        var responses = pagedItems.Select(e =>
         {
             var r = _mapper.Map<EventResponse>(e);
             r.AverageRating = avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0;
@@ -429,4 +638,58 @@ public class DiscoveryService : IDiscoveryService
     }
 
     private static double ToRad(double deg) => deg * Math.PI / 180.0;
+
+    private async Task<(bool Success, Domain.Entities.User? User, Result<PaginationResponse<T>>? Result)> TryGetUserLocationAsync<T>(Guid userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return (false, null, Result.Fail<PaginationResponse<T>>("User not found", StatusCodes.Status404NotFound, "NOT_FOUND"));
+
+        if (!user.Latitude.HasValue || !user.Longitude.HasValue)
+            return (false, null, Result.Fail<PaginationResponse<T>>(NoLocationErrorMessage, StatusCodes.Status400BadRequest, "NO_LOCATION"));
+
+        return (true, user, null);
+    }
+
+    private static (double PreferenceMatchScore, double DistanceScore, double RatingScore, double TotalScore) BuildDiscoveryScore(
+        bool preferenceMatched, double distanceKm, double averageRating)
+    {
+        var preferenceScore = preferenceMatched ? 1d : 0d;
+        var distanceScore = 1d / (1d + Math.Max(distanceKm, 0d));
+        var ratingScore = Math.Clamp(averageRating / 5d, 0d, 1d);
+
+        var totalScore = (0.6d * preferenceScore) + (0.25d * distanceScore) + (0.15d * ratingScore);
+
+        return (
+            Math.Round(preferenceScore, 4),
+            Math.Round(distanceScore, 4),
+            Math.Round(ratingScore, 4),
+            Math.Round(totalScore, 4));
+    }
+
+    private async Task<Dictionary<Guid, List<Domain.Entities.MediaAsset>>> GetMediaByResourceAsync(
+        ResourceType resourceType,
+        IEnumerable<Guid> resourceIds)
+    {
+        var ids = resourceIds.Distinct().ToList();
+        if (ids.Count == 0)
+            return [];
+
+        var media = await _mediaRepository.FindAsync(
+            m => m.ResourceType == resourceType && ids.Contains(m.ResourceId));
+
+        return media
+            .OrderBy(m => m.SortOrder)
+            .GroupBy(m => m.ResourceId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
+    private static string? GetPrimaryImageUrl(Dictionary<Guid, List<Domain.Entities.MediaAsset>> mediaByResource, Guid resourceId)
+    {
+        if (!mediaByResource.TryGetValue(resourceId, out var media) || media.Count == 0)
+            return null;
+
+        var primary = media.FirstOrDefault(m => m.IsPrimary);
+        return primary?.SecureUrl ?? primary?.Url ?? media[0].SecureUrl ?? media[0].Url;
+    }
 }

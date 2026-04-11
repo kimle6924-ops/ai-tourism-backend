@@ -62,6 +62,30 @@ public class DiscoveryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [Authorize]
+    [HttpGet("recommend/mix")]
+    public async Task<IActionResult> RecommendMix([FromQuery] RecommendMixRequest request)
+    {
+        var result = await _discoveryService.RecommendMixAsync(GetCurrentUserId(), request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize]
+    [HttpGet("places/by-location-tag")]
+    public async Task<IActionResult> GetPlacesByLocationTag([FromQuery] PlaceByLocationTagRequest request)
+    {
+        var result = await _discoveryService.GetPlacesByLocationTagAsync(GetCurrentUserId(), request);
+        return StatusCode(result.StatusCode, result);
+    }
+
+    [Authorize]
+    [HttpGet("events/timeline")]
+    public async Task<IActionResult> GetEventsTimeline([FromQuery] EventTimelineRequest request)
+    {
+        var result = await _discoveryService.GetEventsTimelineAsync(GetCurrentUserId(), request);
+        return StatusCode(result.StatusCode, result);
+    }
+
     private Guid GetCurrentUserId()
         => Guid.Parse(User.FindFirst(AppConstants.JwtClaimTypes.UserId)!.Value);
 }

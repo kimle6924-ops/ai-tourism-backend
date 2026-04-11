@@ -357,12 +357,27 @@ public static class ApiDocSections
         GET /api/discovery/recommend/places — Login, phân trang
         Query: maxDistanceKm? (double, lọc khoảng cách tối đa, không truyền thì trả tất cả)
         Tự lấy vị trí (latitude/longitude) và sở thích (categoryIds) của user đang đăng nhập. Ưu tiên place match sở thích trước, sau đó sắp theo khoảng cách gần → xa. Response có thêm distanceKm (khoảng cách từ user đến place, km).
-        Yêu cầu: user phải cập nhật vị trí trước (PUT /api/users/me/location), nếu chưa trả 400.
+        Yêu cầu: user phải cập nhật vị trí trước (PUT /api/user/me/location), nếu chưa trả 400 NO_LOCATION.
         → PlaceResponse[] (mỗi item có averageRating, distanceKm)
 
         GET /api/discovery/recommend/events — Login, phân trang
         Query: maxDistanceKm? (double)
         Tương tự recommend places nhưng cho events. Chỉ trả event chưa kết thúc (Ended). Ưu tiên match sở thích, sắp theo khoảng cách.
+        → EventResponse[] (mỗi item có averageRating, distanceKm)
+
+        GET /api/discovery/recommend/mix — Login, phân trang (default pageSize=9)
+        Query: maxDistanceKm? (double)
+        Mix place + event không ép tỉ lệ. Sort theo totalScore giảm dần (ưu tiên match sở thích, sau đó khoảng cách và rating).
+        → DiscoveryMixItemResponse[] (resourceType, resourceId, title, address, averageRating, distanceKm, primaryImageUrl, preferenceMatched, preferenceMatchScore, distanceScore, ratingScore, totalScore)
+
+        GET /api/discovery/places/by-location-tag — Login, phân trang (default pageSize=16)
+        Query: tag* (string), radiusKm? (double)
+        Lấy vị trí từ profile user, lọc place Approved theo tag + bán kính (nếu có), sort gần → xa.
+        → PlaceResponse[] (mỗi item có averageRating, distanceKm)
+
+        GET /api/discovery/events/timeline — Login, phân trang (default pageSize=16)
+        Query: timeline (ongoing|upcoming|both, default both), radiusKm? (double)
+        Lấy vị trí từ profile user, lọc event Approved theo timeline + bán kính (nếu có).
         → EventResponse[] (mỗi item có averageRating, distanceKm)
         """;
 

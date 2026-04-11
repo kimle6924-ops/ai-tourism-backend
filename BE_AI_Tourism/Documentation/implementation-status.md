@@ -159,9 +159,9 @@ Trạng thái các tính năng trong hệ thống.
 | Leaderboard DTO | Done | UserLeaderboardItemResponse |
 | Leaderboard Service | Done | Tính điểm từ review `Active` (image + rating + comment), phân trang + rank |
 | Leaderboard Controller | Done | GET `/api/leaderboard/users` (public) |
-| Discovery DTO | Done | DiscoveryRequest, SimpleSearchRequest (search + sortBy + averageRating filter) |
-| DiscoveryService | Done | Search places/events with filters + sort, simple search API, fix rating sort bug (tính rating 1 lần, dùng List thay IQueryable) |
-| DiscoveryController | Done | GET places, GET events, GET search/places, GET search/events (AllowAnonymous) |
+| Discovery DTO | Done | DiscoveryRequest, SimpleSearchRequest, RecommendRequest, RecommendMixRequest, PlaceByLocationTagRequest, EventTimelineRequest, DiscoveryMixItemResponse |
+| DiscoveryService | Done | Search places/events, simple search, recommend places/events, recommend mix, by-location-tag, events timeline; chuẩn hóa lỗi `NO_LOCATION` cho API cần vị trí |
+| DiscoveryController | Done | GET places, events, search/*, recommend/places, recommend/events, recommend/mix, places/by-location-tag, events/timeline |
 
 ## Phase 5: Media Cloudinary
 

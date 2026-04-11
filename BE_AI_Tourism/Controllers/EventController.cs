@@ -44,6 +44,14 @@ public class EventController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpGet("{id:guid}/occurrences")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetOccurrences(Guid id, [FromQuery] EventOccurrencesQueryRequest request)
+    {
+        var result = await _eventService.GetOccurrencesAsync(id, request);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpPost]
     [Authorize(Roles = "Admin,Contributor")]
     public async Task<IActionResult> Create([FromBody] CreateEventRequest request)

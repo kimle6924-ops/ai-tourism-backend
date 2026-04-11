@@ -28,6 +28,7 @@ public static class ApiDocSections
         - AdministrativeLevel: 0=Province, 1=Ward
         - ModerationStatus: 0=Pending, 1=Approved, 2=Rejected
         - EventStatus: 0=Upcoming, 1=Ongoing, 2=Ended
+        - ScheduleType: 0=ExactDate, 1=YearlyRecurring, 2=MonthlyRecurring
         - ReviewStatus: 0=Pending, 1=Active, 2=Hidden, 3=Deleted
         - ResourceType: 0=Place, 1=Event
         - ConversationStatus: 0=Active, 1=Archived
@@ -205,7 +206,7 @@ public static class ApiDocSections
     public static string Events() => """
         ## Events (/api/events)
 
-        EventResponse: id, title, description, address, administrativeUnitId, latitude?, longitude?, categoryIds (guid[]), tags (string[]), startAt, endAt, eventStatus (0=Upcoming/1=Ongoing/2=Ended), moderationStatus (0=Pending/1=Approved/2=Rejected), createdBy, approvedBy?, approvedAt?, createdAt, updatedAt, images (List<MediaAssetResponse>: id, resourceType, resourceId, url, altText, sortOrder, createdAt — danh sách ảnh từ media_assets, được load trực tiếp trong response)
+        EventResponse: id, title, description, address, administrativeUnitId, latitude?, longitude?, categoryIds (guid[]), tags (string[]), scheduleType (0=ExactDate/1=YearlyRecurring/2=MonthlyRecurring), startAt?, endAt?, startMonth?, startDay?, endMonth?, endDay?, eventStatus (0=Upcoming/1=Ongoing/2=Ended, tính động theo now + recurrence), moderationStatus (0=Pending/1=Approved/2=Rejected), createdBy, approvedBy?, approvedAt?, createdAt, updatedAt, images (List<MediaAssetResponse>: id, resourceType, resourceId, url, altText, sortOrder, createdAt — danh sách ảnh từ media_assets, được load trực tiếp trong response)
 
         GET /api/events — Public, phân trang → EventResponse[] (chỉ moderationStatus=1 Approved)
 
@@ -213,13 +214,21 @@ public static class ApiDocSections
 
         GET /api/events/{id} — Public → EventResponse
 
+        GET /api/events/{id}/occurrences — Public
+        Query: from* (datetime), to* (datetime), to >= from
+        → EventOccurrenceResponse[]: startAt, endAt
+
         POST /api/events — Admin/Contributor
-        Body: title* (string, max 200), description* (string), address* (string, max 500), administrativeUnitId* (guid), latitude? (double, -90 đến 90), longitude? (double, -180 đến 180), categoryIds (guid[]), tags (string[]), startAt* (datetime), endAt* (datetime)
-        Điều kiện: endAt PHẢI lớn hơn startAt. administrativeUnitId phải tồn tại. Contributor chỉ tạo trong scope. Tự động moderationStatus=0 (Pending), eventStatus=0 (Upcoming).
-        Lỗi: 400 nếu endAt <= startAt. 404 nếu đơn vị hành chính không tồn tại. 403 nếu Contributor ngoài scope.
+        Body: title* (string, max 200), description* (string), address* (string, max 500), administrativeUnitId* (guid), latitude? (double, -90 đến 90), longitude? (double, -180 đến 180), categoryIds (guid[]), tags (string[]), scheduleType* (int)
+        Điều kiện theo scheduleType:
+        - ExactDate: bắt buộc startAt, endAt và endAt > startAt
+        - YearlyRecurring: bắt buộc startMonth/startDay/endMonth/endDay
+        - MonthlyRecurring: bắt buộc startDay/endDay
+        administrativeUnitId phải tồn tại. Contributor chỉ tạo trong scope. Tự động moderationStatus=0 (Pending).
+        Lỗi: 400 nếu sai điều kiện schedule. 404 nếu đơn vị hành chính không tồn tại. 403 nếu Contributor ngoài scope.
 
         PUT /api/events/{id} — Admin/Contributor
-        Body: giống POST + eventStatus (int: 0=Upcoming/1=Ongoing/2=Ended). Admin sửa tất cả. Contributor chỉ sửa event mình tạo và trong scope.
+        Body: giống POST (không cập nhật tay eventStatus, hệ thống tự tính động). Admin sửa tất cả. Contributor chỉ sửa event mình tạo và trong scope.
         Lỗi: 404 nếu event không tồn tại. 403 nếu không có quyền.
 
         DELETE /api/events/{id} — Admin/Contributor
@@ -362,7 +371,8 @@ public static class ApiDocSections
 
         GET /api/discovery/recommend/events — Login, phân trang
         Query: maxDistanceKm? (double)
-        Tương tự recommend places nhưng cho events. Chỉ trả event chưa kết thúc (Ended). Ưu tiên match sở thích, sắp theo khoảng cách.
+        Tương tự recommend places nhưng cho events. Chỉ trả event chưa kết thúc (Ended). EventStatus được tính động theo now + recurrence.
+        Ưu tiên match sở thích, sắp theo khoảng cách.
         → EventResponse[] (mỗi item có averageRating, distanceKm)
 
         GET /api/discovery/recommend/mix — Login, phân trang (default pageSize=9)
@@ -377,7 +387,7 @@ public static class ApiDocSections
 
         GET /api/discovery/events/timeline — Login, phân trang (default pageSize=16)
         Query: timeline (ongoing|upcoming|both, default both), radiusKm? (double)
-        Lấy vị trí từ profile user, lọc event Approved theo timeline + bán kính (nếu có).
+        Lấy vị trí từ profile user, lọc event Approved theo timeline + bán kính (nếu có). Timeline dùng EventStatus tính động theo recurrence.
         → EventResponse[] (mỗi item có averageRating, distanceKm)
         """;
 

@@ -3,6 +3,7 @@ using BE_AI_Tourism.Domain.Enums;
 using BE_AI_Tourism.Infrastructure.Database;
 using BE_AI_Tourism.Shared.Constants;
 using BE_AI_Tourism.Shared.Core;
+using BE_AI_Tourism.Shared.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace BE_AI_Tourism.Application.Services.Admin;
@@ -47,12 +48,9 @@ public class AdminStatsService : IAdminStatsService
             .ToListAsync();
 
         var totalEvents = await _dbContext.Events.AsNoTracking().CountAsync();
+        var allEvents = await _dbContext.Events.AsNoTracking().ToListAsync();
         var eventsByModerationRows = await _dbContext.Events.AsNoTracking()
             .GroupBy(e => e.ModerationStatus)
-            .Select(g => new { Value = g.Key, Count = g.Count() })
-            .ToListAsync();
-        var eventsByStatusRows = await _dbContext.Events.AsNoTracking()
-            .GroupBy(e => e.EventStatus)
             .Select(g => new { Value = g.Key, Count = g.Count() })
             .ToListAsync();
 
@@ -91,7 +89,7 @@ public class AdminStatsService : IAdminStatsService
         var userStatusMap = BuildEnumMap(Enum.GetValues<UserStatus>(), usersByStatusRows.Select(x => (x.Value, x.Count)));
         var placeModerationMap = BuildEnumMap(Enum.GetValues<ModerationStatus>(), placesByModerationRows.Select(x => (x.Value, x.Count)));
         var eventModerationMap = BuildEnumMap(Enum.GetValues<ModerationStatus>(), eventsByModerationRows.Select(x => (x.Value, x.Count)));
-        var eventStatusMap = BuildEnumMap(Enum.GetValues<EventStatus>(), eventsByStatusRows.Select(x => (x.Value, x.Count)));
+        var eventStatusMap = BuildDynamicEventStatusMap(allEvents, DateTime.UtcNow);
         var reviewStatusMap = BuildEnumMap(Enum.GetValues<ReviewStatus>(), reviewsByStatusRows.Select(x => (x.Value, x.Count)));
 
         var response = new StatsOverviewResponse
@@ -183,6 +181,21 @@ public class AdminStatsService : IAdminStatsService
         var map = enumValues.ToDictionary(v => v.ToString(), _ => 0);
         foreach (var row in rows)
             map[row.Value.ToString()] = row.Count;
+        return map;
+    }
+
+    private static Dictionary<string, int> BuildDynamicEventStatusMap(
+        IEnumerable<Domain.Entities.Event> events,
+        DateTime nowUtc)
+    {
+        var map = Enum.GetValues<EventStatus>().ToDictionary(v => v.ToString(), _ => 0);
+
+        foreach (var evt in events)
+        {
+            var status = EventScheduleUtils.ResolveStatus(evt, nowUtc).ToString();
+            map[status] = map.GetValueOrDefault(status, 0) + 1;
+        }
+
         return map;
     }
 

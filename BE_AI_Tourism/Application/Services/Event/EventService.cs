@@ -6,6 +6,7 @@ using BE_AI_Tourism.Domain.Interfaces;
 using BE_AI_Tourism.Shared.Constants;
 using BE_AI_Tourism.Shared.Core;
 using BE_AI_Tourism.Shared.Pagination;
+using BE_AI_Tourism.Shared.Utils;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 
@@ -92,14 +93,20 @@ public class EventService : IEventService
             Longitude = request.Longitude,
             CategoryIds = request.CategoryIds,
             Tags = request.Tags,
-            StartAt = request.StartAt,
-            EndAt = request.EndAt,
-            EventStatus = EventStatus.Upcoming,
+            ScheduleType = request.ScheduleType,
+            StartAt = request.StartAt.HasValue ? EnsureUtc(request.StartAt.Value) : null,
+            EndAt = request.EndAt.HasValue ? EnsureUtc(request.EndAt.Value) : null,
+            StartMonth = request.StartMonth,
+            StartDay = request.StartDay,
+            EndMonth = request.EndMonth,
+            EndDay = request.EndDay,
             ModerationStatus = moderationStatus,
             CreatedBy = userId,
             ApprovedBy = approvedBy,
             ApprovedAt = approvedAt
         };
+        NormalizeEventScheduleFields(entity);
+        entity.EventStatus = EventScheduleUtils.ResolveStatus(entity, DateTime.UtcNow);
 
         await _eventRepository.AddAsync(entity);
         var response = _mapper.Map<EventResponse>(entity);
@@ -115,6 +122,33 @@ public class EventService : IEventService
 
         var response = _mapper.Map<EventResponse>(entity);
         await EnrichSingleResponseAsync(response, entity.Id);
+        return Result.Ok(response);
+    }
+
+    public async Task<Result<List<EventOccurrenceResponse>>> GetOccurrencesAsync(Guid id, EventOccurrencesQueryRequest request)
+    {
+        if (request.To < request.From)
+            return Result.Fail<List<EventOccurrenceResponse>>(
+                "To must be greater than or equal to From",
+                StatusCodes.Status400BadRequest,
+                AppConstants.ErrorCodes.BadRequest);
+
+        var entity = await _eventRepository.GetByIdAsync(id);
+        if (entity == null)
+            return Result.Fail<List<EventOccurrenceResponse>>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+
+        var fromUtc = EnsureUtc(request.From);
+        var toUtc = EnsureUtc(request.To);
+        var occurrences = EventScheduleUtils.ResolveOccurrences(entity, fromUtc, toUtc);
+
+        var response = occurrences
+            .Select(o => new EventOccurrenceResponse
+            {
+                StartAt = o.StartUtc,
+                EndAt = o.EndUtc
+            })
+            .ToList();
+
         return Result.Ok(response);
     }
 
@@ -204,9 +238,15 @@ public class EventService : IEventService
         entity.Longitude = request.Longitude;
         entity.CategoryIds = request.CategoryIds;
         entity.Tags = request.Tags;
-        entity.StartAt = request.StartAt;
-        entity.EndAt = request.EndAt;
-        entity.EventStatus = request.EventStatus;
+        entity.ScheduleType = request.ScheduleType;
+        entity.StartAt = request.StartAt.HasValue ? EnsureUtc(request.StartAt.Value) : null;
+        entity.EndAt = request.EndAt.HasValue ? EnsureUtc(request.EndAt.Value) : null;
+        entity.StartMonth = request.StartMonth;
+        entity.StartDay = request.StartDay;
+        entity.EndMonth = request.EndMonth;
+        entity.EndDay = request.EndDay;
+        NormalizeEventScheduleFields(entity);
+        entity.EventStatus = EventScheduleUtils.ResolveStatus(entity, DateTime.UtcNow);
 
         // CTV sửa bài → reset Pending
         if (contributorType == ContributorType.Collaborator && entity.CreatedBy == userId)
@@ -267,7 +307,7 @@ public class EventService : IEventService
             var defaultImage = "https://res.cloudinary.com/dhwljelir/image/upload/v1773759092/main-sample.png";
             var now = DateTime.UtcNow;
 
-            var seedData = new List<(string Title, string Desc, string Address, double Lat, double Lng, string[] CatSlugs, List<string> Tags, DateTime StartAt, DateTime EndAt, EventStatus Status)>
+            var seedData = new List<(string Title, string Desc, string Address, double Lat, double Lng, string[] CatSlugs, List<string> Tags, DateTime StartAt, DateTime EndAt)>
             {
                 (
                     "Lễ hội Hoa Đào Sa Pa",
@@ -276,8 +316,7 @@ public class EventService : IEventService
                     22.3361, 103.8434,
                     new[] { "du-lich-van-hoa", "du-lich-sinh-thai" },
                     new List<string> { "lễ hội", "hoa đào", "sapa", "Tây Bắc" },
-                    now.AddDays(10), now.AddDays(13),
-                    EventStatus.Upcoming
+                    now.AddDays(10), now.AddDays(13)
                 ),
                 (
                     "Giải Marathon Sa Pa",
@@ -286,8 +325,7 @@ public class EventService : IEventService
                     22.3366, 103.8414,
                     new[] { "du-lich-mao-hiem", "du-lich-nui" },
                     new List<string> { "marathon", "chạy bộ", "sapa", "thể thao" },
-                    now.AddDays(20), now.AddDays(21),
-                    EventStatus.Upcoming
+                    now.AddDays(20), now.AddDays(21)
                 ),
                 (
                     "Chợ phiên Bắc Hà",
@@ -296,8 +334,7 @@ public class EventService : IEventService
                     22.5350, 104.2890,
                     new[] { "cho-truyen-thong", "du-lich-van-hoa" },
                     new List<string> { "chợ phiên", "Bắc Hà", "dân tộc", "thổ cẩm" },
-                    now.AddDays(-1), now.AddDays(0),
-                    EventStatus.Ongoing
+                    now.AddDays(-1), now.AddDays(0)
                 ),
                 (
                     "Lễ hội Gầu Tào",
@@ -306,8 +343,7 @@ public class EventService : IEventService
                     22.3263, 103.8437,
                     new[] { "du-lich-van-hoa" },
                     new List<string> { "lễ hội", "H'Mông", "Gầu Tào", "dân gian" },
-                    now.AddDays(30), now.AddDays(32),
-                    EventStatus.Upcoming
+                    now.AddDays(30), now.AddDays(32)
                 ),
                 (
                     "Đêm nhạc Fansipan",
@@ -316,8 +352,7 @@ public class EventService : IEventService
                     22.3390, 103.8105,
                     new[] { "du-lich-nui" },
                     new List<string> { "âm nhạc", "Fansipan", "sapa", "ngoài trời" },
-                    now.AddDays(15), now.AddDays(15),
-                    EventStatus.Upcoming
+                    now.AddDays(15), now.AddDays(15)
                 ),
                 (
                     "Tuần lễ Ẩm thực Sa Pa",
@@ -326,8 +361,7 @@ public class EventService : IEventService
                     22.3368, 103.8452,
                     new[] { "am-thuc-duong-pho", "du-lich-van-hoa" },
                     new List<string> { "ẩm thực", "thắng cố", "đặc sản", "Tây Bắc" },
-                    now.AddDays(-3), now.AddDays(4),
-                    EventStatus.Ongoing
+                    now.AddDays(-3), now.AddDays(4)
                 ),
                 (
                     "Cuộc thi nhiếp ảnh Mường Hoa",
@@ -336,8 +370,7 @@ public class EventService : IEventService
                     22.3179, 103.8622,
                     new[] { "du-lich-sinh-thai", "du-lich-van-hoa" },
                     new List<string> { "nhiếp ảnh", "Mường Hoa", "ruộng bậc thang", "cuộc thi" },
-                    now.AddDays(25), now.AddDays(30),
-                    EventStatus.Upcoming
+                    now.AddDays(25), now.AddDays(30)
                 ),
                 (
                     "Festival Hoa Hồng Fansipan",
@@ -346,8 +379,7 @@ public class EventService : IEventService
                     22.3390, 103.8105,
                     new[] { "du-lich-sinh-thai" },
                     new List<string> { "hoa hồng", "festival", "Fansipan", "triển lãm" },
-                    now.AddDays(40), now.AddDays(47),
-                    EventStatus.Upcoming
+                    now.AddDays(40), now.AddDays(47)
                 ),
                 (
                     "Trekking chinh phục Fansipan",
@@ -356,8 +388,7 @@ public class EventService : IEventService
                     22.3530, 103.7750,
                     new[] { "du-lich-mao-hiem", "du-lich-nui" },
                     new List<string> { "trekking", "Fansipan", "chinh phục", "2N1Đ" },
-                    now.AddDays(5), now.AddDays(6),
-                    EventStatus.Upcoming
+                    now.AddDays(5), now.AddDays(6)
                 ),
                 (
                     "Workshop dệt thổ cẩm",
@@ -366,8 +397,7 @@ public class EventService : IEventService
                     22.3700, 103.8200,
                     new[] { "du-lich-van-hoa" },
                     new List<string> { "thổ cẩm", "workshop", "Dao Đỏ", "trải nghiệm" },
-                    now.AddDays(-2), now.AddDays(1),
-                    EventStatus.Ongoing
+                    now.AddDays(-2), now.AddDays(1)
                 ),
                 (
                     "Ngắm mây đèo Ô Quy Hồ",
@@ -376,8 +406,7 @@ public class EventService : IEventService
                     22.3850, 103.7782,
                     new[] { "du-lich-nui", "du-lich-sinh-thai" },
                     new List<string> { "săn mây", "Ô Quy Hồ", "bình minh", "đèo" },
-                    now.AddDays(7), now.AddDays(7),
-                    EventStatus.Upcoming
+                    now.AddDays(7), now.AddDays(7)
                 ),
                 (
                     "Lễ hội Xuống đồng",
@@ -386,8 +415,7 @@ public class EventService : IEventService
                     22.3100, 103.8500,
                     new[] { "du-lich-van-hoa" },
                     new List<string> { "lễ hội", "xuống đồng", "người Tày", "truyền thống" },
-                    now.AddDays(50), now.AddDays(51),
-                    EventStatus.Upcoming
+                    now.AddDays(50), now.AddDays(51)
                 ),
                 (
                     "Đua ngựa Bắc Hà",
@@ -396,8 +424,7 @@ public class EventService : IEventService
                     22.5360, 104.2900,
                     new[] { "du-lich-van-hoa", "du-lich-mao-hiem" },
                     new List<string> { "đua ngựa", "Bắc Hà", "truyền thống", "thể thao" },
-                    now.AddDays(35), now.AddDays(36),
-                    EventStatus.Upcoming
+                    now.AddDays(35), now.AddDays(36)
                 ),
                 (
                     "Lễ hội Trà Sa Pa",
@@ -406,8 +433,7 @@ public class EventService : IEventService
                     22.3366, 103.8414,
                     new[] { "am-thuc-duong-pho", "du-lich-sinh-thai" },
                     new List<string> { "trà", "Shan Tuyết", "sapa", "đặc sản" },
-                    now.AddDays(18), now.AddDays(20),
-                    EventStatus.Upcoming
+                    now.AddDays(18), now.AddDays(20)
                 ),
                 (
                     "Camping & BBQ Thác Bạc",
@@ -416,8 +442,7 @@ public class EventService : IEventService
                     22.3562, 103.7892,
                     new[] { "du-lich-mao-hiem", "du-lich-sinh-thai" },
                     new List<string> { "camping", "BBQ", "Thác Bạc", "ngoài trời" },
-                    now.AddDays(12), now.AddDays(13),
-                    EventStatus.Upcoming
+                    now.AddDays(12), now.AddDays(13)
                 ),
                 (
                     "Hội chợ Đông – Xuân Sa Pa",
@@ -426,8 +451,7 @@ public class EventService : IEventService
                     22.3361, 103.8434,
                     new[] { "cho-truyen-thong", "du-lich-van-hoa" },
                     new List<string> { "hội chợ", "thủ công", "đặc sản", "văn nghệ" },
-                    now.AddDays(60), now.AddDays(67),
-                    EventStatus.Upcoming
+                    now.AddDays(60), now.AddDays(67)
                 )
             };
 
@@ -436,7 +460,7 @@ public class EventService : IEventService
                 .Select(e => e.Title)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var (title, desc, address, lat, lng, catSlugs, tags, startAt, endAt, status) in seedData)
+            foreach (var (title, desc, address, lat, lng, catSlugs, tags, startAt, endAt) in seedData)
             {
                 if (existingTitles.Contains(title))
                     continue;
@@ -453,14 +477,15 @@ public class EventService : IEventService
                     Longitude = lng,
                     CategoryIds = catIds,
                     Tags = tags,
+                    ScheduleType = ScheduleType.ExactDate,
                     StartAt = startAt,
                     EndAt = endAt,
-                    EventStatus = status,
                     ModerationStatus = ModerationStatus.Approved,
                     CreatedBy = admin.Id,
                     ApprovedBy = admin.Id,
                     ApprovedAt = DateTime.UtcNow
                 };
+                evt.EventStatus = EventScheduleUtils.ResolveStatus(evt, DateTime.UtcNow);
 
                 await _eventRepository.AddAsync(evt);
 
@@ -537,6 +562,15 @@ public class EventService : IEventService
             return;
 
         var ids = responses.Select(x => x.Id).ToList();
+        var nowUtc = DateTime.UtcNow;
+        var entityById = (await _eventRepository.FindAsync(e => ids.Contains(e.Id)))
+            .ToDictionary(e => e.Id, e => e);
+
+        foreach (var response in responses)
+        {
+            if (entityById.TryGetValue(response.Id, out var entity))
+                response.EventStatus = EventScheduleUtils.ResolveStatus(entity, nowUtc);
+        }
 
         var ratingMap = await GetAverageRatingsAsync(ids);
         foreach (var response in responses)
@@ -558,6 +592,10 @@ public class EventService : IEventService
 
     private async Task EnrichSingleResponseAsync(EventResponse response, Guid eventId)
     {
+        var entity = await _eventRepository.GetByIdAsync(eventId);
+        if (entity != null)
+            response.EventStatus = EventScheduleUtils.ResolveStatus(entity, DateTime.UtcNow);
+
         var ratingMap = await GetAverageRatingsAsync([eventId]);
         response.AverageRating = ratingMap.TryGetValue(eventId, out var avg) ? avg : 0;
 
@@ -589,5 +627,38 @@ public class EventService : IEventService
                     var rated = g.Where(x => x.Rating.HasValue).Select(x => x.Rating!.Value).ToList();
                     return rated.Count > 0 ? Math.Round(rated.Average(), 1) : 0d;
                 });
+    }
+
+    private static DateTime EnsureUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+        };
+    }
+
+    private static void NormalizeEventScheduleFields(Domain.Entities.Event entity)
+    {
+        switch (entity.ScheduleType)
+        {
+            case ScheduleType.ExactDate:
+                entity.StartMonth = null;
+                entity.StartDay = null;
+                entity.EndMonth = null;
+                entity.EndDay = null;
+                break;
+            case ScheduleType.YearlyRecurring:
+                entity.StartAt = null;
+                entity.EndAt = null;
+                break;
+            case ScheduleType.MonthlyRecurring:
+                entity.StartAt = null;
+                entity.EndAt = null;
+                entity.StartMonth = null;
+                entity.EndMonth = null;
+                break;
+        }
     }
 }

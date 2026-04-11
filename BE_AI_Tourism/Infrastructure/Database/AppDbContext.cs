@@ -152,9 +152,11 @@ public class AppDbContext : DbContext, IDatabaseContext
             entity.HasIndex(e => e.AdministrativeUnitId);
             entity.HasIndex(e => e.StartAt);
             entity.HasIndex(e => e.EndAt);
+            entity.HasIndex(e => e.ScheduleType);
             entity.HasIndex(e => e.EventStatus);
             entity.HasIndex(e => e.ModerationStatus);
 
+            entity.Property(e => e.ScheduleType).HasConversion<string>();
             entity.Property(e => e.EventStatus).HasConversion<string>();
             entity.Property(e => e.ModerationStatus).HasConversion<string>();
             entity.Property(e => e.CategoryIds)

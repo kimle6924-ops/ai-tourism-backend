@@ -95,8 +95,13 @@ Mọi entity kế thừa `BaseEntity`:
 | latitude | double? | | Vĩ độ (nullable) |
 | longitude | double? | | Kinh độ (nullable) |
 | tags | text[] | | Tags tìm kiếm (PostgreSQL array) |
-| start_at | DateTime | index | Thời gian bắt đầu |
-| end_at | DateTime | index | Thời gian kết thúc |
+| schedule_type | string (enum) | index | ExactDate / YearlyRecurring / MonthlyRecurring |
+| start_at | DateTime? | index | Thời gian bắt đầu (dùng cho ExactDate) |
+| end_at | DateTime? | index | Thời gian kết thúc (dùng cho ExactDate) |
+| start_month | int? | | Tháng bắt đầu (dùng cho YearlyRecurring) |
+| start_day | int? | | Ngày bắt đầu (dùng cho YearlyRecurring/MonthlyRecurring) |
+| end_month | int? | | Tháng kết thúc (dùng cho YearlyRecurring) |
+| end_day | int? | | Ngày kết thúc (dùng cho YearlyRecurring/MonthlyRecurring) |
 | event_status | string (enum) | index | Upcoming / Ongoing / Ended |
 | moderation_status | string (enum) | index | Pending / Approved / Rejected |
 | created_by | Guid | | FK → users |

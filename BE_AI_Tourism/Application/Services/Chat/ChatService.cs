@@ -8,6 +8,7 @@ using BE_AI_Tourism.Infrastructure.Gemini;
 using BE_AI_Tourism.Shared.Constants;
 using BE_AI_Tourism.Shared.Core;
 using BE_AI_Tourism.Shared.Pagination;
+using BE_AI_Tourism.Shared.Utils;
 using MapsterMapper;
 using Microsoft.Extensions.Options;
 
@@ -300,9 +301,10 @@ public class ChatService : IChatService
         }
 
         // Events — approved only, with status
-        var events = await _eventRepository.FindAsync(e =>
-            e.ModerationStatus == ModerationStatus.Approved && e.EventStatus != EventStatus.Ended);
-        var eventSample = events.Take(10).ToList();
+        var nowUtc = DateTime.UtcNow;
+        var events = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
+        var activeEvents = events.Where(e => EventScheduleUtils.ResolveStatus(e, nowUtc) != EventStatus.Ended);
+        var eventSample = activeEvents.Take(10).ToList();
 
         if (eventSample.Any())
         {
@@ -310,8 +312,20 @@ public class ChatService : IChatService
             sb.AppendLine("[SỰ KIỆN]");
             foreach (var e in eventSample)
             {
-                var status = e.EventStatus == EventStatus.Ongoing ? "Đang diễn ra" : "Sắp diễn ra";
-                sb.AppendLine($"- {e.Title} | Trạng thái: {status} | {e.StartAt:dd/MM/yyyy} - {e.EndAt:dd/MM/yyyy} | Địa chỉ: {e.Address}");
+                var status = EventScheduleUtils.ResolveStatus(e, nowUtc) == EventStatus.Ongoing ? "Đang diễn ra" : "Sắp diễn ra";
+                if (EventScheduleUtils.TryGetCurrentOccurrence(e, nowUtc, out var currentStart, out var currentEnd))
+                {
+                    sb.AppendLine($"- {e.Title} | Trạng thái: {status} | {currentStart:dd/MM/yyyy} - {currentEnd:dd/MM/yyyy} | Địa chỉ: {e.Address}");
+                    continue;
+                }
+
+                if (EventScheduleUtils.TryGetNextOccurrence(e, nowUtc, out var nextStart, out var nextEnd))
+                {
+                    sb.AppendLine($"- {e.Title} | Trạng thái: {status} | {nextStart:dd/MM/yyyy} - {nextEnd:dd/MM/yyyy} | Địa chỉ: {e.Address}");
+                    continue;
+                }
+
+                sb.AppendLine($"- {e.Title} | Trạng thái: {status} | Địa chỉ: {e.Address}");
             }
         }
         else

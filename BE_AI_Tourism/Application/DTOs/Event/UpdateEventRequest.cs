@@ -12,7 +12,11 @@ public class UpdateEventRequest
     public double? Longitude { get; set; }
     public List<Guid> CategoryIds { get; set; } = [];
     public List<string> Tags { get; set; } = [];
-    public DateTime StartAt { get; set; }
-    public DateTime EndAt { get; set; }
-    public EventStatus EventStatus { get; set; }
+    public ScheduleType ScheduleType { get; set; } = ScheduleType.ExactDate;
+    public DateTime? StartAt { get; set; }
+    public DateTime? EndAt { get; set; }
+    public int? StartMonth { get; set; }
+    public int? StartDay { get; set; }
+    public int? EndMonth { get; set; }
+    public int? EndDay { get; set; }
 }

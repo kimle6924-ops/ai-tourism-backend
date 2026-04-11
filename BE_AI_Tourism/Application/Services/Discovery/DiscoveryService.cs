@@ -72,6 +72,7 @@ public class DiscoveryService : IDiscoveryService
 
     public async Task<Result<PaginationResponse<EventResponse>>> SearchEventsAsync(DiscoveryRequest request)
     {
+        var nowUtc = DateTime.UtcNow;
         var all = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
         var events = all.ToList();
 
@@ -89,6 +90,7 @@ public class DiscoveryService : IDiscoveryService
         var responses = items.Select(e =>
         {
             var r = _mapper.Map<EventResponse>(e);
+            r.EventStatus = EventScheduleUtils.ResolveStatus(e, nowUtc);
             r.AverageRating = avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0;
             return r;
         }).ToList();
@@ -134,6 +136,7 @@ public class DiscoveryService : IDiscoveryService
 
     public async Task<Result<PaginationResponse<EventResponse>>> SimpleSearchEventsAsync(SimpleSearchRequest request)
     {
+        var nowUtc = DateTime.UtcNow;
         var all = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
         var events = all.ToList();
 
@@ -155,6 +158,7 @@ public class DiscoveryService : IDiscoveryService
         var responses = items.Select(e =>
         {
             var r = _mapper.Map<EventResponse>(e);
+            r.EventStatus = EventScheduleUtils.ResolveStatus(e, nowUtc);
             r.AverageRating = avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0;
             return r;
         }).ToList();
@@ -226,9 +230,13 @@ public class DiscoveryService : IDiscoveryService
         var preference = await _preferenceRepository.FindOneAsync(p => p.UserId == userId);
         var preferredCategoryIds = preference?.CategoryIds ?? [];
 
-        var all = await _eventRepository.FindAsync(e =>
-            e.ModerationStatus == ModerationStatus.Approved && e.EventStatus != EventStatus.Ended);
-        var events = all.Where(e => e.Latitude.HasValue && e.Longitude.HasValue).ToList();
+        var nowUtc = DateTime.UtcNow;
+        var all = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
+        var events = all
+            .Where(e => e.Latitude.HasValue
+                        && e.Longitude.HasValue
+                        && EventScheduleUtils.ResolveStatus(e, nowUtc) != EventStatus.Ended)
+            .ToList();
 
         var eventDistances = events.ToDictionary(e => e.Id,
             e => HaversineKm(user.Latitude.Value, user.Longitude.Value, e.Latitude!.Value, e.Longitude!.Value));
@@ -252,6 +260,17 @@ public class DiscoveryService : IDiscoveryService
         var responses = items.Select(e =>
         {
             var r = _mapper.Map<EventResponse>(e);
+            r.EventStatus = EventScheduleUtils.ResolveStatus(e, nowUtc);
+            if (EventScheduleUtils.TryGetCurrentOccurrence(e, nowUtc, out var currentStart, out var currentEnd))
+            {
+                r.StartAt = currentStart;
+                r.EndAt = currentEnd;
+            }
+            else if (EventScheduleUtils.TryGetNextOccurrence(e, nowUtc, out var nextStart, out var nextEnd))
+            {
+                r.StartAt = nextStart;
+                r.EndAt = nextEnd;
+            }
             r.AverageRating = avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0;
             r.DistanceKm = Math.Round(eventDistances[e.Id], 2);
             return r;
@@ -275,9 +294,13 @@ public class DiscoveryService : IDiscoveryService
         var allPlaces = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
         var places = allPlaces.Where(p => p.Latitude.HasValue && p.Longitude.HasValue).ToList();
 
-        var allEvents = await _eventRepository.FindAsync(e =>
-            e.ModerationStatus == ModerationStatus.Approved && e.EventStatus != EventStatus.Ended);
-        var events = allEvents.Where(e => e.Latitude.HasValue && e.Longitude.HasValue).ToList();
+        var nowUtc = DateTime.UtcNow;
+        var allEvents = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
+        var events = allEvents
+            .Where(e => e.Latitude.HasValue
+                        && e.Longitude.HasValue
+                        && EventScheduleUtils.ResolveStatus(e, nowUtc) != EventStatus.Ended)
+            .ToList();
 
         var placeRatings = await GetAverageRatings(ResourceType.Place, places.Select(p => p.Id));
         var eventRatings = await GetAverageRatings(ResourceType.Event, events.Select(e => e.Id));
@@ -428,14 +451,24 @@ public class DiscoveryService : IDiscoveryService
             return userCheck.Result!;
 
         var user = userCheck.User!;
+        var nowUtc = DateTime.UtcNow;
         var all = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
         var events = all.Where(e => e.Latitude.HasValue && e.Longitude.HasValue).ToList();
+        var effectiveStatus = events.ToDictionary(e => e.Id, e => EventScheduleUtils.ResolveStatus(e, nowUtc));
+        var occurrenceStartMap = events.ToDictionary(e => e.Id, e =>
+        {
+            if (EventScheduleUtils.TryGetCurrentOccurrence(e, nowUtc, out var currentStart, out _))
+                return currentStart;
+            if (EventScheduleUtils.TryGetNextOccurrence(e, nowUtc, out var nextStart, out _))
+                return nextStart;
+            return DateTime.MaxValue;
+        });
 
         events = timeline switch
         {
-            "ongoing" => events.Where(e => e.EventStatus == EventStatus.Ongoing).ToList(),
-            "upcoming" => events.Where(e => e.EventStatus == EventStatus.Upcoming).ToList(),
-            _ => events.Where(e => e.EventStatus is EventStatus.Ongoing or EventStatus.Upcoming).ToList()
+            "ongoing" => events.Where(e => effectiveStatus[e.Id] == EventStatus.Ongoing).ToList(),
+            "upcoming" => events.Where(e => effectiveStatus[e.Id] == EventStatus.Upcoming).ToList(),
+            _ => events.Where(e => effectiveStatus[e.Id] is EventStatus.Ongoing or EventStatus.Upcoming).ToList()
         };
 
         var eventDistances = events.ToDictionary(
@@ -446,9 +479,9 @@ public class DiscoveryService : IDiscoveryService
             events = events.Where(e => eventDistances[e.Id] <= request.RadiusKm.Value).ToList();
 
         var sorted = events
-            .OrderBy(e => e.EventStatus == EventStatus.Ongoing ? 0 : 1)
+            .OrderBy(e => effectiveStatus[e.Id] == EventStatus.Ongoing ? 0 : 1)
             .ThenBy(e => eventDistances[e.Id])
-            .ThenBy(e => e.StartAt)
+            .ThenBy(e => occurrenceStartMap[e.Id])
             .ToList();
 
         var avgRatings = await GetAverageRatings(ResourceType.Event, sorted.Select(e => e.Id));
@@ -462,6 +495,17 @@ public class DiscoveryService : IDiscoveryService
         var responses = pagedItems.Select(e =>
         {
             var r = _mapper.Map<EventResponse>(e);
+            r.EventStatus = effectiveStatus[e.Id];
+            if (EventScheduleUtils.TryGetCurrentOccurrence(e, nowUtc, out var currentStart, out var currentEnd))
+            {
+                r.StartAt = currentStart;
+                r.EndAt = currentEnd;
+            }
+            else if (EventScheduleUtils.TryGetNextOccurrence(e, nowUtc, out var nextStart, out var nextEnd))
+            {
+                r.StartAt = nextStart;
+                r.EndAt = nextEnd;
+            }
             r.AverageRating = avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0;
             r.DistanceKm = Math.Round(eventDistances[e.Id], 2);
             return r;
@@ -567,7 +611,7 @@ public class DiscoveryService : IDiscoveryService
             "rating" => events.OrderByDescending(e => avgRatings.TryGetValue(e.Id, out var avg) ? avg : 0).ToList(),
             "name" => events.OrderBy(e => e.Title).ToList(),
             "oldest" => events.OrderBy(e => e.CreatedAt).ToList(),
-            "startdate" => events.OrderBy(e => e.StartAt).ToList(),
+            "startdate" => events.OrderBy(e => e.StartAt ?? DateTime.MaxValue).ToList(),
             _ => events.OrderByDescending(e => e.CreatedAt).ToList()
         };
     }

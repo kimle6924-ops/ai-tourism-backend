@@ -13,8 +13,13 @@ public class Event : BaseEntity
     public List<string> Tags { get; set; } = [];
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
-    public DateTime StartAt { get; set; }
-    public DateTime EndAt { get; set; }
+    public ScheduleType ScheduleType { get; set; } = ScheduleType.ExactDate;
+    public DateTime? StartAt { get; set; }
+    public DateTime? EndAt { get; set; }
+    public int? StartMonth { get; set; }
+    public int? StartDay { get; set; }
+    public int? EndMonth { get; set; }
+    public int? EndDay { get; set; }
     public EventStatus EventStatus { get; set; } = EventStatus.Upcoming;
     public ModerationStatus ModerationStatus { get; set; } = ModerationStatus.Pending;
     public Guid CreatedBy { get; set; }

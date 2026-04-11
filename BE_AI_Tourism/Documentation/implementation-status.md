@@ -30,7 +30,7 @@ Trạng thái các tính năng trong hệ thống.
 
 | Tính năng | Trạng thái | Ghi chú |
 |-----------|-----------|---------|
-| Domain Enums | Done | 9 enums: UserRole, AdministrativeLevel, ModerationStatus, EventStatus, ReviewStatus, ResourceType, ConversationStatus, MessageRole, UserStatus (Active/Locked/PendingApproval) |
+| Domain Enums | Done | 10 enums: UserRole, AdministrativeLevel, ModerationStatus, EventStatus, ScheduleType, ReviewStatus, ResourceType, ConversationStatus, MessageRole, UserStatus (Active/Locked/PendingApproval) |
 | Domain Entities | Done | 12 entities, User có RefreshToken/RefreshTokenExpiryTime |
 | PostgreSQL + EF Core | Done | AppDbContext với Npgsql, snake_case tables, enum→string, array/jsonb support |
 | EfRepository\<T\> | Done | Infrastructure/Database/EfRepository.cs (FindOneAsync, FindAsync) |
@@ -99,10 +99,10 @@ Trạng thái các tính năng trong hệ thống.
 | Place Validators | Done | CreatePlaceRequestValidator, UpdatePlaceRequestValidator |
 | PlaceService | Done | CRUD, scope check, approved/all listing |
 | PlaceController | Done | GET public (approved), POST/PUT/DELETE (Admin/Contributor with scope) |
-| Event DTOs | Done | CreateEventRequest, UpdateEventRequest, EventResponse |
-| Event Validators | Done | CreateEventRequestValidator, UpdateEventRequestValidator |
-| EventService | Done | CRUD, scope check, approved/all listing, EventStatus management |
-| EventController | Done | GET public (approved), POST/PUT/DELETE (Admin/Contributor with scope), POST seed |
+| Event DTOs | Done | CreateEventRequest, UpdateEventRequest, EventResponse, EventOccurrenceResponse, EventOccurrencesQueryRequest (hỗ trợ recurrence) |
+| Event Validators | Done | CreateEventRequestValidator, UpdateEventRequestValidator (validate theo ScheduleType) |
+| EventService | Done | CRUD, scope check, recurrence + occurrences API, EventStatus động theo now |
+| EventController | Done | GET public (approved), GET `/{id}/occurrences`, POST/PUT/DELETE (Admin/Contributor with scope), POST seed |
 | Moderation DTOs | Done | ModerationActionRequest, ModerationLogResponse |
 | Moderation Validator | Done | ModerationActionRequestValidator |
 | ModerationService | Done | Approve/Reject Place/Event, log actions, scope-based permission |

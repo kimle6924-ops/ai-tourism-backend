@@ -71,6 +71,7 @@ Trạng thái các tính năng trong hệ thống.
 | Review + Discovery (Phase 6) | Done | CRUD review (hỗ trợ rating/comment/image linh hoạt), search/filter places+events, simple search API, review stats |
 | Community (Phase 5 AddDesign) | Done | 1 public group, post + media + comment + reaction |
 | Leaderboard (Phase 2 mở rộng) | Done | Xếp hạng user theo điểm review Active |
+| Seed toàn tỉnh (Phase 6 AddDesign) | Done | Seed idempotent theo toàn bộ đơn vị cấp Province hiện có: mỗi tỉnh 2 places + 2 events + review mẫu (rule 1/3, 2/3, 3/3) |
 | AI Chat (Phase 7) | Done | Gemini streaming SSE + context memory (summary + key facts) |
 | Admin Stats (Phase 8) | Done | Overview + daily time-series, aggregate query tối ưu DB-side |
 | Docs + Hardening (Phase 9) | Not Started | Swagger, rate limit, logging |
@@ -122,6 +123,7 @@ Trạng thái các tính năng trong hệ thống.
 - Phase 5 Media Cloudinary: hoàn thành.
 - Phase 5 (AddDesign) Community: hoàn thành.
 - Phase 6 Review + Discovery: hoàn thành.
+- Phase 6 (AddDesign) Seed toàn tỉnh + review mẫu: hoàn thành.
 - Phase 7 AI Chat: hoàn thành.
 - Phase 8 Admin Stats: đã hoàn thiện overview + time-series và tối ưu truy vấn aggregate.
 

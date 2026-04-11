@@ -239,4 +239,5 @@ Mọi entity kế thừa `BaseEntity`:
 - `Dictionary<string, object>` sử dụng PostgreSQL **jsonb**.
 - Table names sử dụng **snake_case** convention.
 - Indexes được cấu hình trong `AppDbContext.OnModelCreating()`.
+- Luồng seed phase 6 dùng toàn bộ `administrative_units` level `Province` hiện có để tạo dữ liệu idempotent: mỗi tỉnh 2 `places`, 2 `events`, mỗi resource có tối thiểu 1 media primary và 1 review mẫu `Active` (tổ hợp 1/3, 2/3, 3/3 giữa `image_url`, `rating`, `comment`).
 - Migrations quản lý schema: `dotnet ef migrations add <Name>` → `dotnet ef database update`.

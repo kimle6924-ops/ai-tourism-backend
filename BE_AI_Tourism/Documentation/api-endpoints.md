@@ -415,7 +415,9 @@ Body: `content`* (string)
 - Contributor (Ward - Hải Châu): contributor.ward@aitourism.vn / contributor123
 - User: user@aitourism.vn / user123
 
-**POST `/api/dbtest/reset-and-seed-all`** — No auth, reset toàn bộ database và seed lại tất cả: tạo bảng → seed đơn vị hành chính + categories → seed accounts (admin, 2 contributors, user) → seed places → seed events. Trả về danh sách từng bước và trạng thái.
+**POST `/api/dbtest/seed-all`** — No auth, seed toàn bộ dữ liệu mà không reset DB: đảm bảo bảng tồn tại → seed đơn vị hành chính + categories + users + 1 community public group + dữ liệu toàn tỉnh (mỗi tỉnh 2 place + 2 event + review mẫu) → seed thêm 4 tài khoản mặc định (skip nếu trùng email). Trả về danh sách từng bước và trạng thái.
+
+**POST `/api/dbtest/reset-and-seed-all`** — No auth, reset toàn bộ database và seed lại tất cả: reset/create bảng → seed đơn vị hành chính + categories + users + 1 community public group + dữ liệu toàn tỉnh (mỗi tỉnh 2 place + 2 event + review mẫu) → seed thêm 4 tài khoản mặc định (skip nếu trùng email). Trả về danh sách từng bước và trạng thái.
 
 **POST `/api/geminitests`** — No auth
 Body: `prompt`* (string)

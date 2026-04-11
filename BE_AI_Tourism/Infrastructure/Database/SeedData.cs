@@ -1,7 +1,9 @@
 using BE_AI_Tourism.Domain.Entities;
 using BE_AI_Tourism.Domain.Enums;
+using BE_AI_Tourism.Shared.Utils;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Json;
+using System.Text;
 
 namespace BE_AI_Tourism.Infrastructure.Database;
 
@@ -9,6 +11,16 @@ public static class SeedData
 {
     private const string DefaultProvincesApiBaseUrl = "https://provinces.open-api.vn/api/v2";
     private const string SeedPassword = "Abc@12345";
+    private const string DefaultSeedImageUrl = "https://res.cloudinary.com/dhwljelir/image/upload/v1775384907/ai-tourism/Place/2e54b997-5494-442b-9d29-53f2480e2aff/uwyqbbcd6hphz0r31c65.jpg";
+    private static readonly string[] PreferredSeedEmails =
+    [
+        "admin@tourism.vn",
+        "user@tourism.vn",
+        "admin@aitourism.vn",
+        "user@aitourism.vn",
+        "contributor.province@aitourism.vn",
+        "contributor.ward@aitourism.vn"
+    ];
 
     public static async Task SeedAsync(AppDbContext context)
     {
@@ -16,6 +28,7 @@ public static class SeedData
         await SeedCategoriesAsync(context);
         await SeedUsersAsync(context);
         await SeedCommunityPublicGroupAsync(context);
+        await SeedNationwideTravelDataAsync(context);
     }
 
     private static async Task SeedUsersAsync(AppDbContext context)
@@ -430,6 +443,432 @@ public static class SeedData
         await context.SaveChangesAsync();
     }
 
+    private static async Task SeedNationwideTravelDataAsync(AppDbContext context)
+    {
+        var provinces = await context.AdministrativeUnits
+            .Where(u => u.Level == AdministrativeLevel.Province)
+            .OrderBy(u => u.Code)
+            .ToListAsync();
+        if (provinces.Count == 0)
+            return;
+
+        var categories = await context.Categories
+            .Where(c => c.IsActive)
+            .ToListAsync();
+        if (categories.Count == 0)
+            return;
+
+        var users = await context.Users
+            .Where(u => u.Status == UserStatus.Active)
+            .ToListAsync();
+        if (users.Count == 0)
+            return;
+
+        var admin = users.FirstOrDefault(u => u.Role == UserRole.Admin) ?? users[0];
+        var reviewUsers = users
+            .Where(u => PreferredSeedEmails.Contains(u.Email, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+        if (reviewUsers.Count == 0)
+            reviewUsers = users;
+
+        var existingPlaces = await context.Places
+            .Select(p => new { p.Id, p.Title })
+            .ToListAsync();
+        var placeByTitle = existingPlaces
+            .GroupBy(p => p.Title, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
+
+        var existingEvents = await context.Events
+            .Select(e => new { e.Id, e.Title })
+            .ToListAsync();
+        var eventByTitle = existingEvents
+            .GroupBy(e => e.Title, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.OrdinalIgnoreCase);
+
+        var placeIdsWithMedia = (await context.MediaAssets
+                .Where(m => m.ResourceType == ResourceType.Place && m.IsPrimary)
+                .Select(m => m.ResourceId)
+                .Distinct()
+                .ToListAsync())
+            .ToHashSet();
+
+        var eventIdsWithMedia = (await context.MediaAssets
+                .Where(m => m.ResourceType == ResourceType.Event && m.IsPrimary)
+                .Select(m => m.ResourceId)
+                .Distinct()
+                .ToListAsync())
+            .ToHashSet();
+
+        var existingReviewKeys = (await context.Reviews
+                .Select(r => new { r.ResourceType, r.ResourceId })
+                .Distinct()
+                .ToListAsync())
+            .Select(r => BuildReviewKey(r.ResourceType, r.ResourceId))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var categoryBySlug = categories.ToDictionary(c => c.Slug, c => c.Id, StringComparer.OrdinalIgnoreCase);
+        var now = DateTime.UtcNow;
+        var random = new Random(20260412);
+
+        for (var index = 0; index < provinces.Count; index++)
+        {
+            var province = provinces[index];
+            var provinceDisplay = NormalizeProvinceDisplayName(province.Name);
+            var tagProvince = ToTag(provinceDisplay);
+            var basePoint = BuildProvinceCoordinate(province.Code, index);
+            var placeDefinitions = BuildPlaceDefinitions(province.Name, provinceDisplay, tagProvince, basePoint, categoryBySlug, categories);
+            var eventDefinitions = BuildEventDefinitions(province.Name, provinceDisplay, tagProvince, basePoint, categoryBySlug, categories, now, index);
+
+            for (var p = 0; p < placeDefinitions.Count; p++)
+            {
+                var definition = placeDefinitions[p];
+                var placeId = placeByTitle.TryGetValue(definition.Title, out var existingPlaceId)
+                    ? existingPlaceId
+                    : await CreatePlaceAsync(context, definition, province.Id, admin.Id, now);
+
+                placeByTitle[definition.Title] = placeId;
+
+                if (!placeIdsWithMedia.Contains(placeId))
+                {
+                    await context.MediaAssets.AddAsync(CreateMediaAsset(ResourceType.Place, placeId, admin.Id, now));
+                    placeIdsWithMedia.Add(placeId);
+                }
+
+                var reviewKey = BuildReviewKey(ResourceType.Place, placeId);
+                if (!existingReviewKeys.Contains(reviewKey))
+                {
+                    var reviewUser = reviewUsers[(index + p) % reviewUsers.Count];
+                    await context.Reviews.AddAsync(CreateSampleReview(
+                        ResourceType.Place,
+                        placeId,
+                        reviewUser.Id,
+                        provinceDisplay,
+                        p,
+                        random,
+                        now));
+                    existingReviewKeys.Add(reviewKey);
+                }
+            }
+
+            for (var e = 0; e < eventDefinitions.Count; e++)
+            {
+                var definition = eventDefinitions[e];
+                var eventId = eventByTitle.TryGetValue(definition.Title, out var existingEventId)
+                    ? existingEventId
+                    : await CreateEventAsync(context, definition, province.Id, admin.Id, now);
+
+                eventByTitle[definition.Title] = eventId;
+
+                if (!eventIdsWithMedia.Contains(eventId))
+                {
+                    await context.MediaAssets.AddAsync(CreateMediaAsset(ResourceType.Event, eventId, admin.Id, now));
+                    eventIdsWithMedia.Add(eventId);
+                }
+
+                var reviewKey = BuildReviewKey(ResourceType.Event, eventId);
+                if (!existingReviewKeys.Contains(reviewKey))
+                {
+                    var reviewUser = reviewUsers[(index + e + 2) % reviewUsers.Count];
+                    await context.Reviews.AddAsync(CreateSampleReview(
+                        ResourceType.Event,
+                        eventId,
+                        reviewUser.Id,
+                        provinceDisplay,
+                        e + 2,
+                        random,
+                        now));
+                    existingReviewKeys.Add(reviewKey);
+                }
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task<Guid> CreatePlaceAsync(
+        AppDbContext context,
+        PlaceSeedDefinition definition,
+        Guid provinceId,
+        Guid adminId,
+        DateTime now)
+    {
+        var place = new Place
+        {
+            Id = Guid.NewGuid(),
+            Title = definition.Title,
+            Description = definition.Description,
+            Address = definition.Address,
+            AdministrativeUnitId = provinceId,
+            CategoryIds = definition.CategoryIds,
+            Tags = definition.Tags,
+            Latitude = definition.Latitude,
+            Longitude = definition.Longitude,
+            ModerationStatus = ModerationStatus.Approved,
+            CreatedBy = adminId,
+            ApprovedBy = adminId,
+            ApprovedAt = now,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+
+        await context.Places.AddAsync(place);
+        return place.Id;
+    }
+
+    private static async Task<Guid> CreateEventAsync(
+        AppDbContext context,
+        EventSeedDefinition definition,
+        Guid provinceId,
+        Guid adminId,
+        DateTime now)
+    {
+        var evt = new Event
+        {
+            Id = Guid.NewGuid(),
+            Title = definition.Title,
+            Description = definition.Description,
+            Address = definition.Address,
+            AdministrativeUnitId = provinceId,
+            CategoryIds = definition.CategoryIds,
+            Tags = definition.Tags,
+            Latitude = definition.Latitude,
+            Longitude = definition.Longitude,
+            ScheduleType = ScheduleType.ExactDate,
+            StartAt = definition.StartAt,
+            EndAt = definition.EndAt,
+            EventStatus = EventStatus.Upcoming,
+            ModerationStatus = ModerationStatus.Approved,
+            CreatedBy = adminId,
+            ApprovedBy = adminId,
+            ApprovedAt = now,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        evt.EventStatus = EventScheduleUtils.ResolveStatus(evt, now);
+
+        await context.Events.AddAsync(evt);
+        return evt.Id;
+    }
+
+    private static List<PlaceSeedDefinition> BuildPlaceDefinitions(
+        string provinceName,
+        string provinceDisplay,
+        string tagProvince,
+        (double Lat, double Lng) basePoint,
+        Dictionary<string, Guid> categoryBySlug,
+        List<Category> allCategories)
+    {
+        return
+        [
+            new PlaceSeedDefinition
+            {
+                Title = $"{provinceDisplay} - Không gian văn hóa bản địa",
+                Description = $"Điểm tham quan tiêu biểu tại {provinceName}, nổi bật với hoạt động trải nghiệm văn hóa và check-in địa phương.",
+                Address = $"Khu trung tâm du lịch {provinceDisplay}, {provinceName}",
+                Latitude = basePoint.Lat + 0.045,
+                Longitude = basePoint.Lng + 0.038,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa", "du-lich-sinh-thai"),
+                Tags = [$"{tagProvince}", "van-hoa", "check-in", "trai-nghiem-dia-phuong"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = $"{provinceDisplay} - Cung khám phá thiên nhiên",
+                Description = $"Không gian thiên nhiên nổi bật của {provinceName}, phù hợp trekking nhẹ, thư giãn và săn ảnh phong cảnh.",
+                Address = $"Tuyến cảnh quan sinh thái {provinceDisplay}, {provinceName}",
+                Latitude = basePoint.Lat - 0.052,
+                Longitude = basePoint.Lng - 0.041,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-sinh-thai", "du-lich-nui"),
+                Tags = [$"{tagProvince}", "thien-nhien", "trekking", "phong-canh"]
+            }
+        ];
+    }
+
+    private static List<EventSeedDefinition> BuildEventDefinitions(
+        string provinceName,
+        string provinceDisplay,
+        string tagProvince,
+        (double Lat, double Lng) basePoint,
+        Dictionary<string, Guid> categoryBySlug,
+        List<Category> allCategories,
+        DateTime now,
+        int provinceIndex)
+    {
+        var firstStart = now.AddDays(7 + (provinceIndex % 21));
+        var secondStart = now.AddDays(14 + (provinceIndex % 28));
+        return
+        [
+            new EventSeedDefinition
+            {
+                Title = $"{provinceDisplay} - Lễ hội trải nghiệm địa phương",
+                Description = $"Chuỗi hoạt động văn hóa, biểu diễn nghệ thuật và không gian đặc sản tổ chức tại {provinceName}.",
+                Address = $"Quảng trường trung tâm {provinceDisplay}, {provinceName}",
+                Latitude = basePoint.Lat + 0.018,
+                Longitude = basePoint.Lng - 0.024,
+                StartAt = firstStart,
+                EndAt = firstStart.AddDays(2),
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "le-hoi", "bieu-dien-nghe-thuat"),
+                Tags = [$"{tagProvince}", "le-hoi", "van-hoa", "su-kien-cong-dong"]
+            },
+            new EventSeedDefinition
+            {
+                Title = $"{provinceDisplay} - Tuần lễ ẩm thực và du lịch",
+                Description = $"Sự kiện quảng bá ẩm thực và sản phẩm du lịch đặc trưng của {provinceName}, kết hợp hoạt động trải nghiệm tại chỗ.",
+                Address = $"Khu sự kiện du lịch {provinceDisplay}, {provinceName}",
+                Latitude = basePoint.Lat - 0.023,
+                Longitude = basePoint.Lng + 0.027,
+                StartAt = secondStart,
+                EndAt = secondStart.AddDays(1),
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "am-thuc-duong-pho", "hoi-cho"),
+                Tags = [$"{tagProvince}", "am-thuc", "du-lich", "trai-nghiem"]
+            }
+        ];
+    }
+
+    private static List<Guid> ResolveCategoryIds(
+        Dictionary<string, Guid> categoryBySlug,
+        List<Category> allCategories,
+        params string[] slugs)
+    {
+        var ids = slugs
+            .Where(s => categoryBySlug.ContainsKey(s))
+            .Select(s => categoryBySlug[s])
+            .Distinct()
+            .ToList();
+
+        if (ids.Count > 0)
+            return ids;
+
+        return [allCategories[0].Id];
+    }
+
+    private static MediaAsset CreateMediaAsset(ResourceType resourceType, Guid resourceId, Guid uploadedBy, DateTime now)
+    {
+        return new MediaAsset
+        {
+            Id = Guid.NewGuid(),
+            ResourceType = resourceType,
+            ResourceId = resourceId,
+            Url = DefaultSeedImageUrl,
+            SecureUrl = DefaultSeedImageUrl,
+            PublicId = $"seed/{resourceType.ToString().ToLowerInvariant()}/{resourceId}",
+            Format = "jpg",
+            MimeType = "image/jpeg",
+            Bytes = 0,
+            Width = 1280,
+            Height = 720,
+            IsPrimary = true,
+            SortOrder = 0,
+            UploadedBy = uploadedBy,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+    }
+
+    private static Review CreateSampleReview(
+        ResourceType resourceType,
+        Guid resourceId,
+        Guid userId,
+        string provinceDisplay,
+        int seed,
+        Random random,
+        DateTime now)
+    {
+        var (includeImage, includeRating, includeComment) = BuildReviewComposition(seed);
+        var ratings = [4, 5, 3, 4, 5];
+
+        return new Review
+        {
+            Id = Guid.NewGuid(),
+            ResourceType = resourceType,
+            ResourceId = resourceId,
+            UserId = userId,
+            Rating = includeRating ? ratings[Math.Abs(seed + random.Next()) % ratings.Length] : null,
+            Comment = includeComment
+                ? $"Trải nghiệm tại {provinceDisplay} rất đáng thử, dịch vụ ổn định và không gian phù hợp cho du lịch địa phương."
+                : null,
+            ImageUrl = includeImage ? DefaultSeedImageUrl : null,
+            Status = ReviewStatus.Active,
+            CreatedAt = now.AddMinutes(-(seed + 1) * 13),
+            UpdatedAt = now.AddMinutes(-(seed + 1) * 7)
+        };
+    }
+
+    private static (bool IncludeImage, bool IncludeRating, bool IncludeComment) BuildReviewComposition(int seed)
+    {
+        var options = new (bool IncludeImage, bool IncludeRating, bool IncludeComment)[]
+        {
+            (true, false, false),
+            (false, true, false),
+            (false, false, true),
+            (true, true, false),
+            (true, false, true),
+            (false, true, true),
+            (true, true, true)
+        };
+
+        return options[Math.Abs(seed) % options.Length];
+    }
+
+    private static string BuildReviewKey(ResourceType resourceType, Guid resourceId)
+    {
+        return $"{resourceType}:{resourceId}";
+    }
+
+    private static (double Lat, double Lng) BuildProvinceCoordinate(string code, int index)
+    {
+        var codeNumber = 0;
+        _ = int.TryParse(code, out codeNumber);
+
+        var lat = 8.6 + ((codeNumber * 7 + index * 3) % 150) * 0.055;
+        var lng = 102.0 + ((codeNumber * 11 + index * 5) % 130) * 0.042;
+
+        lat = Math.Min(23.35, Math.Max(8.2, lat));
+        lng = Math.Min(109.9, Math.Max(102.0, lng));
+
+        return (Math.Round(lat, 6), Math.Round(lng, 6));
+    }
+
+    private static string NormalizeProvinceDisplayName(string provinceName)
+    {
+        var trimmed = provinceName.Trim();
+        if (trimmed.StartsWith("Tỉnh ", StringComparison.OrdinalIgnoreCase))
+            return trimmed[5..].Trim();
+
+        if (trimmed.StartsWith("Thành phố ", StringComparison.OrdinalIgnoreCase))
+            return trimmed[10..].Trim();
+
+        return trimmed;
+    }
+
+    private static string ToTag(string value)
+    {
+        var normalized = value.Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder();
+        foreach (var ch in normalized)
+        {
+            var category = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
+            if (category == System.Globalization.UnicodeCategory.NonSpacingMark)
+                continue;
+
+            var c = char.ToLowerInvariant(ch);
+            if (char.IsLetterOrDigit(c))
+            {
+                builder.Append(c switch
+                {
+                    'đ' => 'd',
+                    _ => c
+                });
+            }
+            else if ((char.IsWhiteSpace(c) || c is '-' or '_' or '/') && builder.Length > 0 && builder[^1] != '-')
+            {
+                builder.Append('-');
+            }
+        }
+
+        var result = builder.ToString().Trim('-');
+        return string.IsNullOrWhiteSpace(result) ? "dia-phuong" : result;
+    }
+
     private sealed class ProvinceApiItem
     {
         public int Code { get; set; }
@@ -455,5 +894,29 @@ public static class SeedData
     {
         public int Code { get; set; }
         public string Name { get; set; } = string.Empty;
+    }
+
+    private sealed class PlaceSeedDefinition
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public List<Guid> CategoryIds { get; set; } = [];
+        public List<string> Tags { get; set; } = [];
+    }
+
+    private sealed class EventSeedDefinition
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime StartAt { get; set; }
+        public DateTime EndAt { get; set; }
+        public List<Guid> CategoryIds { get; set; } = [];
+        public List<string> Tags { get; set; } = [];
     }
 }

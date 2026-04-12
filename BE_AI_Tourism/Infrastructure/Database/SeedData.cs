@@ -775,6 +775,17 @@ public static class SeedData
     {
         var (includeImage, includeComment) = BuildReviewComposition(seed);
         int[] ratings = [4, 5, 3, 4, 5];
+        string[] commentTemplates =
+        [
+            $"Không gian ở {provinceDisplay} khá thoáng, trải nghiệm tổng thể ổn.",
+            $"Điểm đến ở {provinceDisplay} phù hợp đi cuối tuần, dịch vụ thân thiện.",
+            $"Mình đánh giá cao cảnh quan và sự sạch sẽ, đáng để quay lại.",
+            $"Hoạt động khá đa dạng, gia đình mình đi ai cũng hài lòng.",
+            $"Vị trí dễ tìm, không quá đông, phù hợp để thư giãn."
+        ];
+        var comment = includeComment
+            ? commentTemplates[Math.Abs(seed + random.Next()) % commentTemplates.Length]
+            : null;
 
         return new Review
         {
@@ -783,9 +794,7 @@ public static class SeedData
             ResourceId = resourceId,
             UserId = userId,
             Rating = ratings[Math.Abs(seed + random.Next()) % ratings.Length],
-            Comment = includeComment
-                ? $"Trải nghiệm tại {provinceDisplay} rất đáng thử, dịch vụ ổn định và không gian phù hợp cho du lịch địa phương."
-                : null,
+            Comment = comment,
             ImageUrl = includeImage ? DefaultSeedImageUrl : null,
             Status = ReviewStatus.Active,
             CreatedAt = now.AddMinutes(-(seed + 1) * 13),

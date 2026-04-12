@@ -773,7 +773,7 @@ public static class SeedData
         Random random,
         DateTime now)
     {
-        var (includeImage, includeRating, includeComment) = BuildReviewComposition(seed);
+        var (includeImage, includeComment) = BuildReviewComposition(seed);
         int[] ratings = [4, 5, 3, 4, 5];
 
         return new Review
@@ -782,7 +782,7 @@ public static class SeedData
             ResourceType = resourceType,
             ResourceId = resourceId,
             UserId = userId,
-            Rating = includeRating ? ratings[Math.Abs(seed + random.Next()) % ratings.Length] : null,
+            Rating = ratings[Math.Abs(seed + random.Next()) % ratings.Length],
             Comment = includeComment
                 ? $"Trải nghiệm tại {provinceDisplay} rất đáng thử, dịch vụ ổn định và không gian phù hợp cho du lịch địa phương."
                 : null,
@@ -793,17 +793,14 @@ public static class SeedData
         };
     }
 
-    private static (bool IncludeImage, bool IncludeRating, bool IncludeComment) BuildReviewComposition(int seed)
+    private static (bool IncludeImage, bool IncludeComment) BuildReviewComposition(int seed)
     {
-        var options = new (bool IncludeImage, bool IncludeRating, bool IncludeComment)[]
+        var options = new (bool IncludeImage, bool IncludeComment)[]
         {
-            (true, false, false),
-            (false, true, false),
-            (false, false, true),
-            (true, true, false),
-            (true, false, true),
-            (false, true, true),
-            (true, true, true)
+            (true, false),
+            (false, false),
+            (false, true),
+            (true, true)
         };
 
         return options[Math.Abs(seed) % options.Length];

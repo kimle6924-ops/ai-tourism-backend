@@ -136,7 +136,7 @@ Mọi entity kế thừa `BaseEntity`:
 | rating | int? | | Điểm đánh giá (nullable) |
 | comment | string? | | Nội dung đánh giá (nullable) |
 | image_url | string? | | Ảnh review (nullable) |
-| status | string (enum) | index | Pending / Active / Hidden / Deleted |
+| status | string (enum) | index | Active / Hidden |
 
 ### moderation_logs
 
@@ -239,5 +239,5 @@ Mọi entity kế thừa `BaseEntity`:
 - `Dictionary<string, object>` sử dụng PostgreSQL **jsonb**.
 - Table names sử dụng **snake_case** convention.
 - Indexes được cấu hình trong `AppDbContext.OnModelCreating()`.
-- Luồng seed phase 6 dùng toàn bộ `administrative_units` level `Province` hiện có để tạo dữ liệu idempotent: mỗi tỉnh 2 `places`, 2 `events`, mỗi resource có tối thiểu 1 media primary và 1 review mẫu `Active` (tổ hợp 1/3, 2/3, 3/3 giữa `image_url`, `rating`, `comment`).
+- Luồng seed phase 6 dùng toàn bộ `administrative_units` level `Province` hiện có để tạo dữ liệu idempotent: mỗi tỉnh 2 `places`, 2 `events`, mỗi resource có tối thiểu 1 media primary và 1 review mẫu `Active` (luôn có `rating`, còn `image_url`/`comment` được phối hợp linh hoạt).
 - Migrations quản lý schema: `dotnet ef migrations add <Name>` → `dotnet ef database update`.

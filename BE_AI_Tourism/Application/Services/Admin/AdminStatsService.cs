@@ -138,7 +138,6 @@ public class AdminStatsService : IAdminStatsService
                 Total = totalReviews,
                 Active = reviewStatusMap[ReviewStatus.Active.ToString()],
                 Hidden = reviewStatusMap[ReviewStatus.Hidden.ToString()],
-                Deleted = reviewStatusMap[ReviewStatus.Deleted.ToString()],
                 AverageRating = Math.Round(avgActiveRating, 2),
                 ByStatus = reviewStatusMap
             },

@@ -68,10 +68,10 @@ Trạng thái các tính năng trong hệ thống.
 | Administrative + Category (Phase 3) | Done | CRUD + Seed data (63 tỉnh/thành, categories) |
 | Place/Event + Moderation (Phase 4) | Done | CRUD + workflow duyệt + scope check |
 | Media Cloudinary (Phase 5) | Done | Upload signature/finalize, set-primary, reorder, delete |
-| Review + Discovery (Phase 6) | Done | CRUD review (hỗ trợ rating/comment/image linh hoạt), search/filter places+events, simple search API, review stats |
+| Review + Discovery (Phase 6) | Done | CRUD review (rating bắt buộc, comment/image tùy chọn), search/filter places+events, simple search API, review stats |
 | Community (Phase 5 AddDesign) | Done | 1 public group, post + media + comment + reaction |
 | Leaderboard (Phase 2 mở rộng) | Done | Xếp hạng user theo điểm review Active |
-| Seed toàn tỉnh (Phase 6 AddDesign) | Done | Seed idempotent theo toàn bộ đơn vị cấp Province hiện có: mỗi tỉnh 2 places + 2 events + review mẫu (rule 1/3, 2/3, 3/3) |
+| Seed toàn tỉnh (Phase 6 AddDesign) | Done | Seed idempotent theo toàn bộ đơn vị cấp Province hiện có: mỗi tỉnh 2 places + 2 events + review mẫu (rating luôn có, comment/image linh hoạt) |
 | AI Chat (Phase 7) | Done | Gemini streaming SSE + context memory (summary + key facts) |
 | Admin Stats (Phase 8) | Done | Overview + daily time-series, aggregate query tối ưu DB-side |
 | Docs + Hardening (Phase 9) | Not Started | Swagger, rate limit, logging |
@@ -156,9 +156,9 @@ Trạng thái các tính năng trong hệ thống.
 
 | Tính năng | Trạng thái | Ghi chú |
 |-----------|-----------|---------|
-| Review DTOs | Done | CreateReviewRequest, UpdateReviewRequest, ReviewResponse, ReviewListResponse, ReviewHistoryItemResponse (hỗ trợ `rating?`, `comment?`, `imageUrl?`) |
-| Review Validators | Done | CreateReviewRequestValidator, UpdateReviewRequestValidator (rule: ít nhất 1 trong 3 rating/comment/imageUrl) |
-| ReviewService | Done | Create/update/delete (owner+Admin), get by resource (kèm thống kê), get mine, get my history (tổng hợp) |
+| Review DTOs | Done | CreateReviewRequest, UpdateReviewRequest, ReviewResponse, ReviewListResponse, ReviewHistoryItemResponse (`rating` bắt buộc trong create/update request) |
+| Review Validators | Done | CreateReviewRequestValidator, UpdateReviewRequestValidator (`rating` bắt buộc 1-5, `comment`/`imageUrl` tùy chọn) |
+| ReviewService | Done | Create/update/delete (owner+Admin), create/update mặc định `Active`, admin chuyển `Active/Hidden`, get by resource (kèm thống kê), get mine, get my history (tổng hợp) |
 | ReviewController | Done | POST/PATCH/DELETE, GET by resource, GET mine, GET me/history |
 | Leaderboard DTO | Done | UserLeaderboardItemResponse |
 | Leaderboard Service | Done | Tính điểm từ review `Active` (image + rating + comment), phân trang + rank |

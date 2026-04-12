@@ -20,7 +20,7 @@
 - ModerationStatus: 0=Pending, 1=Approved, 2=Rejected
 - EventStatus: 0=Upcoming, 1=Ongoing, 2=Ended
 - ScheduleType: 0=ExactDate, 1=YearlyRecurring, 2=MonthlyRecurring
-- ReviewStatus: 0=Pending, 1=Active, 2=Hidden, 3=Deleted
+- ReviewStatus: 0=Active, 1=Hidden
 - ResourceType: 0=Place, 1=Event
 - ConversationStatus: 0=Active, 1=Archived
 - MessageRole: 0=User, 1=Assistant, 2=System
@@ -247,17 +247,19 @@ Body: `orderedIds`* (guid[]) — danh sách media ID theo thứ tự mong muốn
 
 ## Reviews (`/api/reviews`)
 
-ReviewResponse: `id`, `resourceType` (0=Place/1=Event), `resourceId`, `userId`, `userFullName` (string), `userAvatarUrl` (string), `rating?`, `comment?`, `imageUrl?`, `status` (0=Pending/1=Active/2=Hidden/3=Deleted), `createdAt`, `updatedAt`
+ReviewResponse: `id`, `resourceType` (0=Place/1=Event), `resourceId`, `userId`, `userFullName` (string), `userAvatarUrl` (string), `rating?`, `comment?`, `imageUrl?`, `status` (0=Active/1=Hidden), `createdAt`, `updatedAt`
 
 **POST `/`** — Login (mỗi lần gọi tạo 1 review mới, 1 user có thể đánh giá nhiều lần cho cùng 1 resource)
-Body: `resourceType`* (int: 0=Place/1=Event), `resourceId`* (guid), `rating?` (int 1-5), `comment?` (string), `imageUrl?` (string)
+Body: `resourceType`* (int: 0=Place/1=Event), `resourceId`* (guid), `rating`* (int 1-5), `comment?` (string), `imageUrl?` (string)
 → ReviewResponse
-- Validation: phải có ít nhất 1 trong 3 trường `rating | comment | imageUrl`
+- Validation: `rating` là bắt buộc, `comment` và `imageUrl` là tùy chọn.
+- Trạng thái mặc định sau khi tạo: `Active`.
 
 **PATCH `/{id}`** — Login (chỉ chủ review mới sửa được, người khác → 403)
-Body: `rating?` (int 1-5), `comment?` (string), `imageUrl?` (string)
+Body: `rating`* (int 1-5), `comment?` (string), `imageUrl?` (string)
 → ReviewResponse
-- Validation: phải có ít nhất 1 trong 3 trường `rating | comment | imageUrl`
+- Validation: `rating` là bắt buộc, `comment` và `imageUrl` là tùy chọn.
+- Sau khi user cập nhật review, trạng thái được đặt lại `Active`.
 
 **DELETE `/{id}`** — Login (chủ review hoặc Admin mới xóa được) → Result
 
@@ -269,6 +271,16 @@ Body: `rating?` (int 1-5), `comment?` (string), `imageUrl?` (string)
 **GET `/me/history`** — Login, phân trang
 Query: `resourceType?` (int: 0=Place/1=Event)
 → ReviewHistoryItemResponse[] (lịch sử review tổng của user hiện tại, mới nhất trước, mỗi item có thêm `resourceTitle`, `resourceAddress`, `resourceImageUrl`)
+
+**GET `/all`** — Admin, phân trang
+Query: `status?` (int: 0=Active, 1=Hidden)
+→ ReviewResponse[] (danh sách review toàn hệ thống, có thể filter theo trạng thái)
+
+**PATCH `/{id}/approve`** — Admin
+→ Result (chuyển trạng thái review sang `Active`)
+
+**PATCH `/{id}/hide`** — Admin
+→ Result (chuyển trạng thái review sang `Hidden`)
 
 ---
 

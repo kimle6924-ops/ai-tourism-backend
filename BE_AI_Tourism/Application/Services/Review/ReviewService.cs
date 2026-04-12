@@ -46,7 +46,7 @@ public class ReviewService : IReviewService
             Rating = request.Rating,
             Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim(),
             ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim(),
-            Status = ReviewStatus.Pending
+            Status = ReviewStatus.Active
         };
 
         await _reviewRepository.AddAsync(entity);
@@ -72,8 +72,8 @@ public class ReviewService : IReviewService
         review.Rating = request.Rating;
         review.Comment = string.IsNullOrWhiteSpace(request.Comment) ? null : request.Comment.Trim();
         review.ImageUrl = string.IsNullOrWhiteSpace(request.ImageUrl) ? null : request.ImageUrl.Trim();
-        // Sửa review → reset Pending, cần duyệt lại
-        review.Status = ReviewStatus.Pending;
+        // Giữ review ở trạng thái Active sau khi user chỉnh sửa
+        review.Status = ReviewStatus.Active;
         await _reviewRepository.UpdateAsync(review);
         var response = _mapper.Map<ReviewResponse>(review);
         var user = await _userRepository.GetByIdAsync(userId);
@@ -122,10 +122,10 @@ public class ReviewService : IReviewService
 
     public async Task<Result<PaginationResponse<ReviewResponse>>> GetUserReviewsAsync(ResourceType resourceType, Guid resourceId, Guid userId, PaginationRequest request)
     {
-        // User thấy cả Pending và Active reviews của mình
+        // User thấy cả Active và Hidden reviews của mình
         var all = await _reviewRepository.FindAsync(
             r => r.ResourceType == resourceType && r.ResourceId == resourceId && r.UserId == userId
-                 && (r.Status == ReviewStatus.Active || r.Status == ReviewStatus.Pending));
+                 && (r.Status == ReviewStatus.Active || r.Status == ReviewStatus.Hidden));
         var ordered = all.OrderByDescending(r => r.CreatedAt).ToList();
         var items = ordered.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
         var responses = await MapReviewsWithUserInfo(items);
@@ -138,7 +138,6 @@ public class ReviewService : IReviewService
     {
         var all = await _reviewRepository.FindAsync(r =>
             r.UserId == userId
-            && r.Status != ReviewStatus.Deleted
             && (!resourceType.HasValue || r.ResourceType == resourceType.Value));
 
         var ordered = all.OrderByDescending(r => r.CreatedAt).ToList();
@@ -215,7 +214,7 @@ public class ReviewService : IReviewService
         if (statusFilter.HasValue)
             all = await _reviewRepository.FindAsync(r => r.Status == statusFilter.Value);
         else
-            all = await _reviewRepository.FindAsync(r => r.Status != ReviewStatus.Deleted);
+            all = await _reviewRepository.GetAllAsync();
 
         var ordered = all.OrderByDescending(r => r.CreatedAt).ToList();
         var totalCount = ordered.Count;

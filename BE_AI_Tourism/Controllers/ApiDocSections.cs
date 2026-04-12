@@ -29,7 +29,7 @@ public static class ApiDocSections
         - ModerationStatus: 0=Pending, 1=Approved, 2=Rejected
         - EventStatus: 0=Upcoming, 1=Ongoing, 2=Ended
         - ScheduleType: 0=ExactDate, 1=YearlyRecurring, 2=MonthlyRecurring
-        - ReviewStatus: 0=Pending, 1=Active, 2=Hidden, 3=Deleted
+        - ReviewStatus: 0=Active, 1=Hidden
         - ResourceType: 0=Place, 1=Event
         - ConversationStatus: 0=Active, 1=Archived
         - MessageRole: 0=User, 1=Assistant, 2=System
@@ -294,19 +294,19 @@ public static class ApiDocSections
     public static string Reviews() => """
         ## Reviews (/api/reviews)
 
-        ReviewResponse: id, resourceType (0=Place/1=Event), resourceId, userId, userFullName (string, tên user), userAvatarUrl (string, ảnh đại diện user), rating?, comment?, imageUrl?, status (0=Pending/1=Active/2=Hidden/3=Deleted), createdAt, updatedAt
+        ReviewResponse: id, resourceType (0=Place/1=Event), resourceId, userId, userFullName (string, tên user), userAvatarUrl (string, ảnh đại diện user), rating?, comment?, imageUrl?, status (0=Active/1=Hidden), createdAt, updatedAt
 
         POST /api/reviews — Login
-        Body: resourceType* (int: 0=Place/1=Event), resourceId* (guid), rating? (int, từ 1 đến 5), comment? (string, max 1000), imageUrl? (string)
+        Body: resourceType* (int: 0=Place/1=Event), resourceId* (guid), rating* (int, từ 1 đến 5), comment? (string, max 1000), imageUrl? (string)
         Điều kiện: Resource phải tồn tại VÀ đã được duyệt (moderationStatus=1 Approved). Nếu resource chưa duyệt hoặc không tồn tại → 404. Mỗi lần gọi tạo 1 review mới, 1 user có thể đánh giá nhiều lần cho cùng 1 resource.
-        Validation: BẮT BUỘC có ít nhất 1 trong 3 trường rating/comment/imageUrl.
+        Validation: rating là bắt buộc, comment và imageUrl là tùy chọn.
         Lỗi: 404 nếu resource không tồn tại hoặc chưa Approved.
         → ReviewResponse
 
         PATCH /api/reviews/{id} — Login
-        Body: rating? (int, 1-5), comment? (string, max 1000), imageUrl? (string)
+        Body: rating* (int, 1-5), comment? (string, max 1000), imageUrl? (string)
         Điều kiện: Chỉ chủ review (userId trùng) mới sửa được.
-        Validation: BẮT BUỘC có ít nhất 1 trong 3 trường rating/comment/imageUrl.
+        Validation: rating là bắt buộc, comment và imageUrl là tùy chọn.
         Lỗi: 404 nếu review không tồn tại. 403 nếu không phải chủ review.
         → ReviewResponse
 

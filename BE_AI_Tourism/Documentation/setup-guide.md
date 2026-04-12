@@ -468,8 +468,8 @@ GET /api/discovery/events?search=lễ hội&sortBy=startdate&pageNumber=1&pageSi
 
 ## Review (Đánh giá)
 
-### Tạo/cập nhật review (upsert)
-Mỗi user chỉ có 1 review cho mỗi place/event. Gọi lại sẽ đè review cũ.
+### Tạo review
+Mỗi lần gọi `POST /api/reviews` sẽ tạo một review mới. Cần `rating` bắt buộc (1-5), `comment`/`imageUrl` là tùy chọn.
 
 ```javascript
 await api.post('/reviews', {
@@ -477,6 +477,15 @@ await api.post('/reviews', {
   resourceId: '<place-id>',
   rating: 5,              // 1-5
   comment: 'Rất tuyệt!'
+});
+```
+
+### Cập nhật review
+```javascript
+await api.patch(`/reviews/${reviewId}`, {
+  rating: 4,              // bắt buộc, 1-5
+  comment: 'Update trải nghiệm',
+  imageUrl: 'https://...'
 });
 ```
 
@@ -522,7 +531,7 @@ Frontend cần biết các giá trị enum khi gọi API:
 | AdministrativeLevel | `Province`, `Ward` |
 | ModerationStatus | `Pending`, `Approved`, `Rejected` |
 | EventStatus | `Upcoming`, `Ongoing`, `Ended` |
-| ReviewStatus | `Active`, `Hidden`, `Deleted` |
+| ReviewStatus | `Active`, `Hidden` |
 | ResourceType | `Place`, `Event` |
 | ConversationStatus | `Active`, `Archived` |
 | MessageRole | `User`, `Assistant`, `System` |

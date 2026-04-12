@@ -14,8 +14,7 @@ public class CreateReviewRequestValidator : AbstractValidator<CreateReviewReques
             .NotEmpty().WithMessage("Resource ID is required");
 
         RuleFor(x => x.Rating)
-            .InclusiveBetween(1, 5).WithMessage("Rating must be between 1 and 5")
-            .When(x => x.Rating.HasValue);
+            .InclusiveBetween(1, 5).WithMessage("Rating must be between 1 and 5");
 
         RuleFor(x => x.Comment)
             .MaximumLength(1000).WithMessage("Comment must not exceed 1000 characters");
@@ -25,11 +24,5 @@ public class CreateReviewRequestValidator : AbstractValidator<CreateReviewReques
             .Must(url => string.IsNullOrWhiteSpace(url) || Uri.TryCreate(url, UriKind.Absolute, out _))
             .WithMessage("ImageUrl must be a valid absolute URL");
 
-        RuleFor(x => x)
-            .Must(x =>
-                x.Rating.HasValue
-                || !string.IsNullOrWhiteSpace(x.Comment)
-                || !string.IsNullOrWhiteSpace(x.ImageUrl))
-            .WithMessage("At least one of rating, comment or imageUrl is required");
     }
 }

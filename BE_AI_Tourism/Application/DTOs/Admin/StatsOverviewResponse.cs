@@ -61,7 +61,6 @@ public class ReviewStats
     public int Total { get; set; }
     public int Active { get; set; }
     public int Hidden { get; set; }
-    public int Deleted { get; set; }
     public double AverageRating { get; set; }
     public Dictionary<string, int> ByStatus { get; set; } = new();
 }

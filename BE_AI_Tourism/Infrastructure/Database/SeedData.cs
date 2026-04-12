@@ -774,7 +774,7 @@ public static class SeedData
         DateTime now)
     {
         var (includeImage, includeRating, includeComment) = BuildReviewComposition(seed);
-        var ratings = [4, 5, 3, 4, 5];
+        int[] ratings = [4, 5, 3, 4, 5];
 
         return new Review
         {

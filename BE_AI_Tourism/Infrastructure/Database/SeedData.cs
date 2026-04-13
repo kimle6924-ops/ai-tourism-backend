@@ -11,6 +11,7 @@ public static class SeedData
 {
     private const string DefaultProvincesApiBaseUrl = "https://provinces.open-api.vn/api/v2";
     private const string SeedPassword = "Abc@12345";
+    private const string LeaderboardSeedEmailPrefix = "leaderboard.user";
     private const string DefaultSeedImageUrl = "https://res.cloudinary.com/dhwljelir/image/upload/v1775384907/ai-tourism/Place/2e54b997-5494-442b-9d29-53f2480e2aff/uwyqbbcd6hphz0r31c65.jpg";
     private static readonly string[] PreferredSeedEmails =
     [
@@ -19,7 +20,17 @@ public static class SeedData
         "admin@aitourism.vn",
         "user@aitourism.vn",
         "contributor.province@aitourism.vn",
-        "contributor.ward@aitourism.vn"
+        "contributor.ward@aitourism.vn",
+        "leaderboard.user01@tourism.vn",
+        "leaderboard.user02@tourism.vn",
+        "leaderboard.user03@tourism.vn",
+        "leaderboard.user04@tourism.vn",
+        "leaderboard.user05@tourism.vn",
+        "leaderboard.user06@tourism.vn",
+        "leaderboard.user07@tourism.vn",
+        "leaderboard.user08@tourism.vn",
+        "leaderboard.user09@tourism.vn",
+        "leaderboard.user10@tourism.vn"
     ];
 
     public static async Task SeedAsync(AppDbContext context)
@@ -33,8 +44,10 @@ public static class SeedData
 
     private static async Task SeedUsersAsync(AppDbContext context)
     {
-        if (await context.Users.AnyAsync())
-            return;
+        var existingEmails = (await context.Users
+                .Select(u => u.Email)
+                .ToListAsync())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         // Tìm Lào Cai (code=15) và Sa Pa (code=152) cho seed accounts
         var laoCai = await context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "15");
@@ -45,8 +58,14 @@ public static class SeedData
 
         var users = new List<User>();
 
+        void AddSeedUser(User user)
+        {
+            if (existingEmails.Add(user.Email))
+                users.Add(user);
+        }
+
         // 1. Admin - quản trị hệ thống
-        users.Add(new User
+        AddSeedUser(new User
         {
             Id = Guid.NewGuid(),
             Email = "admin@tourism.vn",
@@ -62,7 +81,7 @@ public static class SeedData
         });
 
         // 2. Trung ương - quản lý toàn quốc
-        users.Add(new User
+        AddSeedUser(new User
         {
             Id = Guid.NewGuid(),
             Email = "trungduong@tourism.vn",
@@ -80,7 +99,7 @@ public static class SeedData
         // 3. Cấp tỉnh - quản lý Lào Cai
         if (laoCai != null)
         {
-            users.Add(new User
+            AddSeedUser(new User
             {
                 Id = Guid.NewGuid(),
                 Email = "laocai@tourism.vn",
@@ -99,7 +118,7 @@ public static class SeedData
         // 4. Cấp xã - quản lý Sa Pa
         if (saPa != null)
         {
-            users.Add(new User
+            AddSeedUser(new User
             {
                 Id = Guid.NewGuid(),
                 Email = "sapa@tourism.vn",
@@ -118,7 +137,7 @@ public static class SeedData
         // 5. Cộng tác viên - Sa Pa
         if (saPa != null)
         {
-            users.Add(new User
+            AddSeedUser(new User
             {
                 Id = Guid.NewGuid(),
                 Email = "ctv.sapa@tourism.vn",
@@ -135,7 +154,7 @@ public static class SeedData
         }
 
         // 6. User thường
-        users.Add(new User
+        AddSeedUser(new User
         {
             Id = Guid.NewGuid(),
             Email = "user@tourism.vn",
@@ -150,8 +169,30 @@ public static class SeedData
             UpdatedAt = DateTime.UtcNow
         });
 
-        await context.Users.AddRangeAsync(users);
-        await context.SaveChangesAsync();
+        // 7-16. User fake cho leaderboard test
+        for (var i = 1; i <= 10; i++)
+        {
+            AddSeedUser(new User
+            {
+                Id = Guid.NewGuid(),
+                Email = $"leaderboard.user{i:00}@tourism.vn",
+                Password = password,
+                FullName = $"User Leaderboard {i:00}",
+                Phone = $"09010000{i:00}",
+                Role = UserRole.User,
+                ContributorType = null,
+                AdministrativeUnitId = null,
+                Status = UserStatus.Active,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        if (users.Count > 0)
+        {
+            await context.Users.AddRangeAsync(users);
+            await context.SaveChangesAsync();
+        }
     }
 
     private static async Task SeedAdministrativeUnitsAsync(AppDbContext context)
@@ -466,8 +507,17 @@ public static class SeedData
 
         var admin = users.FirstOrDefault(u => u.Role == UserRole.Admin) ?? users[0];
         var reviewUsers = users
-            .Where(u => PreferredSeedEmails.Contains(u.Email, StringComparer.OrdinalIgnoreCase))
+            .Where(u => u.Email.StartsWith(LeaderboardSeedEmailPrefix, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(u => u.Email)
             .ToList();
+
+        if (reviewUsers.Count == 0)
+        {
+            reviewUsers = users
+                .Where(u => PreferredSeedEmails.Contains(u.Email, StringComparer.OrdinalIgnoreCase))
+                .ToList();
+        }
+
         if (reviewUsers.Count == 0)
             reviewUsers = users;
 

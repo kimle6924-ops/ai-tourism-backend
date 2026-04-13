@@ -299,6 +299,9 @@ Quy tắc tính điểm (chỉ tính review `Active`):
 
 ## Discovery (`/api/discovery`) — Public
 
+**GET `/tags`** — Public
+→ string[] (danh sách tag distinct từ `Place.Tags` + `Event.Tags` đã Approved, đã loại rỗng, sort A-Z, không phân biệt hoa thường)
+
 **GET `/places`** — Public, phân trang (chỉ trả place đã Approved)
 Query: `search?` (string), `categoryId?` (guid), `administrativeUnitId?` (guid), `tag?` (string), `sortBy` (newest/oldest/rating/name, default: newest)
 → PlaceResponse[]
@@ -427,9 +430,9 @@ Body: `content`* (string)
 - Contributor (Ward - Hải Châu): contributor.ward@aitourism.vn / contributor123
 - User: user@aitourism.vn / user123
 
-**POST `/api/dbtest/seed-all`** — No auth, seed toàn bộ dữ liệu mà không reset DB: đảm bảo bảng tồn tại → seed đơn vị hành chính + categories + users + 1 community public group + dữ liệu toàn tỉnh (mỗi tỉnh 2 place + 2 event + review mẫu) → seed thêm 4 tài khoản mặc định (skip nếu trùng email). Trả về danh sách từng bước và trạng thái.
+**POST `/api/dbtest/seed-all`** — No auth, seed toàn bộ dữ liệu mà không reset DB: đảm bảo bảng tồn tại → seed đơn vị hành chính + categories + users + 1 community public group + dữ liệu toàn tỉnh (mỗi tỉnh 2 place + 2 event + review mẫu) + bộ dữ liệu Sa Pa gốc (idempotent theo title) → seed thêm 4 tài khoản mặc định (skip nếu trùng email). Trả về danh sách từng bước và trạng thái.
 
-**POST `/api/dbtest/reset-and-seed-all`** — No auth, reset toàn bộ database và seed lại tất cả: reset/create bảng → seed đơn vị hành chính + categories + users + 1 community public group + dữ liệu toàn tỉnh (mỗi tỉnh 2 place + 2 event + review mẫu) → seed thêm 4 tài khoản mặc định (skip nếu trùng email). Trả về danh sách từng bước và trạng thái.
+**POST `/api/dbtest/reset-and-seed-all`** — No auth, reset toàn bộ database và seed lại tất cả: reset/create bảng → seed đơn vị hành chính + categories + users + 1 community public group + dữ liệu toàn tỉnh (mỗi tỉnh 2 place + 2 event + review mẫu) + bộ dữ liệu Sa Pa gốc (idempotent theo title) → seed thêm 4 tài khoản mặc định (skip nếu trùng email). Trả về danh sách từng bước và trạng thái.
 
 **POST `/api/geminitests`** — No auth
 Body: `prompt`* (string)

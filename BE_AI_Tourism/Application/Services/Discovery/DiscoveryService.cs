@@ -40,6 +40,23 @@ public class DiscoveryService : IDiscoveryService
         _mapper = mapper;
     }
 
+    public async Task<Result<List<string>>> GetAllTagsAsync()
+    {
+        var approvedPlaces = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
+        var approvedEvents = await _eventRepository.FindAsync(e => e.ModerationStatus == ModerationStatus.Approved);
+
+        var tags = approvedPlaces
+            .SelectMany(p => p.Tags ?? [])
+            .Concat(approvedEvents.SelectMany(e => e.Tags ?? []))
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(t => t.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return Result.Ok(tags);
+    }
+
     // ───────────── OLD API (fixed rating sort) ─────────────
 
     public async Task<Result<PaginationResponse<PlaceResponse>>> SearchPlacesAsync(DiscoveryRequest request)

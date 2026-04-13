@@ -68,7 +68,7 @@ public class DbTestController : ControllerBase
 
     /// <summary>
     /// Seed toàn bộ dữ liệu mẫu mà KHÔNG reset database.
-    /// Thứ tự: ensure tables -> seed nền tảng + dữ liệu toàn tỉnh (2 place + 2 event + review mẫu / tỉnh) -> seed accounts (skip nếu trùng).
+    /// Thứ tự: ensure tables -> seed nền tảng + dữ liệu toàn tỉnh (2 place + 2 event + review mẫu / tỉnh) + bộ Sa Pa gốc -> seed accounts (skip nếu trùng).
     /// </summary>
     [HttpPost("seed-all")]
     public async Task<IActionResult> SeedAll()
@@ -85,7 +85,7 @@ public class DbTestController : ControllerBase
         });
 
         await SeedData.SeedAsync(_context);
-        steps.Add(new { Step = 2, Action = "Seed administrative units, categories, users, public community group, nationwide places/events/reviews", Status = "OK" });
+        steps.Add(new { Step = 2, Action = "Seed administrative units, categories, users, public community group, nationwide places/events/reviews + legacy Sa Pa pack", Status = "OK" });
 
         var (accountCreated, accountSkipped) = await SeedDefaultAccountsAsync(skipIfExists: true);
         steps.Add(new
@@ -106,7 +106,7 @@ public class DbTestController : ControllerBase
 
     /// <summary>
     /// Reset toàn bộ database, tạo lại bảng, seed tất cả dữ liệu mẫu.
-    /// Thứ tự: reset DB → create tables → seed data nền tảng + dữ liệu toàn tỉnh → seed accounts bổ sung (skip duplicate)
+    /// Thứ tự: reset DB → create tables → seed data nền tảng + dữ liệu toàn tỉnh + bộ Sa Pa gốc → seed accounts bổ sung (skip duplicate)
     /// </summary>
     [HttpPost("reset-and-seed-all")]
     public async Task<IActionResult> ResetAndSeedAll()
@@ -120,7 +120,7 @@ public class DbTestController : ControllerBase
 
         // 2. Seed nền tảng + dữ liệu toàn tỉnh (from SeedData.cs)
         await SeedData.SeedAsync(_context);
-        steps.Add(new { Step = 2, Action = "Seed administrative units, categories, users, public group, nationwide places/events/reviews", Status = "OK" });
+        steps.Add(new { Step = 2, Action = "Seed administrative units, categories, users, public group, nationwide places/events/reviews + legacy Sa Pa pack", Status = "OK" });
 
         // 3. Seed accounts bổ sung (Admin, 2 Contributor, User) nếu chưa tồn tại
         var (accountCreated, accountSkipped) = await SeedDefaultAccountsAsync(skipIfExists: true);

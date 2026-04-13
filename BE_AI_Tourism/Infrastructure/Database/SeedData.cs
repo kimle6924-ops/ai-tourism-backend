@@ -582,7 +582,108 @@ public static class SeedData
             }
         }
 
+        await SeedLegacySapaPackAsync(
+            context,
+            admin.Id,
+            reviewUsers,
+            categories,
+            categoryBySlug,
+            placeByTitle,
+            eventByTitle,
+            placeIdsWithMedia,
+            eventIdsWithMedia,
+            existingReviewKeys,
+            random,
+            now,
+            provinces[0].Id);
+
         await context.SaveChangesAsync();
+    }
+
+    private static async Task SeedLegacySapaPackAsync(
+        AppDbContext context,
+        Guid adminId,
+        List<User> reviewUsers,
+        List<Category> categories,
+        Dictionary<string, Guid> categoryBySlug,
+        Dictionary<string, Guid> placeByTitle,
+        Dictionary<string, Guid> eventByTitle,
+        HashSet<Guid> placeIdsWithMedia,
+        HashSet<Guid> eventIdsWithMedia,
+        HashSet<string> existingReviewKeys,
+        Random random,
+        DateTime now,
+        Guid fallbackAdministrativeUnitId)
+    {
+        var saPaUnit = await context.AdministrativeUnits
+            .FirstOrDefaultAsync(u => u.Code == "152")
+            ?? await context.AdministrativeUnits.FirstOrDefaultAsync(u => u.Code == "3006");
+
+        var sapaUnitId = saPaUnit?.Id ?? fallbackAdministrativeUnitId;
+        var sapaPlaces = BuildLegacySapaPlaceDefinitions(categoryBySlug, categories);
+        var sapaEvents = BuildLegacySapaEventDefinitions(categoryBySlug, categories, now);
+
+        for (var i = 0; i < sapaPlaces.Count; i++)
+        {
+            var definition = sapaPlaces[i];
+            var placeId = placeByTitle.TryGetValue(definition.Title, out var existingPlaceId)
+                ? existingPlaceId
+                : await CreatePlaceAsync(context, definition, sapaUnitId, adminId, now);
+
+            placeByTitle[definition.Title] = placeId;
+
+            if (!placeIdsWithMedia.Contains(placeId))
+            {
+                await context.MediaAssets.AddAsync(CreateMediaAsset(ResourceType.Place, placeId, adminId, now));
+                placeIdsWithMedia.Add(placeId);
+            }
+
+            var reviewKey = BuildReviewKey(ResourceType.Place, placeId);
+            if (existingReviewKeys.Contains(reviewKey))
+                continue;
+
+            var reviewUser = reviewUsers[i % reviewUsers.Count];
+            await context.Reviews.AddAsync(CreateSampleReview(
+                ResourceType.Place,
+                placeId,
+                reviewUser.Id,
+                "Sa Pa",
+                i + 20,
+                random,
+                now));
+            existingReviewKeys.Add(reviewKey);
+        }
+
+        for (var i = 0; i < sapaEvents.Count; i++)
+        {
+            var definition = sapaEvents[i];
+            var eventId = eventByTitle.TryGetValue(definition.Title, out var existingEventId)
+                ? existingEventId
+                : await CreateEventAsync(context, definition, sapaUnitId, adminId, now);
+
+            eventByTitle[definition.Title] = eventId;
+
+            if (!eventIdsWithMedia.Contains(eventId))
+            {
+                await context.MediaAssets.AddAsync(CreateMediaAsset(ResourceType.Event, eventId, adminId, now));
+                eventIdsWithMedia.Add(eventId);
+            }
+
+            var reviewKey = BuildReviewKey(ResourceType.Event, eventId);
+            if (existingReviewKeys.Contains(reviewKey))
+                continue;
+
+            var reviewUser = reviewUsers[(i + 2) % reviewUsers.Count];
+            await context.Reviews.AddAsync(CreateSampleReview(
+                ResourceType.Event,
+                eventId,
+                reviewUser.Id,
+                "Sa Pa",
+                i + 40,
+                random,
+                now));
+            existingReviewKeys.Add(reviewKey);
+        }
     }
 
     private static async Task<Guid> CreatePlaceAsync(
@@ -720,6 +821,377 @@ public static class SeedData
                 EndAt = secondStart.AddDays(1),
                 CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "am-thuc-duong-pho", "hoi-cho"),
                 Tags = [$"{tagProvince}", "am-thuc", "du-lich", "trai-nghiem"]
+            }
+        ];
+    }
+
+    private static List<PlaceSeedDefinition> BuildLegacySapaPlaceDefinitions(
+        Dictionary<string, Guid> categoryBySlug,
+        List<Category> allCategories)
+    {
+        return
+        [
+            new PlaceSeedDefinition
+            {
+                Title = "Bản Cát Cát",
+                Description = "Bản làng du lịch nổi tiếng tại Sa Pa. Nơi du khách có thể khám phá văn hóa người H'Mông và khung cảnh núi rừng hùng vĩ.",
+                Address = "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3263,
+                Longitude = 103.8437,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa", "du-lich-sinh-thai"),
+                Tags = ["sapa", "ban-lang", "van-hoa-hmong", "trekking"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Bản Cát Cát – Điểm Check-in",
+                Description = "Điểm check-in nổi tiếng với nhà gỗ truyền thống, suối và ruộng bậc thang tuyệt đẹp.",
+                Address = "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3260,
+                Longitude = 103.8440,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa", "du-lich-sinh-thai"),
+                Tags = ["sapa", "check-in", "ruong-bac-thang", "nha-go"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Bản Cát Cát – Trekking",
+                Description = "Không gian thiên nhiên trong lành, thích hợp trekking và khám phá đời sống người dân bản địa.",
+                Address = "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3265,
+                Longitude = 103.8435,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-sinh-thai", "du-lich-mao-hiem"),
+                Tags = ["sapa", "trekking", "sinh-thai", "ban-dia"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Bản Cát Cát – Ruộng Bậc Thang",
+                Description = "Ruộng bậc thang và làng truyền thống tạo nên khung cảnh đặc trưng vùng Tây Bắc.",
+                Address = "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3258,
+                Longitude = 103.8442,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-nui", "du-lich-sinh-thai"),
+                Tags = ["sapa", "ruong-bac-thang", "tay-bac", "phong-canh"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Bản Cát Cát – Văn Hóa Dân Tộc",
+                Description = "Trải nghiệm cuộc sống bản làng và văn hóa dân tộc thiểu số đặc sắc.",
+                Address = "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3270,
+                Longitude = 103.8430,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa"),
+                Tags = ["sapa", "dan-toc-thieu-so", "van-hoa", "trai-nghiem"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Bản Cát Cát – Nghỉ Dưỡng",
+                Description = "Khung cảnh núi rừng, nhà gỗ và không gian nghỉ dưỡng bình yên.",
+                Address = "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3262,
+                Longitude = 103.8438,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "resort", "du-lich-sinh-thai"),
+                Tags = ["sapa", "nghi-duong", "binh-yen", "nui-rung"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Bản Cát Cát – Chụp Ảnh",
+                Description = "Nơi lý tưởng để chụp ảnh và trải nghiệm thiên nhiên Tây Bắc.",
+                Address = "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3267,
+                Longitude = 103.8433,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-sinh-thai", "du-lich-nui"),
+                Tags = ["sapa", "chup-anh", "tay-bac", "thien-nhien"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Bản Cát Cát – Tham Quan",
+                Description = "Điểm tham quan nổi tiếng với phong cảnh thiên nhiên và văn hóa bản địa.",
+                Address = "Bản Cát Cát, San Sả Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3255,
+                Longitude = 103.8445,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa", "du-lich-sinh-thai"),
+                Tags = ["sapa", "tham-quan", "phong-canh", "ban-dia"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Núi Hàm Rồng",
+                Description = "Khu du lịch trên núi với vườn hoa, điểm ngắm toàn cảnh thị xã Sa Pa và không khí mát lạnh quanh năm.",
+                Address = "Khu du lịch Hàm Rồng, Sa Pa, Lào Cai",
+                Latitude = 22.3366,
+                Longitude = 103.8414,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-nui", "du-lich-sinh-thai"),
+                Tags = ["ham-rong", "san-may", "view-dep", "sapa"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Nhà thờ Đá Sa Pa",
+                Description = "Biểu tượng kiến trúc Pháp cổ giữa trung tâm thị xã, thuận tiện tham quan và chụp ảnh.",
+                Address = "Quảng trường Sa Pa, Sa Pa, Lào Cai",
+                Latitude = 22.3361,
+                Longitude = 103.8434,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa", "du-lich-tam-linh"),
+                Tags = ["nha-tho-da", "kien-truc", "check-in", "trung-tam"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Thung lũng Mường Hoa",
+                Description = "Thung lũng nổi tiếng với ruộng bậc thang và bãi đá cổ, phù hợp trải nghiệm thiên nhiên bản địa.",
+                Address = "Mường Hoa, Sa Pa, Lào Cai",
+                Latitude = 22.3179,
+                Longitude = 103.8622,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-sinh-thai", "du-lich-van-hoa"),
+                Tags = ["muong-hoa", "ruong-bac-thang", "bai-da-co", "trekking"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Đèo Ô Quy Hồ",
+                Description = "Một trong tứ đại đỉnh đèo Tây Bắc, cảnh quan hùng vĩ, phù hợp săn mây và ngắm hoàng hôn.",
+                Address = "Đèo Ô Quy Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3850,
+                Longitude = 103.7782,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-nui", "du-lich-mao-hiem"),
+                Tags = ["o-quy-ho", "san-may", "phuot", "tay-bac"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Thác Bạc Sa Pa",
+                Description = "Thác nước tự nhiên cao, nước chảy mạnh quanh năm, là điểm dừng nổi bật trên cung đường Ô Quy Hồ.",
+                Address = "QL4D, San Sả Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3562,
+                Longitude = 103.7892,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-sinh-thai", "du-lich-nui"),
+                Tags = ["thac-bac", "thien-nhien", "song-ao", "sapa"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Sun World Fansipan Legend",
+                Description = "Tổ hợp du lịch với cáp treo Fansipan và các điểm tâm linh, trải nghiệm săn mây trên đỉnh cao Đông Dương.",
+                Address = "Nguyễn Chí Thanh, Sa Pa, Lào Cai",
+                Latitude = 22.3390,
+                Longitude = 103.8105,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-nui", "du-lich-tam-linh"),
+                Tags = ["fansipan", "cap-treo", "san-may", "tam-linh"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Chợ đêm Sa Pa",
+                Description = "Không gian mua sắm và ẩm thực địa phương về đêm, phù hợp trải nghiệm văn hóa bản địa.",
+                Address = "Đường N1, trung tâm Sa Pa, Lào Cai",
+                Latitude = 22.3368,
+                Longitude = 103.8452,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "cho-truyen-thong", "am-thuc-duong-pho"),
+                Tags = ["cho-dem", "am-thuc", "dac-san", "van-hoa"]
+            },
+            new PlaceSeedDefinition
+            {
+                Title = "Hồ Sa Pa",
+                Description = "Hồ nước trung tâm với đường dạo bộ thoáng mát, thích hợp thư giãn và ngắm cảnh buổi chiều.",
+                Address = "Khu hồ trung tâm Sa Pa, Lào Cai",
+                Latitude = 22.3397,
+                Longitude = 103.8461,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "cong-vien", "du-lich-sinh-thai"),
+                Tags = ["ho-sapa", "di-bo", "thu-gian", "check-in"]
+            }
+        ];
+    }
+
+    private static List<EventSeedDefinition> BuildLegacySapaEventDefinitions(
+        Dictionary<string, Guid> categoryBySlug,
+        List<Category> allCategories,
+        DateTime now)
+    {
+        return
+        [
+            new EventSeedDefinition
+            {
+                Title = "Lễ hội Hoa Đào Sa Pa",
+                Description = "Lễ hội thường niên tôn vinh vẻ đẹp hoa đào vùng Tây Bắc, với các hoạt động văn nghệ, ẩm thực và triển lãm hoa.",
+                Address = "Quảng trường Sa Pa, Lào Cai",
+                Latitude = 22.3361,
+                Longitude = 103.8434,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa", "du-lich-sinh-thai"),
+                Tags = ["le-hoi", "hoa-dao", "sapa", "tay-bac"],
+                StartAt = now.AddDays(10),
+                EndAt = now.AddDays(13)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Giải Marathon Sa Pa",
+                Description = "Giải chạy bộ xuyên núi với cung đường đẹp qua ruộng bậc thang và bản làng dân tộc.",
+                Address = "Trung tâm Sa Pa, Lào Cai",
+                Latitude = 22.3366,
+                Longitude = 103.8414,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-mao-hiem", "du-lich-nui"),
+                Tags = ["marathon", "chay-bo", "sapa", "the-thao"],
+                StartAt = now.AddDays(20),
+                EndAt = now.AddDays(21)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Chợ phiên Bắc Hà",
+                Description = "Phiên chợ truyền thống của đồng bào dân tộc vùng cao, nổi tiếng với sắc màu thổ cẩm và ẩm thực đặc sản.",
+                Address = "Thị trấn Bắc Hà, Lào Cai",
+                Latitude = 22.5350,
+                Longitude = 104.2890,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "cho-truyen-thong", "du-lich-van-hoa"),
+                Tags = ["cho-phien", "bac-ha", "dan-toc", "tho-cam"],
+                StartAt = now.AddDays(-1),
+                EndAt = now.AddDays(0)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Lễ hội Gầu Tào",
+                Description = "Lễ hội truyền thống của người H'Mông mừng xuân mới, cầu phúc lộc với các trò chơi dân gian và múa khèn.",
+                Address = "Bản Cát Cát, Sa Pa, Lào Cai",
+                Latitude = 22.3263,
+                Longitude = 103.8437,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa"),
+                Tags = ["le-hoi", "hmong", "gau-tao", "dan-gian"],
+                StartAt = now.AddDays(30),
+                EndAt = now.AddDays(32)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Đêm nhạc Fansipan",
+                Description = "Đêm nhạc ngoài trời trên đỉnh Fansipan với các nghệ sĩ nổi tiếng và không gian mây trời lãng mạn.",
+                Address = "Sun World Fansipan Legend, Sa Pa, Lào Cai",
+                Latitude = 22.3390,
+                Longitude = 103.8105,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-nui", "bieu-dien-nghe-thuat"),
+                Tags = ["am-nhac", "fansipan", "sapa", "ngoai-troi"],
+                StartAt = now.AddDays(15),
+                EndAt = now.AddDays(15)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Tuần lễ Ẩm thực Sa Pa",
+                Description = "Sự kiện quy tụ các món ăn đặc sản vùng Tây Bắc: thắng cố, cá suối nướng, xôi ngũ sắc và rượu táo mèo.",
+                Address = "Đường N1, trung tâm Sa Pa, Lào Cai",
+                Latitude = 22.3368,
+                Longitude = 103.8452,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "am-thuc-duong-pho", "du-lich-van-hoa"),
+                Tags = ["am-thuc", "thang-co", "dac-san", "tay-bac"],
+                StartAt = now.AddDays(-3),
+                EndAt = now.AddDays(4)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Cuộc thi nhiếp ảnh Mường Hoa",
+                Description = "Cuộc thi chụp ảnh phong cảnh ruộng bậc thang và đời sống bản địa tại thung lũng Mường Hoa.",
+                Address = "Thung lũng Mường Hoa, Sa Pa, Lào Cai",
+                Latitude = 22.3179,
+                Longitude = 103.8622,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-sinh-thai", "du-lich-van-hoa"),
+                Tags = ["nhiep-anh", "muong-hoa", "ruong-bac-thang", "cuoc-thi"],
+                StartAt = now.AddDays(25),
+                EndAt = now.AddDays(30)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Festival Hoa Hồng Fansipan",
+                Description = "Triển lãm hàng ngàn gốc hồng cổ và hồng ngoại nhập tại khu vực Sun World Fansipan Legend.",
+                Address = "Sun World Fansipan Legend, Sa Pa, Lào Cai",
+                Latitude = 22.3390,
+                Longitude = 103.8105,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-sinh-thai", "trien-lam"),
+                Tags = ["hoa-hong", "festival", "fansipan", "trien-lam"],
+                StartAt = now.AddDays(40),
+                EndAt = now.AddDays(47)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Trekking chinh phục Fansipan",
+                Description = "Tour trekking 2 ngày 1 đêm chinh phục nóc nhà Đông Dương theo đường cổ truyền.",
+                Address = "Trạm Tôn, Sa Pa, Lào Cai",
+                Latitude = 22.3530,
+                Longitude = 103.7750,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-mao-hiem", "du-lich-nui"),
+                Tags = ["trekking", "fansipan", "chinh-phuc", "2n1d"],
+                StartAt = now.AddDays(5),
+                EndAt = now.AddDays(6)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Workshop dệt thổ cẩm",
+                Description = "Trải nghiệm học dệt thổ cẩm truyền thống cùng nghệ nhân người Dao Đỏ tại bản Tả Phìn.",
+                Address = "Bản Tả Phìn, Sa Pa, Lào Cai",
+                Latitude = 22.3700,
+                Longitude = 103.8200,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa"),
+                Tags = ["tho-cam", "workshop", "dao-do", "trai-nghiem"],
+                StartAt = now.AddDays(-2),
+                EndAt = now.AddDays(1)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Ngắm mây đèo Ô Quy Hồ",
+                Description = "Tour săn mây bình minh tại đèo Ô Quy Hồ, một trong tứ đại đỉnh đèo Tây Bắc.",
+                Address = "Đèo Ô Quy Hồ, Sa Pa, Lào Cai",
+                Latitude = 22.3850,
+                Longitude = 103.7782,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-nui", "du-lich-sinh-thai"),
+                Tags = ["san-may", "o-quy-ho", "binh-minh", "deo"],
+                StartAt = now.AddDays(7),
+                EndAt = now.AddDays(7)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Lễ hội Xuống đồng",
+                Description = "Lễ hội truyền thống đầu vụ mùa của người Tày, Giáy tại Sa Pa với nghi thức cày ruộng và hát then.",
+                Address = "Bản Lao Chải, Sa Pa, Lào Cai",
+                Latitude = 22.3100,
+                Longitude = 103.8500,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa"),
+                Tags = ["le-hoi", "xuong-dong", "nguoi-tay", "truyen-thong"],
+                StartAt = now.AddDays(50),
+                EndAt = now.AddDays(51)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Đua ngựa Bắc Hà",
+                Description = "Giải đua ngựa truyền thống của đồng bào vùng cao Bắc Hà, thu hút du khách gần xa.",
+                Address = "Sân vận động Bắc Hà, Lào Cai",
+                Latitude = 22.5360,
+                Longitude = 104.2900,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-van-hoa", "du-lich-mao-hiem"),
+                Tags = ["dua-ngua", "bac-ha", "truyen-thong", "the-thao"],
+                StartAt = now.AddDays(35),
+                EndAt = now.AddDays(36)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Lễ hội Trà Sa Pa",
+                Description = "Sự kiện thưởng thức và tìm hiểu các loại trà đặc sản vùng cao: trà Shan Tuyết cổ thụ, trà Ô Long Sa Pa.",
+                Address = "Khu du lịch Hàm Rồng, Sa Pa, Lào Cai",
+                Latitude = 22.3366,
+                Longitude = 103.8414,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "am-thuc-duong-pho", "du-lich-sinh-thai"),
+                Tags = ["tra", "shan-tuyet", "sapa", "dac-san"],
+                StartAt = now.AddDays(18),
+                EndAt = now.AddDays(20)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Camping & BBQ Thác Bạc",
+                Description = "Chương trình cắm trại qua đêm kết hợp BBQ ngoài trời tại khu vực Thác Bạc Sa Pa.",
+                Address = "Thác Bạc, QL4D, Sa Pa, Lào Cai",
+                Latitude = 22.3562,
+                Longitude = 103.7892,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "du-lich-mao-hiem", "du-lich-sinh-thai"),
+                Tags = ["camping", "bbq", "thac-bac", "ngoai-troi"],
+                StartAt = now.AddDays(12),
+                EndAt = now.AddDays(13)
+            },
+            new EventSeedDefinition
+            {
+                Title = "Hội chợ Đông – Xuân Sa Pa",
+                Description = "Hội chợ cuối năm với gian hàng thủ công mỹ nghệ, đặc sản vùng cao và chương trình văn nghệ dân tộc.",
+                Address = "Quảng trường Sa Pa, Lào Cai",
+                Latitude = 22.3361,
+                Longitude = 103.8434,
+                CategoryIds = ResolveCategoryIds(categoryBySlug, allCategories, "cho-truyen-thong", "hoi-cho"),
+                Tags = ["hoi-cho", "thu-cong", "dac-san", "van-nghe"],
+                StartAt = now.AddDays(60),
+                EndAt = now.AddDays(67)
             }
         ];
     }

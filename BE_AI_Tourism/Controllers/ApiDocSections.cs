@@ -343,6 +343,9 @@ public static class ApiDocSections
 
         ### Tìm kiếm nâng cao (có đầy đủ filter)
 
+        GET /api/discovery/tags — Public
+        Trả về mảng string[] gồm toàn bộ tag distinct lấy từ Place.Tags và Event.Tags đã Approved, loại bỏ chuỗi rỗng, sắp xếp A-Z, không phân biệt hoa thường.
+
         GET /api/discovery/places — Public, phân trang (chỉ trả place đã Approved)
         Query: search? (string, tìm trong title và description, không phân biệt hoa thường), categoryId? (guid), administrativeUnitId? (guid), tag? (string, tìm trong mảng tags), sortBy (newest/oldest/rating/name, default: newest). rating sắp theo trung bình rating của review Active giảm dần.
         → PlaceResponse[] (mỗi item có averageRating)
@@ -465,9 +468,9 @@ public static class ApiDocSections
           Contributor (Province - Đà Nẵng): contributor.province@aitourism.vn / contributor123
           Contributor (Ward - Hải Châu): contributor.ward@aitourism.vn / contributor123
           User: user@aitourism.vn / user123
-        POST /api/dbtest/seed-all — seed toàn bộ dữ liệu mà KHÔNG reset database: đảm bảo table tồn tại → seed đơn vị hành chính + categories → seed accounts (bỏ qua email trùng) → seed places → seed events. Chạy nhiều lần không lỗi do trùng account/place/event.
+        POST /api/dbtest/seed-all — seed toàn bộ dữ liệu mà KHÔNG reset database: đảm bảo table tồn tại → seed đơn vị hành chính + categories → seed accounts (bỏ qua email trùng) → seed dữ liệu toàn tỉnh (2 place + 2 event mỗi tỉnh) + bộ Sa Pa gốc. Chạy nhiều lần không lỗi do trùng account/place/event.
 
-        POST /api/dbtest/reset-and-seed-all — reset toàn bộ database và seed lại tất cả dữ liệu: tạo bảng → seed đơn vị hành chính + categories → seed accounts (admin, 2 contributors, user) → seed places → seed events. Trả về danh sách từng bước thực hiện và trạng thái.
+        POST /api/dbtest/reset-and-seed-all — reset toàn bộ database và seed lại tất cả dữ liệu: tạo bảng → seed đơn vị hành chính + categories → seed accounts (admin, 2 contributors, user) → seed dữ liệu toàn tỉnh (2 place + 2 event mỗi tỉnh) + bộ Sa Pa gốc. Trả về danh sách từng bước thực hiện và trạng thái.
 
         POST /api/geminitests — Body: prompt* (string) → response (string)
 

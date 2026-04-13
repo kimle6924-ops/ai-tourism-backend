@@ -18,6 +18,13 @@ public class DiscoveryController : ControllerBase
         _discoveryService = discoveryService;
     }
 
+    [HttpGet("tags")]
+    public async Task<IActionResult> GetAllTags()
+    {
+        var result = await _discoveryService.GetAllTagsAsync();
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpGet("places")]
     public async Task<IActionResult> SearchPlaces([FromQuery] DiscoveryRequest request)
     {

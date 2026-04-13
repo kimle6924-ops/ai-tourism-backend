@@ -8,6 +8,7 @@ namespace BE_AI_Tourism.Application.Services.Discovery;
 
 public interface IDiscoveryService
 {
+    Task<Result<List<string>>> GetAllTagsAsync();
     Task<Result<PaginationResponse<PlaceResponse>>> SearchPlacesAsync(DiscoveryRequest request);
     Task<Result<PaginationResponse<EventResponse>>> SearchEventsAsync(DiscoveryRequest request);
     Task<Result<PaginationResponse<PlaceResponse>>> SimpleSearchPlacesAsync(SimpleSearchRequest request);

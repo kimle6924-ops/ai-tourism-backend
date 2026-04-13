@@ -71,7 +71,7 @@ Trạng thái các tính năng trong hệ thống.
 | Review + Discovery (Phase 6) | Done | CRUD review (rating bắt buộc, comment/image tùy chọn), search/filter places+events, simple search API, review stats |
 | Community (Phase 5 AddDesign) | Done | 1 public group, post + media + comment + reaction |
 | Leaderboard (Phase 2 mở rộng) | Done | Xếp hạng user theo điểm review Active |
-| Seed toàn tỉnh (Phase 6 AddDesign) | Done | Seed idempotent theo toàn bộ đơn vị cấp Province hiện có: mỗi tỉnh 2 places + 2 events + review mẫu (rating luôn có, comment/image linh hoạt) |
+| Seed toàn tỉnh (Phase 6 AddDesign) | Done | Seed idempotent theo toàn bộ đơn vị cấp Province hiện có: mỗi tỉnh 2 places + 2 events + review mẫu (rating luôn có, comment/image linh hoạt) và bổ sung bộ Sa Pa gốc theo title |
 | AI Chat (Phase 7) | Done | Gemini streaming SSE + context memory (summary + key facts) |
 | Admin Stats (Phase 8) | Done | Overview + daily time-series, aggregate query tối ưu DB-side |
 | Docs + Hardening (Phase 9) | Not Started | Swagger, rate limit, logging |

@@ -7,6 +7,7 @@ namespace BE_AI_Tourism.Application.Services.Review;
 
 public interface IReviewService
 {
+    Task<Result<ReviewUploadSignatureResponse>> GenerateReviewUploadSignatureAsync(Guid userId);
     Task<Result<ReviewResponse>> CreateAsync(CreateReviewRequest request, Guid userId);
     Task<Result<ReviewResponse>> UpdateAsync(Guid id, UpdateReviewRequest request, Guid userId);
     Task<Result> DeleteAsync(Guid id, Guid userId, string role);

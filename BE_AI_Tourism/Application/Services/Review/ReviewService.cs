@@ -1,10 +1,13 @@
 using BE_AI_Tourism.Application.DTOs.Review;
+using BE_AI_Tourism.Configuration;
 using BE_AI_Tourism.Domain.Enums;
 using BE_AI_Tourism.Domain.Interfaces;
+using BE_AI_Tourism.Infrastructure.Cloudinary;
 using BE_AI_Tourism.Shared.Constants;
 using BE_AI_Tourism.Shared.Core;
 using BE_AI_Tourism.Shared.Pagination;
 using MapsterMapper;
+using Microsoft.Extensions.Options;
 
 namespace BE_AI_Tourism.Application.Services.Review;
 
@@ -15,6 +18,8 @@ public class ReviewService : IReviewService
     private readonly IRepository<Domain.Entities.Event> _eventRepository;
     private readonly IRepository<Domain.Entities.MediaAsset> _mediaRepository;
     private readonly IRepository<Domain.Entities.User> _userRepository;
+    private readonly ICloudinaryProvider _cloudinaryProvider;
+    private readonly CloudinaryOptions _cloudinaryOptions;
     private readonly IMapper _mapper;
 
     public ReviewService(
@@ -23,6 +28,8 @@ public class ReviewService : IReviewService
         IRepository<Domain.Entities.Event> eventRepository,
         IRepository<Domain.Entities.MediaAsset> mediaRepository,
         IRepository<Domain.Entities.User> userRepository,
+        ICloudinaryProvider cloudinaryProvider,
+        IOptions<CloudinaryOptions> cloudinaryOptions,
         IMapper mapper)
     {
         _reviewRepository = reviewRepository;
@@ -30,7 +37,28 @@ public class ReviewService : IReviewService
         _eventRepository = eventRepository;
         _mediaRepository = mediaRepository;
         _userRepository = userRepository;
+        _cloudinaryProvider = cloudinaryProvider;
+        _cloudinaryOptions = cloudinaryOptions.Value;
         _mapper = mapper;
+    }
+
+    public async Task<Result<ReviewUploadSignatureResponse>> GenerateReviewUploadSignatureAsync(Guid userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+            return Result.Fail<ReviewUploadSignatureResponse>(AppConstants.ErrorMessages.NotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+
+        var folder = $"{_cloudinaryOptions.Folder}/Review/{userId}";
+        var (signature, timestamp) = _cloudinaryProvider.GenerateSignature(folder);
+
+        return Result.Ok(new ReviewUploadSignatureResponse
+        {
+            Signature = signature,
+            Timestamp = timestamp,
+            ApiKey = _cloudinaryOptions.ApiKey,
+            CloudName = _cloudinaryOptions.CloudName,
+            Folder = folder
+        });
     }
 
     public async Task<Result<ReviewResponse>> CreateAsync(CreateReviewRequest request, Guid userId)

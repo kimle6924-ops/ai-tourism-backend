@@ -20,6 +20,14 @@ public class ReviewController : ControllerBase
         _reviewService = reviewService;
     }
 
+    [HttpPost("upload-signature")]
+    [Authorize]
+    public async Task<IActionResult> UploadSignature()
+    {
+        var result = await _reviewService.GenerateReviewUploadSignatureAsync(GetUserId());
+        return StatusCode(result.StatusCode, result);
+    }
+
     [HttpPost]
     [Authorize]
     public async Task<IActionResult> Create([FromBody] CreateReviewRequest request)

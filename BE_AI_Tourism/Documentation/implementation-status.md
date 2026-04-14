@@ -159,7 +159,7 @@ Trạng thái các tính năng trong hệ thống.
 | Review DTOs | Done | CreateReviewRequest, UpdateReviewRequest, ReviewResponse, ReviewListResponse, ReviewHistoryItemResponse (`rating` bắt buộc trong create/update request) |
 | Review Validators | Done | CreateReviewRequestValidator, UpdateReviewRequestValidator (`rating` bắt buộc 1-5, `comment`/`imageUrl` tùy chọn) |
 | ReviewService | Done | Create/update/delete (owner+Admin), create/update mặc định `Active`, admin chuyển `Active/Hidden`, get by resource (kèm thống kê), get mine, get my history (tổng hợp) |
-| ReviewController | Done | POST/PATCH/DELETE, GET by resource, GET mine, GET me/history |
+| ReviewController | Done | POST upload-signature, POST/PATCH/DELETE, GET by resource, GET mine, GET me/history |
 | Leaderboard DTO | Done | UserLeaderboardItemResponse |
 | Leaderboard Service | Done | Tính điểm từ review `Active` (image + rating + comment), phân trang + rank |
 | Leaderboard Controller | Done | GET `/api/leaderboard/users` (public) |

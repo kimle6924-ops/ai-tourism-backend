@@ -249,6 +249,10 @@ Body: `orderedIds`* (guid[]) — danh sách media ID theo thứ tự mong muốn
 
 ReviewResponse: `id`, `resourceType` (0=Place/1=Event), `resourceId`, `userId`, `userFullName` (string), `userAvatarUrl` (string), `rating?`, `comment?`, `imageUrl?`, `status` (0=Active/1=Hidden), `createdAt`, `updatedAt`
 
+**POST `/upload-signature`** — Login
+→ ReviewUploadSignatureResponse: `signature`, `timestamp`, `apiKey`, `cloudName`, `folder`
+(Frontend dùng signature này để upload ảnh review trực tiếp lên Cloudinary, sau đó truyền URL ảnh vào `imageUrl` của API create/update review)
+
 **POST `/`** — Login (mỗi lần gọi tạo 1 review mới, 1 user có thể đánh giá nhiều lần cho cùng 1 resource)
 Body: `resourceType`* (int: 0=Place/1=Event), `resourceId`* (guid), `rating`* (int 1-5), `comment?` (string), `imageUrl?` (string)
 → ReviewResponse

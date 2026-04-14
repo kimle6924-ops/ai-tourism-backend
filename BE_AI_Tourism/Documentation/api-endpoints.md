@@ -343,8 +343,8 @@ Query: `maxDistanceKm?` (double)
 ### Discovery theo vị trí + tag/timeline (`/api/discovery`) — Login
 
 **GET `/places/by-location-tag`** — Login, phân trang (default `pageSize=16`)
-Query: `tag`* (string, bắt buộc), `radiusKm?` (double)
-Lấy vị trí từ profile user, lọc place `Approved` theo tag + bán kính (nếu có), sort gần → xa.
+Query: `tags`* (string[], bắt buộc; hỗ trợ lặp query `tags=a&tags=b` hoặc dạng comma `tags=a,b`), `radiusKm?` (double)
+Lấy vị trí từ profile user, lọc place `Approved` theo nhiều tag (match bất kỳ tag nào) + bán kính (nếu có), sort gần → xa.
 → PlaceResponse[] (mỗi item có thêm `distanceKm`)
 
 **GET `/events/timeline`** — Login, phân trang (default `pageSize=16`)
@@ -355,6 +355,13 @@ Lấy vị trí từ profile user, lọc event `Approved` theo timeline + bán k
 - `both` → `Ongoing` + `Upcoming`
 (`EventStatus` trong API này được tính động theo recurrence)
 → EventResponse[] (mỗi item có thêm `distanceKm`)
+
+### Discovery theo nhiều tag (`/api/discovery`) — Public
+
+**GET `/places/by-tags`** — Public, phân trang (default `pageSize=16`)
+Query: `tags`* (string[], bắt buộc; hỗ trợ lặp query `tags=a&tags=b` hoặc dạng comma `tags=a,b`)
+Lọc place `Approved` theo nhiều tag (match bất kỳ tag nào), sort mới nhất → cũ hơn.
+→ PlaceResponse[]
 
 ---
 

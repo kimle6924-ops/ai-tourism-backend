@@ -85,6 +85,13 @@ public class DiscoveryController : ControllerBase
         return StatusCode(result.StatusCode, result);
     }
 
+    [HttpGet("places/by-tags")]
+    public async Task<IActionResult> SearchPlacesByTags([FromQuery] PlaceByTagsRequest request)
+    {
+        var result = await _discoveryService.SearchPlacesByTagsAsync(request);
+        return StatusCode(result.StatusCode, result);
+    }
+
     [Authorize]
     [HttpGet("events/timeline")]
     public async Task<IActionResult> GetEventsTimeline([FromQuery] EventTimelineRequest request)

@@ -404,21 +404,21 @@ public class DiscoveryService : IDiscoveryService
 
     public async Task<Result<PaginationResponse<PlaceResponse>>> GetPlacesByLocationTagAsync(Guid userId, PlaceByLocationTagRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Tag))
-            return Result.Fail<PaginationResponse<PlaceResponse>>("Tag is required", StatusCodes.Status400BadRequest, "VALIDATION_FAILED");
+        var normalizedTags = NormalizeTags(request.Tags);
+        if (normalizedTags.Count == 0)
+            return Result.Fail<PaginationResponse<PlaceResponse>>("At least one tag is required", StatusCodes.Status400BadRequest, "VALIDATION_FAILED");
 
         var userCheck = await TryGetUserLocationAsync<PlaceResponse>(userId);
         if (!userCheck.Success)
             return userCheck.Result!;
 
         var user = userCheck.User!;
-        var normalizedTag = request.Tag.RemoveDiacritics();
 
         var all = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
         var places = all
             .Where(p => p.Latitude.HasValue
                         && p.Longitude.HasValue
-                        && p.Tags.Any(t => t.RemoveDiacritics().Contains(normalizedTag)))
+                        && HasAnyTag(p.Tags, normalizedTags))
             .ToList();
 
         var placeDistances = places.ToDictionary(
@@ -446,6 +446,38 @@ public class DiscoveryService : IDiscoveryService
             var r = _mapper.Map<PlaceResponse>(p);
             r.AverageRating = avgRatings.TryGetValue(p.Id, out var avg) ? avg : 0;
             r.DistanceKm = Math.Round(placeDistances[p.Id], 2);
+            return r;
+        }).ToList();
+        await EnrichPlaceImagesAsync(responses);
+
+        return Result.Ok(PaginationResponse<PlaceResponse>.Create(
+            responses, totalCount, request.PageNumber, request.PageSize));
+    }
+
+    public async Task<Result<PaginationResponse<PlaceResponse>>> SearchPlacesByTagsAsync(PlaceByTagsRequest request)
+    {
+        var normalizedTags = NormalizeTags(request.Tags);
+        if (normalizedTags.Count == 0)
+            return Result.Fail<PaginationResponse<PlaceResponse>>("At least one tag is required", StatusCodes.Status400BadRequest, "VALIDATION_FAILED");
+
+        var all = await _placeRepository.FindAsync(p => p.ModerationStatus == ModerationStatus.Approved);
+        var places = all
+            .Where(p => HasAnyTag(p.Tags, normalizedTags))
+            .OrderByDescending(p => p.CreatedAt)
+            .ToList();
+
+        var avgRatings = await GetAverageRatings(ResourceType.Place, places.Select(p => p.Id));
+
+        var totalCount = places.Count;
+        var pagedItems = places
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToList();
+
+        var responses = pagedItems.Select(p =>
+        {
+            var r = _mapper.Map<PlaceResponse>(p);
+            r.AverageRating = avgRatings.TryGetValue(p.Id, out var avg) ? avg : 0;
             return r;
         }).ToList();
         await EnrichPlaceImagesAsync(responses);
@@ -726,6 +758,27 @@ public class DiscoveryService : IDiscoveryService
             Math.Round(distanceScore, 4),
             Math.Round(ratingScore, 4),
             Math.Round(totalScore, 4));
+    }
+
+    private static List<string> NormalizeTags(IEnumerable<string>? tags)
+    {
+        return (tags ?? [])
+            .SelectMany(t => (t ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(t => t.RemoveDiacritics())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static bool HasAnyTag(IEnumerable<string>? sourceTags, IReadOnlyCollection<string> normalizedTags)
+    {
+        if (normalizedTags.Count == 0)
+            return false;
+
+        return (sourceTags ?? [])
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Select(t => t.RemoveDiacritics())
+            .Any(t => normalizedTags.Any(inputTag => t.Contains(inputTag, StringComparison.OrdinalIgnoreCase)));
     }
 
     private async Task<Dictionary<Guid, List<Domain.Entities.MediaAsset>>> GetMediaByResourceAsync(

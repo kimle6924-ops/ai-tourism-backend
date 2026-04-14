@@ -383,9 +383,13 @@ public static class ApiDocSections
         Mix place + event không ép tỉ lệ. Sort theo totalScore giảm dần (ưu tiên match sở thích, sau đó khoảng cách và rating).
         → DiscoveryMixItemResponse[] (resourceType, resourceId, title, address, averageRating, distanceKm, primaryImageUrl, preferenceMatched, preferenceMatchScore, distanceScore, ratingScore, totalScore)
 
-        GET /api/discovery/places/by-location-tag — Login, phân trang (default pageSize=16)
-        Query: tag* (string), radiusKm? (double)
-        Lấy vị trí từ profile user, lọc place Approved theo tag + bán kính (nếu có), sort gần → xa.
+GET /api/discovery/places/by-location-tag — Login, phân trang (default pageSize=16)
+Query: tags* (string[], hỗ trợ lặp query `tags=a&tags=b` hoặc comma `tags=a,b`), radiusKm? (double)
+Lấy vị trí từ profile user, lọc place Approved theo nhiều tag + bán kính (nếu có), sort gần → xa.
+
+GET /api/discovery/places/by-tags — Public, phân trang (default pageSize=16)
+Query: tags* (string[], hỗ trợ lặp query `tags=a&tags=b` hoặc comma `tags=a,b`)
+Lọc place Approved theo nhiều tag (match bất kỳ tag nào), sort mới nhất → cũ hơn.
         → PlaceResponse[] (mỗi item có averageRating, distanceKm)
 
         GET /api/discovery/events/timeline — Login, phân trang (default pageSize=16)

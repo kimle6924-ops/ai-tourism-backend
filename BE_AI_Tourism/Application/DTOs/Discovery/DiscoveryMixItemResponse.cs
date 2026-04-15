@@ -14,6 +14,8 @@ public class DiscoveryMixItemResponse
     public double AverageRating { get; set; }
     public double DistanceKm { get; set; }
     public string? PrimaryImageUrl { get; set; }
+    public string? Description { get; set; }
+    public List<string> Tags { get; set; } = new();
     public bool PreferenceMatched { get; set; }
     public double PreferenceMatchScore { get; set; }
     public double DistanceScore { get; set; }

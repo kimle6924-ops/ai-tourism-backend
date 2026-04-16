@@ -30,7 +30,7 @@ public class PlaceController : ControllerBase
 
     [HttpGet("all")]
     [Authorize(Roles = "Admin,Contributor")]
-    public async Task<IActionResult> GetAll([FromQuery] PaginationRequest request)
+    public async Task<IActionResult> GetAll([FromQuery] PlaceAdminQueryRequest request)
     {
         var result = await _placeService.GetAllPagedAsync(request, GetUserId(), GetRole(), GetContributorType(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);

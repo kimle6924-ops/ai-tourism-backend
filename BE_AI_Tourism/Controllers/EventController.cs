@@ -30,7 +30,7 @@ public class EventController : ControllerBase
 
     [HttpGet("all")]
     [Authorize(Roles = "Admin,Contributor")]
-    public async Task<IActionResult> GetAll([FromQuery] PaginationRequest request)
+    public async Task<IActionResult> GetAll([FromQuery] EventAdminQueryRequest request)
     {
         var result = await _eventService.GetAllPagedAsync(request, GetUserId(), GetRole(), GetContributorType(), GetAdminUnitId());
         return StatusCode(result.StatusCode, result);

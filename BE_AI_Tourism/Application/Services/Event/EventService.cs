@@ -163,7 +163,7 @@ public class EventService : IEventService
             responses, all.Count(), request.PageNumber, request.PageSize));
     }
 
-    public async Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(PaginationRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
+    public async Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(EventAdminQueryRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
         IEnumerable<Domain.Entities.Event> all;
 
@@ -193,6 +193,26 @@ public class EventService : IEventService
         else
         {
             all = [];
+        }
+
+        var filterResolution = await ResolveAdministrativeFilterAsync(
+            request.ProvinceId,
+            request.WardId,
+            role,
+            contributorType,
+            userAdminUnitId);
+        if (!filterResolution.Success)
+            return Result.Fail<PaginationResponse<EventResponse>>(
+                filterResolution.ErrorMessage!,
+                filterResolution.StatusCode,
+                filterResolution.ErrorCode!);
+
+        all = all.Where(e => MatchesAdministrativeFilter(e.AdministrativeUnitId, filterResolution));
+
+        if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var normalizedQuery = request.Q.RemoveDiacritics().Trim();
+            all = all.Where(e => e.Title.RemoveDiacritics().Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase));
         }
 
         var totalCount = all.Count();
@@ -556,6 +576,83 @@ public class EventService : IEventService
         return false;
     }
 
+    private async Task<AdministrativeFilterResolution> ResolveAdministrativeFilterAsync(
+        Guid? requestedProvinceId,
+        Guid? requestedWardId,
+        string role,
+        ContributorType? contributorType,
+        Guid? userAdminUnitId)
+    {
+        var provinceId = requestedProvinceId;
+        var wardId = requestedWardId;
+
+        if (contributorType == ContributorType.Ward)
+        {
+            wardId = userAdminUnitId;
+            provinceId = null;
+        }
+        else if (contributorType == ContributorType.Province && userAdminUnitId.HasValue)
+        {
+            provinceId = userAdminUnitId.Value;
+        }
+
+        if (wardId.HasValue)
+        {
+            var ward = await _adminUnitRepository.GetByIdAsync(wardId.Value);
+            if (ward == null || ward.Level != AdministrativeLevel.Ward)
+                return AdministrativeFilterResolution.Fail("Ward not found", StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+
+            var wardProvinceId = ward.ParentId;
+            if (!wardProvinceId.HasValue)
+                return AdministrativeFilterResolution.Fail("Ward must belong to a province", StatusCodes.Status400BadRequest, "INVALID_LOCATION_FILTER");
+
+            if (provinceId.HasValue && provinceId.Value != wardProvinceId.Value)
+                return AdministrativeFilterResolution.Fail("Ward does not belong to the selected province", StatusCodes.Status400BadRequest, "INVALID_LOCATION_FILTER");
+
+            provinceId = wardProvinceId.Value;
+        }
+
+        if (provinceId.HasValue)
+        {
+            var province = await _adminUnitRepository.GetByIdAsync(provinceId.Value);
+            if (province == null || province.Level != AdministrativeLevel.Province)
+                return AdministrativeFilterResolution.Fail("Province not found", StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
+        }
+
+        if (role == UserRole.Contributor.ToString())
+        {
+            if (contributorType == ContributorType.Province && userAdminUnitId.HasValue)
+            {
+                if (provinceId != userAdminUnitId.Value)
+                    return AdministrativeFilterResolution.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+            }
+
+            if (contributorType == ContributorType.Ward && userAdminUnitId.HasValue && wardId != userAdminUnitId.Value)
+                return AdministrativeFilterResolution.Fail(AppConstants.ErrorMessages.Forbidden, StatusCodes.Status403Forbidden, AppConstants.ErrorCodes.Forbidden);
+        }
+
+        var childWardIds = new HashSet<Guid>();
+        if (provinceId.HasValue)
+        {
+            var childWards = await _adminUnitRepository.FindAsync(
+                u => u.ParentId == provinceId.Value && u.Level == AdministrativeLevel.Ward);
+            childWardIds = childWards.Select(u => u.Id).ToHashSet();
+        }
+
+        return AdministrativeFilterResolution.Ok(provinceId, wardId, childWardIds);
+    }
+
+    private static bool MatchesAdministrativeFilter(Guid administrativeUnitId, AdministrativeFilterResolution resolution)
+    {
+        if (resolution.WardId.HasValue)
+            return administrativeUnitId == resolution.WardId.Value;
+
+        if (resolution.ProvinceId.HasValue)
+            return administrativeUnitId == resolution.ProvinceId.Value || resolution.ChildWardIds.Contains(administrativeUnitId);
+
+        return true;
+    }
+
     private async Task EnrichResponsesAsync(List<EventResponse> responses)
     {
         if (responses.Count == 0)
@@ -660,5 +757,32 @@ public class EventService : IEventService
                 entity.EndMonth = null;
                 break;
         }
+    }
+
+    private sealed class AdministrativeFilterResolution
+    {
+        public bool Success { get; private set; }
+        public Guid? ProvinceId { get; private set; }
+        public Guid? WardId { get; private set; }
+        public HashSet<Guid> ChildWardIds { get; private set; } = [];
+        public string? ErrorMessage { get; private set; }
+        public int StatusCode { get; private set; }
+        public string? ErrorCode { get; private set; }
+
+        public static AdministrativeFilterResolution Ok(Guid? provinceId, Guid? wardId, HashSet<Guid> childWardIds) => new()
+        {
+            Success = true,
+            ProvinceId = provinceId,
+            WardId = wardId,
+            ChildWardIds = childWardIds
+        };
+
+        public static AdministrativeFilterResolution Fail(string errorMessage, int statusCode, string errorCode) => new()
+        {
+            Success = false,
+            ErrorMessage = errorMessage,
+            StatusCode = statusCode,
+            ErrorCode = errorCode
+        };
     }
 }

@@ -36,6 +36,11 @@ public class EfRepository<T> : IRepository<T> where T : BaseEntity
     {
         return await DbSet.ToListAsync();
     }
+    
+    public IQueryable<T> AsQueryable()
+    {
+        return DbSet.AsQueryable();
+    }
 
     public async Task<PaginationResponse<T>> GetPagedAsync(PaginationRequest request)
     {

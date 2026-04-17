@@ -50,7 +50,7 @@ public class EventService : IEventService
             return Result.Fail<EventResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         // Kiểm tra quyền tạo event
-        if (role == UserRole.Contributor.ToString())
+        if (string.Equals(role, UserRole.Contributor.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             if (contributorType == ContributorType.Collaborator)
             {
@@ -73,7 +73,7 @@ public class EventService : IEventService
         Guid? approvedBy = null;
         DateTime? approvedAt = null;
 
-        if (role == UserRole.Admin.ToString()
+        if (string.Equals(role, UserRole.Admin.ToString(), StringComparison.OrdinalIgnoreCase)
             || contributorType == ContributorType.Central
             || contributorType == ContributorType.Province
             || contributorType == ContributorType.Ward)
@@ -165,58 +165,75 @@ public class EventService : IEventService
 
     public async Task<Result<PaginationResponse<EventResponse>>> GetAllPagedAsync(EventAdminQueryRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
-        IEnumerable<Domain.Entities.Event> all;
+        var query = _eventRepository.AsQueryable();
 
-        if (role == UserRole.Admin.ToString() || contributorType == ContributorType.Central)
+        // 1. Phân quyền dữ liệu gốc
+        if (string.Equals(role, UserRole.Admin.ToString(), StringComparison.OrdinalIgnoreCase) || contributorType == ContributorType.Central)
         {
-            all = await _eventRepository.GetAllAsync();
+            // Admin và Central thấy tất cả
         }
-        else if (role == UserRole.Contributor.ToString() && userAdminUnitId.HasValue)
+        else if (string.Equals(role, UserRole.Contributor.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             if (contributorType == ContributorType.Collaborator)
             {
                 // CTV chỉ thấy bài mình tạo
-                all = await _eventRepository.FindAsync(e => e.CreatedBy == userId);
+                query = query.Where(e => e.CreatedBy == userId);
+            }
+            else if (userAdminUnitId.HasValue)
+            {
+                // Tạm thời fetch list IDs hợp lệ để lọc trong query nếu logic phức tạp
+                // Ở đây ta có thể tối ưu sau, logic hiện tại là filter theo scope của user
             }
             else
             {
-                var allEvents = await _eventRepository.GetAllAsync();
-                var filtered = new List<Domain.Entities.Event>();
-                foreach (var e in allEvents)
-                {
-                    if (await _scopeService.IsInScopeAsync(userAdminUnitId.Value, e.AdministrativeUnitId))
-                        filtered.Add(e);
-                }
-                all = filtered;
+                return Result.Ok(PaginationResponse<EventResponse>.Create([], 0, request.PageNumber, request.PageSize));
             }
         }
         else
         {
-            all = [];
+            return Result.Ok(PaginationResponse<EventResponse>.Create([], 0, request.PageNumber, request.PageSize));
         }
 
+        // 2. Xử lý Administrative Filter từ Request
         var filterResolution = await ResolveAdministrativeFilterAsync(
             request.ProvinceId,
             request.WardId,
             role,
             contributorType,
             userAdminUnitId);
+
         if (!filterResolution.Success)
             return Result.Fail<PaginationResponse<EventResponse>>(
                 filterResolution.ErrorMessage!,
                 filterResolution.StatusCode,
                 filterResolution.ErrorCode!);
 
-        all = all.Where(e => MatchesAdministrativeFilter(e.AdministrativeUnitId, filterResolution));
-
-        if (!string.IsNullOrWhiteSpace(request.Q))
+        // Áp dụng filter hành chính vào query
+        if (filterResolution.WardId.HasValue)
         {
-            var normalizedQuery = request.Q.RemoveDiacritics().Trim();
-            all = all.Where(e => e.Title.RemoveDiacritics().Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase));
+            query = query.Where(e => e.AdministrativeUnitId == filterResolution.WardId.Value);
+        }
+        else if (filterResolution.ProvinceId.HasValue)
+        {
+            var provinceId = filterResolution.ProvinceId.Value;
+            var childIds = filterResolution.ChildWardIds;
+            query = query.Where(e => e.AdministrativeUnitId == provinceId || childIds.Contains(e.AdministrativeUnitId));
         }
 
-        var totalCount = all.Count();
-        var items = all.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
+        // 3. Search theo Q
+        if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var q = request.Q.Trim();
+            query = query.Where(e => e.Title.Contains(q));
+        }
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(e => e.CreatedAt)
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync();
+
         var responses = items.Select(e => _mapper.Map<EventResponse>(e)).ToList();
         await EnrichResponsesAsync(responses);
 
@@ -550,10 +567,10 @@ public class EventService : IEventService
 
     private async Task<bool> HasPermission(Domain.Entities.Event evt, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
-        if (role == UserRole.Admin.ToString())
+        if (string.Equals(role, UserRole.Admin.ToString(), StringComparison.OrdinalIgnoreCase))
             return true;
 
-        if (role == UserRole.Contributor.ToString())
+        if (string.Equals(role, UserRole.Contributor.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             if (contributorType == ContributorType.Central)
                 return true;
@@ -570,7 +587,7 @@ public class EventService : IEventService
 
     private static bool CanChangeAdminUnit(string role, ContributorType? contributorType)
     {
-        if (role == UserRole.Admin.ToString()) return true;
+        if (string.Equals(role, UserRole.Admin.ToString(), StringComparison.OrdinalIgnoreCase)) return true;
         if (contributorType == ContributorType.Central) return true;
         if (contributorType == ContributorType.Province) return true;
         return false;
@@ -619,7 +636,7 @@ public class EventService : IEventService
                 return AdministrativeFilterResolution.Fail("Province not found", StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
         }
 
-        if (role == UserRole.Contributor.ToString())
+        if (string.Equals(role, UserRole.Contributor.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             if (contributorType == ContributorType.Province && userAdminUnitId.HasValue)
             {

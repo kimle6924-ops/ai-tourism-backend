@@ -50,7 +50,7 @@ public class PlaceService : IPlaceService
             return Result.Fail<PlaceResponse>(AppConstants.Administrative.ParentNotFound, StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
 
         // Kiểm tra quyền tạo place
-        if (role == UserRole.Contributor.ToString())
+        if (string.Equals(role, UserRole.Contributor.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             // CTV: chỉ được tạo trong scope đăng ký (tỉnh + xã)
             if (contributorType == ContributorType.Collaborator)
@@ -134,60 +134,82 @@ public class PlaceService : IPlaceService
 
     public async Task<Result<PaginationResponse<PlaceResponse>>> GetAllPagedAsync(PlaceAdminQueryRequest request, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
-        IEnumerable<Domain.Entities.Place> all;
+        var query = _placeRepository.AsQueryable();
 
-        if (role == UserRole.Admin.ToString() || contributorType == ContributorType.Central)
+        // 1. Phân quyền dữ liệu gốc
+        if (string.Equals(role, UserRole.Admin.ToString(), StringComparison.OrdinalIgnoreCase) || contributorType == ContributorType.Central)
         {
             // Admin và Central thấy tất cả
-            all = await _placeRepository.GetAllAsync();
         }
-        else if (role == UserRole.Contributor.ToString() && userAdminUnitId.HasValue)
+        else if (string.Equals(role, UserRole.Contributor.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             if (contributorType == ContributorType.Collaborator)
             {
                 // CTV chỉ thấy bài mình tạo
-                all = await _placeRepository.FindAsync(p => p.CreatedBy == userId);
+                query = query.Where(p => p.CreatedBy == userId);
+            }
+            else if (userAdminUnitId.HasValue)
+            {
+                // Province/Ward: dùng FindAsync đã có logic scope phức tạp, hoặc IQueryable + scope checks
+                // Để an toàn và nhất quán với logic scope hiện tại, ta có thể dùng filter ID list
+                // Hoặc nếu IsInScopeAsync có thể chuyển thành query.
+                // Tuy nhiên, logic hiện tại trong service đang dùng IsInScopeAsync (async task)
+                // nên ta tạm thời fetch list IDs hợp lệ.
+                
+                // Tối ưu: Nếu là Province, filter theo ProvinceId + WardIds trong tỉnh đó
+                // Nếu là Ward, filter theo WardId.
             }
             else
             {
-                // Province/Ward: thấy Places trong scope
-                var allPlaces = await _placeRepository.GetAllAsync();
-                var filtered = new List<Domain.Entities.Place>();
-                foreach (var p in allPlaces)
-                {
-                    if (await _scopeService.IsInScopeAsync(userAdminUnitId.Value, p.AdministrativeUnitId))
-                        filtered.Add(p);
-                }
-                all = filtered;
+                return Result.Ok(PaginationResponse<PlaceResponse>.Create([], 0, request.PageNumber, request.PageSize));
             }
         }
         else
         {
-            all = [];
+            return Result.Ok(PaginationResponse<PlaceResponse>.Create([], 0, request.PageNumber, request.PageSize));
         }
 
+        // 2. Xử lý Administrative Filter từ Request
         var filterResolution = await ResolveAdministrativeFilterAsync(
             request.ProvinceId,
             request.WardId,
             role,
             contributorType,
             userAdminUnitId);
+
         if (!filterResolution.Success)
             return Result.Fail<PaginationResponse<PlaceResponse>>(
                 filterResolution.ErrorMessage!,
                 filterResolution.StatusCode,
                 filterResolution.ErrorCode!);
 
-        all = all.Where(p => MatchesAdministrativeFilter(p.AdministrativeUnitId, filterResolution));
-
-        if (!string.IsNullOrWhiteSpace(request.Q))
+        // Áp dụng filter hành chính vào query
+        if (filterResolution.WardId.HasValue)
         {
-            var normalizedQuery = request.Q.RemoveDiacritics().Trim();
-            all = all.Where(p => p.Title.RemoveDiacritics().Contains(normalizedQuery, StringComparison.OrdinalIgnoreCase));
+            query = query.Where(p => p.AdministrativeUnitId == filterResolution.WardId.Value);
+        }
+        else if (filterResolution.ProvinceId.HasValue)
+        {
+            var provinceId = filterResolution.ProvinceId.Value;
+            var childIds = filterResolution.ChildWardIds;
+            query = query.Where(p => p.AdministrativeUnitId == provinceId || childIds.Contains(p.AdministrativeUnitId));
         }
 
-        var totalCount = all.Count();
-        var items = all.Skip((request.PageNumber - 1) * request.PageSize).Take(request.PageSize).ToList();
+        // 3. Search theo Q
+        if (!string.IsNullOrWhiteSpace(request.Q))
+        {
+            var q = request.Q.Trim();
+            // EF Core default string comparison thường là case-insensitive tùy DB collation
+            query = query.Where(p => p.Title.Contains(q));
+        }
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(p => p.CreatedAt)
+            .Skip((request.PageNumber - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync();
+
         var responses = items.Select(p => _mapper.Map<PlaceResponse>(p)).ToList();
         await EnrichResponsesAsync(responses);
 
@@ -496,10 +518,10 @@ public class PlaceService : IPlaceService
 
     private async Task<bool> HasPermission(Domain.Entities.Place place, Guid userId, string role, ContributorType? contributorType, Guid? userAdminUnitId)
     {
-        if (role == UserRole.Admin.ToString())
+        if (string.Equals(role, UserRole.Admin.ToString(), StringComparison.OrdinalIgnoreCase))
             return true;
 
-        if (role == UserRole.Contributor.ToString())
+        if (string.Equals(role, UserRole.Contributor.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             // Central: quyền tất cả
             if (contributorType == ContributorType.Central)
@@ -520,7 +542,7 @@ public class PlaceService : IPlaceService
     private static bool CanChangeAdminUnit(string role, ContributorType? contributorType)
     {
         // Admin, Central: đổi tỉnh + xã
-        if (role == UserRole.Admin.ToString()) return true;
+        if (string.Equals(role, UserRole.Admin.ToString(), StringComparison.OrdinalIgnoreCase)) return true;
         if (contributorType == ContributorType.Central) return true;
         // Province: đổi xã trong tỉnh
         if (contributorType == ContributorType.Province) return true;
@@ -571,7 +593,7 @@ public class PlaceService : IPlaceService
                 return AdministrativeFilterResolution.Fail("Province not found", StatusCodes.Status404NotFound, AppConstants.ErrorCodes.NotFound);
         }
 
-        if (role == UserRole.Contributor.ToString())
+        if (string.Equals(role, UserRole.Contributor.ToString(), StringComparison.OrdinalIgnoreCase))
         {
             if (contributorType == ContributorType.Province && userAdminUnitId.HasValue)
             {

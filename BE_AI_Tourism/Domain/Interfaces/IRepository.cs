@@ -11,6 +11,7 @@ public interface IRepository<T> where T : BaseEntity
     Task<T?> FindOneAsync(Expression<Func<T, bool>> filter);
     Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> filter);
     Task<IEnumerable<T>> GetAllAsync();
+    IQueryable<T> AsQueryable();
     Task<PaginationResponse<T>> GetPagedAsync(PaginationRequest request);
     Task AddAsync(T entity);
     Task UpdateAsync(T entity);
